@@ -33,7 +33,8 @@ enum {
     A_END,                        /* end a USB session */
     A_NOP,                        /* a key that does nothing here (slot flash only) */
     A_GO_NP,                      /* a menu's PLAY hold: Now Playing when a track is loaded (else A_OPEN_HOLD) */
-    A_SEEK, A_SEEK_GO             /* Now Playing's VOL 2x+hold: seek while held, release = go */
+    A_SEEK, A_SEEK_GO,            /* Now Playing's VOL 2x+hold: seek while held, release = go */
+    A_VIEW                        /* Now Playing's BACK tap: Cover -> Lyrics -> Up Next (ui/np_extra.h) */
 };
 
 typedef struct {

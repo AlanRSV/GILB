@@ -28,6 +28,7 @@
 #include "services/power.h"
 #include "services/queue.h"
 #include "services/lib.h"
+#include "ui/np_extra.h"
 #include "player.h"
 
 /* ap_ui.c */
@@ -100,7 +101,7 @@ static const keydef_t k_np[] = {
     { KEY_SELECT, IG_TAP, A_PLAY, VERB }, { KEY_SELECT, IG_HOLD, A_PLAY_HOLD, VERB },
     { KEY_SELECT, IG_END, A_PLAY_END, NULL },
     { KEY_MENU, IG_TAP, A_NP, "LIBRARY" }, { KEY_MENU, IG_HOLD, A_OPTIONS, "OPTIONS" },
-    { KEY_BACK, IG_TAP, A_BACK, "BACK" }, { KEY_BACK, IG_HOLD, A_HOME, "HOME" },
+    { KEY_BACK, IG_TAP, A_VIEW, "VIEW" }, { KEY_BACK, IG_HOLD, A_HOME, "HOME" },   /* (back: MENU) */
     { 0 }
 };
 static const keydef_t k_dac[] = {
@@ -657,13 +658,8 @@ static const uint16_t k_hues[8] = {     /* the monogram tile's hues (content, no
     0x7A7A, 0x2C70, 0xC287, 0x3B78, 0xAA2B, 0x5C65, 0xB3C3, 0x4AF5
 };
 
-static struct {
-    uint32_t seq, pos, dur, until, clus;
-    char title[96], artist[64], album[64], next[64], init[4], codec[8], fmt[12], facts[40];
-    uint8_t hue, hires, paused, band, win, err;   /* band: 0 progress, 1 volume, 2 seek */
-    uint8_t cover;                                /* s_cover holds this track's album cover */
-    int16_t head;
-} N;
+np_now_t g_np;                        /* (ui/np_extra.h: the npx overlay's views read it too) */
+#define N g_np
 
 /* The album cover (tools/make_covers.py): COVER_NAME in the track's folder, COVER_W x COVER_W
  * RGB565 little-endian, rows top down, exactly sizeof s_cover bytes, no header. Drawn at 2x in the
@@ -922,6 +918,7 @@ static void np_poll(void)
         np_inval_band();
     }
     pos = s_seek_go >= 0 ? N.pos : (uint32_t)(player_get_position_ms() / 1000);   /* (a seek about to go: its target) */
+    ap_npx_tick();                        /* the next lyrics line, when it is due */
     if (pos != N.pos) {
         int a = head_x();
 
@@ -1029,18 +1026,20 @@ static void np_draw(void)
         ui_text(&font_b13, 0, 92, DISPLAY_W, 1, "Nothing playing", t->text_dim, BODY_Y, BAND_Y);
         return;
     }
-    art(N.init, N.hue, N.paused, N.cover);
-    if (N.seq == 0xFFFFFFFFu) {           /* starting: the row's name only */
-        text_col(N.title, "", "");
-        return;
-    }
-    text_col(N.title, N.artist, N.album);
-    {
-        int x = badge(TX, N.codec, N.hires ? t->hires : t->badge_bg, N.hires ? 0 : t->badge_text, 0);
+    if (N.seq == 0xFFFFFFFFu || !ap_npx_draw()) {   /* (the Cover view, or one that can't be had now) */
+        art(N.init, N.hue, N.paused, N.cover);
+        if (N.seq == 0xFFFFFFFFu) {           /* starting: the row's name only */
+            text_col(N.title, "", "");
+            return;
+        }
+        text_col(N.title, N.artist, N.album);
+        {
+            int x = badge(TX, N.codec, N.hires ? t->hires : t->badge_bg, N.hires ? 0 : t->badge_text, 0);
 
-        badge(x, N.fmt, N.hires ? t->hires : t->badge_bg, N.hires ? t->hires : t->text_dim, 1);
+            badge(x, N.fmt, N.hires ? t->hires : t->badge_bg, N.hires ? t->hires : t->text_dim, 1);
+        }
+        ui_text(&font_s8, TX, 130, TW, 0, N.facts, t->text_dim, 122, 132);
     }
-    ui_text(&font_s8, TX, 130, TW, 0, N.facts, t->text_dim, 122, 132);
     if (N.band == 1) {
         vol_band(player_get_volume(), bt_routed());
         return;
@@ -1165,6 +1164,9 @@ void np_act(int a, int i)
         N.pos = K.to / 1000u;
         if (nav_top() == &pg_np)
             np_inval_band();
+        break;
+    case A_VIEW:
+        ap_npx_next();
         break;
     }
 }

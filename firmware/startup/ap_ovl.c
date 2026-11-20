@@ -8,6 +8,8 @@
  *   dev     the Developer tests: DAC test, USB console (drivers/usb_cdc_rknanoc.c), USB-C probe,
  *           USB detect, BT listen (drivers/bt_jieli.c bt_listen), Panel TE (drivers/panel_io_rknanoc.c
  *           panel_te_probe), SD card test (services/sd_selftest.c) -- startup/ap_ui.c
+ *   npx     Now Playing's Lyrics and Up Next views (ui/np_extra.c) and the lyrics reader
+ *           (services/lyrics.c): only while one of those views is on screen
  *   fsw     the file-system writer's cold half (services/fs_write_ext.c: exFAT writes, long names,
  *           mkdir, rename), in its own window (OVL_FS): loaded at its first use, never evicted
  *
@@ -32,6 +34,8 @@
 #include "services/fs_target_int.h"
 #include "services/lib.h"
 #include "services/fs_target.h"
+#include "ui/np_extra.h"
+#include "ui/ui.h"
 
 extern const char __ovl_abi[];       /* absolute: this link's ABI (Makefile) */
 
@@ -59,6 +63,7 @@ const ovl_desc_t ovl_desc[OVL_COUNT] = {
     [OVL_LIBTAG] = { "ov_ltag", "Tags", NULL, 0 },
     [OVL_LWALK]  = { "ov_lwalk", "Library", NULL, 3 },
     [OVL_LBUILD] = { "ov_lbld", "Library", NULL, 3 },
+    [OVL_NPX]    = { "ov_npx", "Lyrics", NULL, 0 },
 };
 
 /* The USB interrupt goes wherever usb_irq_hook points (drivers/usb_msc_rknanoc.c): the USB DAC's
@@ -413,4 +418,52 @@ int ap_lib_tags(uint32_t (*rd)(void *, uint32_t, void *, uint32_t), void *u, uin
     r = (*a)(rd, u, size, kind, out);
     ovl_hold(-1);
     return r;
+}
+
+/* ---- npx: Now Playing's Lyrics and Up Next views (ui/np_extra.h), in the modes' window -------- */
+
+void npx_draw(int v);
+void npx_tick(void);
+static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick };
+OVL_HEADER(npx, OVL_NPX, &k_npx);
+
+/* Not while USB-C earphones hold the window (loading the views would stop them), as for libtag;
+ * not when the overlay was refused ("busy" passes: a moment, not a refusal). */
+static int npx_ok(void)
+{
+    const char *why = ovl_why(OVL_NPX);
+
+    return !(ovl_current() == OVL_USBOUT && __wrap_usb_out_active()) && (!why || why[0] == 'b');
+}
+
+static uint8_t s_npv;                /* Now Playing's view (NPV_*): kept across tracks */
+
+void ap_npx_next(void)
+{
+    s_npv = (uint8_t)((s_npv + 1u) % NPV_COUNT);
+    if (s_npv && !npx_ok()) {
+        refused(OVL_NPX);            /* "Lyrics: unavailable" (USB-C earphones, or why in the log) */
+        s_npv = NPV_COVER;
+    }
+    ui_invalidate(0, BODY_Y, DISPLAY_W - 1, DISPLAY_H - 1);
+}
+
+int ap_npx_draw(void)
+{
+    const npx_api_t *a;
+
+    if (!s_npv || !npx_ok() || !(a = ovl_get(OVL_NPX)))
+        return 0;
+    ovl_hold(1);
+    a->draw(s_npv);
+    ovl_hold(-1);
+    return 1;
+}
+
+/* From the poll: only when the views are in the window already (never a load every pass; out of
+ * it, the next second's redraw of the band brings them back). */
+void ap_npx_tick(void)
+{
+    if (s_npv == NPV_LYRICS)
+        GATE_V(ovl_if, OVL_NPX, npx_api_t, tick());
 }

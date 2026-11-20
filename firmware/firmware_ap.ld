@@ -142,6 +142,16 @@ SECTIONS
             *lib_tags.o(.text* .rodata*)
             . = ALIGN(4);
         }
+        /* Now Playing's Lyrics and Up Next views (ui/np_extra.c) and the lyrics reader
+           (services/lyrics.c): loaded while one of those views is on screen */
+        .ovl_npx
+        {
+            KEEP(*(.ovl_hdr.npx))
+            *(.ovl.npx.*)
+            *np_extra.o(.text* .rodata*)
+            *lyrics.o(.text* .rodata*)
+            . = ALIGN(4);
+        }
         /* the Developer tests (Settings > Developer) */
         .ovl_dev
         {
@@ -320,13 +330,14 @@ NOCROSSREFS_TO(.ovl_usbout .vectors .text .data .ovl_fsw)
 NOCROSSREFS_TO(.ovl_dev .vectors .text .data .ovl_fsw)
 NOCROSSREFS_TO(.ovl_lib .vectors .text .data .ovl_fsw)
 NOCROSSREFS_TO(.ovl_libtag .vectors .text .data .ovl_fsw)
-NOCROSSREFS_TO(.ovl_fsw .vectors .text .data .ovl_usbdac .ovl_usbout .ovl_dev .ovl_lib .ovl_libtag .ovl_lwalk .ovl_lbuild)
-NOCROSSREFS(.ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag)
+NOCROSSREFS_TO(.ovl_npx .vectors .text .data .ovl_fsw)
+NOCROSSREFS_TO(.ovl_fsw .vectors .text .data .ovl_usbdac .ovl_usbout .ovl_dev .ovl_lib .ovl_libtag .ovl_lwalk .ovl_lbuild .ovl_npx)
+NOCROSSREFS(.ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
 /* the phases call the library's code (.ovl_lib, always loaded before them), never the reverse */
-NOCROSSREFS_TO(.ovl_lwalk .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag)
-NOCROSSREFS_TO(.ovl_lbuild .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag)
-NOCROSSREFS(.ovl_lwalk .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag)
-NOCROSSREFS(.ovl_lbuild .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag)
+NOCROSSREFS_TO(.ovl_lwalk .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
+NOCROSSREFS_TO(.ovl_lbuild .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
+NOCROSSREFS(.ovl_lwalk .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
+NOCROSSREFS(.ovl_lbuild .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
 __ovl_lph_start = ORIGIN(OVL_LPH);
 __ovl_lph_end   = ORIGIN(OVL_LPH) + LENGTH(OVL_LPH);
 ASSERT(__ovl_lph_start >= ORIGIN(OVL_LIB) + LENGTH(OVL_LIB), "the phase window must not overlap the library's")
@@ -350,12 +361,13 @@ __ovl_win_end   = ORIGIN(OVL_WIN) + LENGTH(OVL_WIN);
 ASSERT(ORIGIN(OVL_WIN) >= 0x03040000, "the overlay window must stay above the audio input ring")
 ASSERT(__ovl_win_end <= 0x0304F000, "the overlay window must stay below the loaded image (0x0304F490)")
 ASSERT(ovl_hdr_usbdac == ORIGIN(OVL_WIN) && ovl_hdr_usbout == ORIGIN(OVL_WIN) && ovl_hdr_dev == ORIGIN(OVL_WIN) &&
-       ovl_hdr_libtag == ORIGIN(OVL_WIN),
+       ovl_hdr_libtag == ORIGIN(OVL_WIN) && ovl_hdr_npx == ORIGIN(OVL_WIN),
        "each overlay must start with its header")
 ASSERT(SIZEOF(.ovl_usbdac) <= LENGTH(OVL_WIN), "the usbdac overlay is over the window")
 ASSERT(SIZEOF(.ovl_usbout) <= LENGTH(OVL_WIN), "the usbout overlay is over the window")
 ASSERT(SIZEOF(.ovl_dev) <= LENGTH(OVL_WIN), "the dev overlay is over the window")
 ASSERT(SIZEOF(.ovl_libtag) <= LENGTH(OVL_WIN), "the libtag overlay is over the window")
+ASSERT(SIZEOF(.ovl_npx) <= LENGTH(OVL_WIN), "the npx overlay is over the window")
 
 /* ---- layout contracts (fail the link loudly on violation) ------------- */
 ASSERT(ap_vectors == 0x03050000,

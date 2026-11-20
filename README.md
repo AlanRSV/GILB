@@ -41,7 +41,15 @@ the panel is 320×170).*
   earphones are linked, and the battery.
 - **Lists:** seven rows, with cursor memory per level.
 - **Now Playing:** shows the cover tile, title, artist and album, format and rate badges, bit
-  rate, progress, and the next track.
+  rate, progress, and the next track. Tap BACK to switch views:
+  - **Lyrics:** the line being sung, large, with the one before and after. Read from the song's
+    tags (FLAC `LYRICS`, MP3 and WAV `USLT`) or a `.lrc` file of the same name beside it. Timed
+    (LRC) lyrics follow the song; plain lyrics move through it at an even pace. Up to 4 KB of
+    lyrics per song.
+  - **Up Next:** the title, artist and album on the left, the next six songs in the queue on the
+    right.
+  - Then the cover again. Not available while USB-C earphones are on (they share the memory the
+    views load into).
 - **Keys:** each key has one meaning everywhere.
   - VOL+/VOL− move in lists and set the volume on Now Playing.
   - PLAY opens or plays.
@@ -49,6 +57,7 @@ the panel is 320×170).*
   - On Now Playing (also with the screen off): VOL+ twice then hold seeks forward, VOL− twice
     then hold seeks back.
   - BACK goes up; hold BACK for Home. PLAY held on a menu goes to Now Playing.
+    - On Now Playing: tap BACK to switch views (MENU goes back to the list, as before).
   - MENU switches between Now Playing and the library; hold MENU for Options.
 - **Text and themes:** Noto Sans in five sizes, with Latin, curly quotes and Devanagari, and
   four themes: Classic, Paper, Night and Contrast.

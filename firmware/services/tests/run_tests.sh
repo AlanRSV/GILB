@@ -16,6 +16,7 @@ $CC $CFLAGS -I.. -o .work/test_input   test_input.c   ../input.c
 $CC $CFLAGS -I.. -o .work/test_fs      test_fs.c      ../fs_host.c
 $CC $CFLAGS -I.. -o .work/test_bt_proto test_bt_proto.c ../bt_proto.c
 $CC $CFLAGS -I.. -o .work/test_keyseq  test_keyseq.c  ../keyseq.c ../bt_keys.c
+$CC $CFLAGS -I.. -I../.. -o .work/test_lyrics  test_lyrics.c  ../lyrics.c
 
 .work/test_settings
 .work/test_log
@@ -24,5 +25,6 @@ $CC $CFLAGS -I.. -o .work/test_keyseq  test_keyseq.c  ../keyseq.c ../bt_keys.c
 .work/test_fs
 .work/test_bt_proto
 .work/test_keyseq
+.work/test_lyrics
 sh ./run_tags.sh
 echo "ALL SERVICES TESTS PASSED"
