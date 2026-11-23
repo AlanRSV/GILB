@@ -81,9 +81,18 @@ A rockusb read of the first 128 MB (`rl 0 0x40000` through the boot ROM's loader
   flashed image;
 - **no IDB magic anywhere** in it, and no FAT/exFAT/MBR (the user volume is further on).
 
-Likely: on this eMMC the IDB is in a hardware boot partition, not the user area the driver reads.
-Before another 8 GB attempt, `emmc_layout()` needs a fallback when no IDB is found (the firmware
-area from the slot header, then the forward scan for the volume), tested in QEMU with an 8 GB
-layout. Stock was restored with `rkdeveloptool wl 0 HIFIEC40.IMG` (docs/DEBRICK-LINUX.md) from an
+The rockusb view starts at physical 0x2000 (loader LBA 0x22000 holds the "SAVE" block noted at
+physical 0x24000), so the IDB at physical 0x40 is outside the dump: why it isn't recognised there
+is still open. Everything else matches the unit the IDB was read from in October (7456 MiB, area
+0x22000, slot 2 at 0x11000, SAVE at 0x24000, volume at 0x88000); that unit had been through
+RECHO, which rewrote part of the boot area; this one is factory stock 4.0.0.
+
+**Fix (8 GB build only, 2026-11-23):** `drivers/emmc_layout.h` (emmc_layout(), now a header the
+driver includes and the host test builds) takes the firmware area from the two slots when no IDB
+is recognised: slot 1's header at 0x2000, slot 2 the first 1 MiB step past slot 1's image with a
+header identical to it (stock leaves another image's header at 0x10000, with copies at 0xFD00 and
+0x1FD00, which a magic-only match took). It logs the word read at 0x40. The 512 MB build is
+unchanged. `drivers/tests/test_emmc_layout.c` checks both boards; with `EMMC_DUMP=` set to this
+unit's dump it finds area 0x22000 and volume 0x88000. Not yet run on hardware. Stock was restored with `rkdeveloptool wl 0 HIFIEC40.IMG` (docs/DEBRICK-LINUX.md) from an
 Ubuntu live USB booted with `toram`; WSL + usbipd cannot attach the 2207:262d loader ("Device in
 error state").

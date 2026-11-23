@@ -13,6 +13,8 @@
 
 #include "clock.h"
 #include "emmc.h"
+#include "board.h"
+#include "services/log.h"
 #include "rknanoc.h"
 
 /* Two DW-MMC instances share the code below: eMMC 0x60030000, SD card
@@ -1151,48 +1153,6 @@ uint32_t sd_written(void) { return s_sd_wr; }
 
 static uint32_t s_buf[256];
 
-/* exFAT/FAT boot sector or an MBR with a first partition (reference
- * 0x03052a1c). */
-static int is_volume_start(uint32_t lba)
-{
-    const uint8_t *b = (const uint8_t *)s_buf;
-
-    if (lba >= s_sectors || emmc_read(lba, 1, s_buf) ||
-        b[0x1FE] != 0x55 || b[0x1FF] != 0xAA)
-        return 0;
-    if (memcmp(b + 3, "EXFAT   ", 8) == 0 ||
-        ((b[0] & 0xFD) == 0xE9 && (b[0x0B] | b[0x0C] << 8) == 0x200))
-        return 1;
-    return (b[0x1BE] & 0x7F) == 0 && b[0x1C2] != 0 &&
-           (b[0x1C6] | b[0x1C7] | b[0x1C8] | b[0x1C9]) != 0;
-}
-
-/* IDB copies at LBA 0x40 + n*0x400: sector 0 magic (RC4'd 0x0FF0AA55),
- * "NANO" chip tag at +0x20A, system size in MiB at +0x202. The volume
- * normally starts right after the firmware area; otherwise the reference
- * scans forward in 1 MiB steps (this unit: 0x24000 holds a "SAVE" block,
- * the volume is at 0x88000). */
-int emmc_layout(uint32_t *user_start)
-{
-    const uint8_t *b = (const uint8_t *)s_buf;
-
-    for (uint32_t n = 0; n < 5u; n++) {
-        uint32_t fw;
-
-        if (emmc_read(0x40u + n * 0x400u, 2, s_buf) || s_buf[0] != 0xFCDC8C3Bu ||
-            memcmp(b + 0x20A, "NANO", 4) != 0)
-            continue;
-        fw = (uint32_t)(b[0x202] | b[0x203] << 8) * 0x800u;
-        if (fw == 0u || fw > s_sectors - 0x2000u)
-            continue;
-        for (uint32_t off = fw; off < 0x100000u; off += 0x800u) {
-            if (is_volume_start(0x2000u + off)) {
-                *user_start = s_write_floor = 0x2000u + off;
-                s_fw_sectors = fw;
-                return 0;
-            }
-        }
-        return -2;
-    }
-    return -1;
-}
+/* emmc_layout() and its volume probe: their own header, so the host test builds the same code
+ * (drivers/tests/test_emmc_layout.c). */
+#include "emmc_layout.h"

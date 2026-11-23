@@ -35,4 +35,10 @@ $CC $CFLAGS -O2 -I.. -o "$OUT/test_text" \
 "$OUT/test_font_ppm" "$OUT/font_render.ppm"
 "$OUT/test_text" golden ../fonts/deva_hb.txt "$OUT"
 
+# emmc_layout() on a fake 7456 MiB eMMC, for each board (EMMC_DUMP=<rockusb read> adds a real unit)
+for b in 1 2; do
+    $CC $CFLAGS -DBOARD=$b -I.. -I../.. -o "$OUT/test_emmc_layout_$b" test_emmc_layout.c
+    "$OUT/test_emmc_layout_$b"
+done
+
 echo "all host tests passed (PPM artifacts: $OUT/font_render.ppm, $OUT/<case>.ppm)"
