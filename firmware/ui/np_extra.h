@@ -24,7 +24,14 @@ extern np_now_t g_np;
 typedef struct {
     void (*draw)(int v);               /* the body (BODY_Y .. the band) of view v */
     void (*tick)(void);                /* the lyrics redrawn when another line is due */
+    void (*splash)(void);              /* the boot splash (startup/ap_ui.c) */
 } npx_api_t;
+
+/* The boot splash's picture: SPLASH_PATH on Internal, DISPLAY_W x DISPLAY_H RGB565 little-endian,
+ * rows top down, exactly SPLASH_BYTES, no header (cover56.rgb's format, full screen; Echo Library
+ * makes it). Without it: RECHORD and the build's date. */
+#define SPLASH_PATH  "/Internal/RECHORD/SPLASH.RGB"
+#define SPLASH_BYTES (320u * 170u * 2u)
 
 /* startup/ap_ovl.c, resident.
  * ap_npx_next: the next view (the body redrawn); Cover when the views can't be had now (USB-C
@@ -34,5 +41,6 @@ typedef struct {
 void ap_npx_next(void);
 int ap_npx_draw(void);
 void ap_npx_tick(void);
+void ap_npx_splash(void);              /* (loads the overlay: at boot, before anything else needs it) */
 
 #endif

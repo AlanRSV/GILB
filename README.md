@@ -37,6 +37,9 @@ the panel is 320×170).*
   Custom; Off is bit-exact.
 
 **Interface**
+- **Boot splash:** from about 0.18 s after power-on to the first screen at 0.4 s: `RECHORD/SPLASH.RGB`
+  if it's on Internal (320 × 170 RGB565 little-endian, 108,800 bytes; Echo Library makes it from any
+  picture), else "RECHORD" and the build date.
 - **Header:** a status line on every screen with play state, volume, a Bluetooth icon while
   earphones are linked, and the battery.
 - **Lists:** seven rows, with cursor memory per level.

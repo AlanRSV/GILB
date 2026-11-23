@@ -19,6 +19,7 @@
 #include "drivers/usb_probe.h"
 #include "drivers/usb_out.h"
 #include "drivers/text.h"
+#include "ui/np_extra.h"
 #include "services/bootguard.h"
 #include "drivers/dac_cs43131.h"
 #include "services/fs_target.h"
@@ -1334,14 +1335,10 @@ void ap_ui_loop(void)
     bootcrumb_kv(BCK_EMMC_WIDTH, (uint32_t)emmc_width());
     if (s_storage_failed)
         rockusb_flow(s_emmc[0] ? s_emmc : "storage failed");
-    /* The splash (the user, 2026-11-23): RECHORD and the build's date (as About shows it), from the
-     * moment the fonts are in (about 0.18 s) until the first frame, which waits for SPLASH_MS. */
-    display_clear(0x0000);
-    display_text(&font_d28, 0, 0, DISPLAY_W - 1, DISPLAY_H - 1,
-                 (DISPLAY_W - text_width(&font_d28, "RECHORD", 7)) / 2, 92, "RECHORD", 7, 0xFFFF);
-    display_text(&font_b13, 0, 0, DISPLAY_W - 1, DISPLAY_H - 1,
-                 (DISPLAY_W - text_width(&font_b13, __DATE__, 11)) / 2, 118, __DATE__, 11, 0x8410);   /* (display_text: a byte count, not -1) */
-    display_flush_rows(0, DISPLAY_H - 1);
+    /* The splash (the user, 2026-11-23): RECHORD/SPLASH.RGB, else RECHORD and the build's date, from
+     * the moment storage and the fonts are in (about 0.18 s) until the first frame, which waits for
+     * SPLASH_MS. Drawn by the npx overlay (ui/np_extra.c: the code budget). */
+    ap_npx_splash();
     bootcrumb(BC_SLOTS);
     if (s_user) {         /* a slot left invalid (an update cut short): copied from the good one */
         int r;

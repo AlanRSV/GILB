@@ -6,12 +6,16 @@
  * Lyrics: the track's tags (services/lyrics.c), else a .lrc file of the same name beside it.
  * Read once per track, when the view first needs them. Up Next: the queue's next tracks by file
  * name (what the Folders view shows), read again when the track, the queue or its mode changes.
+ *
+ * Also the boot splash (np_extra.h SPLASH_PATH): here rather than resident for the code budget; the
+ * overlay is loaded once at boot for it.
  */
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
 
 #include "audio/audio.h"
+#include "drivers/display.h"
 #include "drivers/text.h"
 #include "services/fs.h"
 #include "services/lyrics.h"
@@ -25,6 +29,7 @@
 #define NEXT_ROWS 6
 
 static lyrics_t s_ly;
+static fs_file_t *s_splash;            /* the picture, open while the splash is flushed */
 static struct {
     uint32_t clus;                     /* the track s_ly is for (its first cluster; 0: none yet) */
     uint32_t nkey;                     /* the queue state s_next is for */
@@ -286,3 +291,42 @@ void npx_tick(void)
         line_at((uint32_t)player_get_position_ms(), g_np.dur * 1000u) != X.line)
         ui_invalidate(0, BODY_Y, DISPLAY_W - 1, BAND_Y - 1);
 }
+
+/* ---- the boot splash ------------------------------------------------------------------------ */
+
+/* Each band's rows straight from the file into the band (no picture in RAM). */
+static void splash_band(const display_band_t *b)
+{
+    for (int y = b->ya; y <= b->yb; y++) {
+        uint16_t *row = b->band + (y - b->band_y) * DISPLAY_W;
+
+        if (!s_splash || fs_seek(s_splash, (long)y * DISPLAY_W * 2) < 0 ||
+            fs_read(s_splash, row, DISPLAY_W * 2u) != (long)(DISPLAY_W * 2u))
+            memset(row, 0, DISPLAY_W * 2u);
+    }
+}
+
+static void splash_text(const font_t *f, int base, const char *s, int n, uint16_t c)
+{
+    display_text(f, 0, 0, DISPLAY_W - 1, DISPLAY_H - 1, (DISPLAY_W - text_width(f, s, n)) / 2, base, s, n, c);
+}
+
+/* SPLASH_PATH if it is there and the right size, else RECHORD and the build's date (as About shows
+ * it). The picture's op leaves the list once flushed: nothing may call into this overlay later. */
+void npx_splash(void)
+{
+    display_clear(0x0000);
+    s_splash = fs_open_read(SPLASH_PATH);
+    if (s_splash && fs_file_size(s_splash) == (long)SPLASH_BYTES) {
+        display_custom(0, 0, DISPLAY_W - 1, DISPLAY_H - 1, splash_band, 0, 1);
+    } else {
+        splash_text(&font_d28, 92, "RECHORD", 7, 0xFFFF);   /* (display_text: a byte count, not -1) */
+        splash_text(&font_b13, 118, __DATE__, 11, 0x8410);
+    }
+    display_flush_rows(0, DISPLAY_H - 1);
+    if (s_splash)
+        fs_close(s_splash);
+    s_splash = NULL;
+    display_clear(0x0000);             /* (the panel keeps the picture until the first frame) */
+}
+

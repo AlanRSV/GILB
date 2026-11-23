@@ -424,7 +424,8 @@ int ap_lib_tags(uint32_t (*rd)(void *, uint32_t, void *, uint32_t), void *u, uin
 
 void npx_draw(int v);
 void npx_tick(void);
-static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick };
+void npx_splash(void);
+static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash };
 OVL_HEADER(npx, OVL_NPX, &k_npx);
 
 /* Not while USB-C earphones hold the window (loading the views would stop them), as for libtag;
@@ -462,6 +463,12 @@ int ap_npx_draw(void)
 
 /* From the poll: only when the views are in the window already (never a load every pass; out of
  * it, the next second's redraw of the band brings them back). */
+/* The boot splash, from the overlay (refused: the panel stays black until the first frame). */
+void ap_npx_splash(void)
+{
+    GATE_V(ovl_get, OVL_NPX, npx_api_t, splash());
+}
+
 void ap_npx_tick(void)
 {
     if (s_npv == NPV_LYRICS)
