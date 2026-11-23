@@ -120,8 +120,10 @@ the driver took that as a failed test and never sent CMD14, so the card stayed i
 and answered nothing else. Stock ignores CMD19's result and always reads the pattern back
 (HIFIEC40 0x39780). With that, the test reads `aa 55` back, SWITCH puts the card on 8 bits
 (R1 0x0800, tran) and sector 0x40 reads the same as at 1 bit: the unit runs on the 8-bit bus at
-24 MHz. USB disk: 100 MB written at 6.1 MB/s, 150 MB read at 8.1 MB/s (1 bit: about 0.8 MB/s
-written); the eMMC is up at 0.074 s instead of 0.119 s. The width tries stay logged, SWITCH_ERROR is
+24 MHz; the eMMC is up at 0.074 s instead of 0.119 s. (USB disk speeds first noted here, 6.1 MB/s
+written and 8.1 MB/s read, were Windows' cache: the disk session still ran at full speed, 1 MB/s at
+most -- 64 MB took 62.5 s to receive and 5.7 s to store, ECHOLOG's `usb: writes` line. At high speed,
+since the same day: 5.7-5.9 MB/s written, 8.2 MB/s read.) The width tries stay logged, SWITCH_ERROR is
 checked as stock does, and a failed wide bus still ends on 1 bit (a second try at 12 MHz first).
 
 Recovery, as used here: `rkdeveloptool wl 0 HIFIEC40.IMG` (docs/DEBRICK-LINUX.md) from an Ubuntu

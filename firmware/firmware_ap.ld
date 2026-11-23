@@ -121,7 +121,7 @@ SECTIONS
             *ap_ui.o(.text.usb_dac_session* .rodata.usb_dac_session.* .text.uac_tick* .rodata.uac_tick.*
                      .text.uac_status* .text.dac_power_only* .rodata.dac_power_only.*)
             /* resident files' functions only the USB DAC calls */
-            *audio.o(.text.audio_ext_start .text.audio_ext_rate .text.audio_ext_stop .text.audio_ext_pos
+            *audio.o(.text.audio_ext_start .text.audio_ext_rate .text.audio_ext_stop .text.audio_ext_pos .text.ext_prepare
                      .text.audio_ext_ring)
             *usb_msc_rknanoc.o(.text.usb_dwc2_init_hs)
             *ap_bt.o(.text.bt_app_external)
@@ -228,7 +228,7 @@ SECTIONS
             *(.ovl.lwalk.*)
             *lib_scan.o(.text* .rodata*)
             *lib_dir.o(.text* .rodata*)
-            *ap_ovl.o(.text.ap_lib_tags)       /* (only the walk calls it) */
+            *ap_ovl.o(.text.ap_lib_tags .text.ap_lib_tags_ok)   /* (only the walk calls them) */
             . = ALIGN(4);
         }
         /* the build: the views from the RAW, the external sort (lib_build.c, lib_sort.c) */
@@ -252,6 +252,7 @@ SECTIONS
         /* resident files' functions only the library calls */
         *fs_target.o(.text.fs_remove_part .text.fs_place_get .text.fs_place_set)
         *player_audio.o(.text.player_open_list)
+        *queue.o(.text.queue_from_list)
         *screens.o(.text.np_play_fn)
         . = ALIGN(4);
     }

@@ -82,6 +82,7 @@ typedef struct {
 
 /* Runs the session until one of USB_EXIT_*; user_exit (may be NULL) is
  * polled continuously. nluns: 1..USB_MAX_LUNS. */
+extern uint32_t g_msc_wstat[6];     /* the session's writes: us receiving, us storing, WRITE(10)s, by size */
 int usb_msc_run(const usb_lun_t *luns, unsigned nluns, int (*user_exit)(void),
                 uint32_t *rd_sectors, uint32_t *wr_sectors);
 

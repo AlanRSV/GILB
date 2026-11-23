@@ -116,7 +116,7 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | Bluetooth earphones, reconnect, routing | device |
 | VOP + DMA display path (display=dma), seek (VOL 2x + hold), fast boot | device (2026-10-18) |
 | USB-C earphones | QEMU |
-| 8 GB board: boot, eMMC on the 8-bit bus (USB disk: writes 6 MB/s, reads 8 MB/s), playback, ReChord's own updater | device, 8 GB (2026-11-23) |
+| 8 GB board: boot, eMMC on the 8-bit bus, playback, ReChord's own updater; USB disk at high speed (writes 5.7-5.9 MB/s, reads 8 MB/s) | device, 8 GB (2026-11-23) |
 | Lyrics, Up Next and Spectrum views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock

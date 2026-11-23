@@ -47,6 +47,9 @@ enum {
 #define INT_ENUM    0x00002000u
 
 #define CHUNK_SECTORS 64u            /* 32 KiB staging buffer */
+/* A disk session's writes, for its log line (usb_msc.h): ms receiving, ms storing, WRITE(10)s, and
+ * how many of them were <= 8, <= 64 and more sectors. */
+uint32_t g_msc_wstat[6];
 
 static struct {
     uint32_t setup[2];
@@ -556,9 +559,12 @@ static void scsi(const uint32_t *cbw, const usb_lun_t *u, uint32_t *rd, uint32_t
             fail(tag, dtl, flags, 7, 0x27);          /* write protected */
             return;
         }
+        if (write)
+            g_msc_wstat[2]++, g_msc_wstat[cnt <= 8u ? 3 : cnt <= 64u ? 4 : 5]++;
         while (cnt) {
             uint32_t k = cnt < CHUNK_SECTORS ? cnt : CHUNK_SECTORS, bytes = k << 9;
             uint8_t *p = (uint8_t *)buf;
+            uint32_t t0 = (uint32_t)time_us(), t1;
 
             if (!write && u->read(u->base + lba, k, buf)) {
                 fail(tag, dtl, flags, 3, 0x11);
@@ -574,9 +580,14 @@ static void scsi(const uint32_t *cbw, const usb_lun_t *u, uint32_t *rd, uint32_t
                 }
                 off += piece;
             }
+            t1 = (uint32_t)time_us();
             if (write && u->write(u->base + lba, k, buf)) {
                 fail(tag, dtl, flags, 3, 0x03);
                 return;
+            }
+            if (write) {
+                g_msc_wstat[0] += t1 - t0;
+                g_msc_wstat[1] += (uint32_t)time_us() - t1;
             }
             *(write ? wr : rd) += k;
             lba += k;
@@ -693,8 +704,8 @@ static void core_init(void)
     rk_delay_us(10000);
     OTG(PCGCCTL) = 0;
     OTG(GAHBCFG) |= 0x80u;
-    /* Mass storage and the console stay at full speed (64-byte bulk, what
-     * the hardware runs today); the USB DAC asks for high speed (usb_dwc2_init_hs). */
+    /* The console stays at full speed (usb_dwc2_init); mass storage (usb_msc_run) and the USB DAC
+     * (usb_dwc2_init_hs) ask for high speed. */
     OTG(DCFG) = (OTG(DCFG) & ~0x7F3u) | (s_want_hs ? 0u : 1u);
 
     s.dedicated = (int)((OTG(GHWCFG4) >> 25) & 1u);
@@ -946,6 +957,12 @@ int usb_msc_run(const usb_lun_t *luns, unsigned nluns, int (*user_exit)(void),
     }
     *rd_sectors = *wr_sectors = 0;
 
+    /* High speed (2026-11-23): at full speed a disk session moved 1 MB/s at most -- the 8 GB unit's
+     * log: 64 MB written, 62.5 s receiving, 5.7 s storing. The bulk endpoints follow the speed the
+     * host chose (INT_ENUM: 512-byte packets at high speed, the other-speed descriptors), as the USB
+     * DAC's high-speed sessions have run on this board; a host or cable that cannot chirp still gets
+     * full speed. The console (usb_cdc_rknanoc.c) stays at full speed. */
+    s_want_hs = 1;
     hw_on();
     core_init();
     for (int i = 0; !(OTG(GINTSTS) & INT_RESET); i++) {

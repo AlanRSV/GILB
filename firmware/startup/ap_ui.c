@@ -513,6 +513,10 @@ static void usb_session(void)
     sdcard_usb_end();
     ap_lib_volume(0, wr ? LIB_EV_WROTE : LIB_EV_RESUME);
     snprintf(s_usb, sizeof s_usb, "x%d r%uM w%uM", r, (unsigned)(rd >> 11), (unsigned)(wr >> 11));
+    log_printf("usb: writes %u (<=4K %u, <=32K %u, more %u), receiving %u ms, storing %u ms",
+               (unsigned)g_msc_wstat[2], (unsigned)g_msc_wstat[3], (unsigned)g_msc_wstat[4], (unsigned)g_msc_wstat[5],
+               (unsigned)(g_msc_wstat[0] / 1000u), (unsigned)(g_msc_wstat[1] / 1000u));
+    memset(g_msc_wstat, 0, sizeof g_msc_wstat);
     log_printf("usb: disk session ended: exit %d, read %u MB, written %u MB, cable %d", r,
                (unsigned)(rd >> 11), (unsigned)(wr >> 11), usb_cable());
     ap_npx_clock();                      /* Echo Library may have left the PC's time (TIME.TXT) */
