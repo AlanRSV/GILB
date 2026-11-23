@@ -44,7 +44,7 @@ published yet.
 | Display: display list in 16-row bands, dirty rectangles with column windows; VOP + DMA path by default behind a trial guard (stock's bus timing), GPIO writer as the fallback (display=gpio) | device (DMA trial passed every boot, 2026-10-18), QEMU |
 | No stalls: storage writes queued behind the audio, settings saved at pause, core B at full speed on resume | device |
 | No stalls on the microSD card: its writes through the same queue (runs of blocks as one command), a stuck card failed and unmounted in 3.5 s instead of holding the loop | QEMU (sd-async) |
-| 8 GB board: boot, eMMC (falls back to a 1-bit bus when the wide one fails), the firmware area from its slots, playback, USB disk, ReChord's own updater | device, 8 GB (2026-11-23) |
+| 8 GB board: boot, eMMC on the 8-bit bus (the bus test no longer takes CMD19's missing CRC status as a failure; 1 bit, logged, if a wide bus fails), the firmware area from its slots, playback, USB disk (writes 6 MB/s, reads 8 MB/s), ReChord's own updater | device, 8 GB (2026-11-23) |
 | Now Playing's Lyrics (tags or .lrc, timed or plain) and Up Next views, album covers made on the PC, boot splash (`RECHORD/SPLASH.RGB`) | device, 8 GB (2026-11-23) |
 | ReplayGain on core B (Off / Track / Album, tags of every format with tags, peak-limited, sample-exact at gapless boundaries) | device, 8 GB (2026-11-23); simulator |
 | `REVERSE_LISTS=1` builds: VOL- moves up in lists | device, 8 GB (2026-11-23) |
@@ -86,8 +86,7 @@ Nothing in ReChord may change what the ROM sees on that path:
 - Library follow-ups: Years and Composers views.
 - Settings and the resume point in a double-buffered, checksummed record that survives a power
   cut mid-write; the log appended and rotated.
-- Hold-to-boot, and a battery-empty shutdown.
-- 8 GB board: why its eMMC's 8- and 4-bit reads fail (it runs on 1 bit).
+- Hold-to-boot. (The battery-empty shutdown is done: power.c's 3.45 V cut-off, "Battery low".)
 - A spectrum view.
 - Settings from a phone: not through Bluetooth. The JieLi module's firmware is closed, it is an
   audio source only (never discoverable, no LE), and nothing can update it; dropped (2026-11-23).

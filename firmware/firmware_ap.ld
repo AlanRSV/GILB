@@ -120,6 +120,11 @@ SECTIONS
             *usb_uac_rknanoc.o(.text* .rodata*)
             *ap_ui.o(.text.usb_dac_session* .rodata.usb_dac_session.* .text.uac_tick* .rodata.uac_tick.*
                      .text.uac_status* .text.dac_power_only* .rodata.dac_power_only.*)
+            /* resident files' functions only the USB DAC calls */
+            *audio.o(.text.audio_ext_start .text.audio_ext_rate .text.audio_ext_stop .text.audio_ext_pos
+                     .text.audio_ext_ring)
+            *usb_msc_rknanoc.o(.text.usb_dwc2_init_hs)
+            *ap_bt.o(.text.bt_app_external)
             . = ALIGN(4);
         }
         /* USB-C earphones: the player as USB host; and the Custom EQ editor (startup/ap_ovl.c: it

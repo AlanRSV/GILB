@@ -109,9 +109,20 @@ stays (`drivers/tests/test_emmc_layout.c`: both boards; `EMMC_DUMP=` this unit's
 
 **Verified on this unit (2026-11-23):** boots to the UI (first frame 232 ms), ECHOLOG
 `emmc: eMMC, 1-bit, 15269888 sectors`, Internal mounted, the library indexed, USB disk works,
-an APE track played, storage `errors 0`. Still open: why the 8- and 4-bit reads fail on this unit
-(the bus test passes or the switch would not be tried); 1 bit is slower (24 MHz x 1 bit, about
-3 MB/s) but enough for playback.
+an APE track played, storage `errors 0`.
+
+### The wide bus (2026-11-23): the bus test's own bug
+A build that logged each width try (`emmc: widths` in ECHOLOG; `g_emmc_wd`, drivers/emmc_rknanoc.c)
+showed 8-bit failing at the bus test with RINTSTS 0x801c (end-bit error on the CMD19 write), then
+4-bit failing at its first plain read with a response timeout (0x104), the same at 12 MHz. CMD19
+(BUSTEST_W) has no CRC status from the card (JEDEC), which the DW-MMC reports as an end-bit error;
+the driver took that as a failed test and never sent CMD14, so the card stayed in its bus-test state
+and answered nothing else. Stock ignores CMD19's result and always reads the pattern back
+(HIFIEC40 0x39780). With that, the test reads `aa 55` back, SWITCH puts the card on 8 bits
+(R1 0x0800, tran) and sector 0x40 reads the same as at 1 bit: the unit runs on the 8-bit bus at
+24 MHz. USB disk: 100 MB written at 6.1 MB/s, 150 MB read at 8.1 MB/s (1 bit: about 0.8 MB/s
+written); the eMMC is up at 0.074 s instead of 0.119 s. The width tries stay logged, SWITCH_ERROR is
+checked as stock does, and a failed wide bus still ends on 1 bit (a second try at 12 MHz first).
 
 Recovery, as used here: `rkdeveloptool wl 0 HIFIEC40.IMG` (docs/DEBRICK-LINUX.md) from an Ubuntu
 live USB booted with `toram` (without it the live system lost its own USB stick); test builds

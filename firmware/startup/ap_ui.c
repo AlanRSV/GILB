@@ -74,6 +74,11 @@ static void emmc_probe(void)
         return;
     }
     log_printf("emmc: %s, %d-bit, %u sectors", emmc_kind(), emmc_width(), (unsigned)emmc_sectors());
+#if BOARD == BOARD_8G
+    log_printf("emmc: widths %x, 24 MHz %08x %08x %08x %08x, 12 MHz %08x %08x %08x %08x", (unsigned)g_emmc_diag[0],
+               (unsigned)g_emmc_wd[0], (unsigned)g_emmc_wd[1], (unsigned)g_emmc_wd[2], (unsigned)g_emmc_wd[3],
+               (unsigned)g_emmc_wd[4], (unsigned)g_emmc_wd[5], (unsigned)g_emmc_wd[6], (unsigned)g_emmc_wd[7]);
+#endif
     if (!board_check(emmc_sectors())) {          /* this build is for the other board */
         snprintf(s_emmc, sizeof s_emmc, "%uM: not a %s unit", (unsigned)(emmc_sectors() >> 11),
                  board_name());

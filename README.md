@@ -113,14 +113,14 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | Bluetooth earphones, reconnect, routing | device |
 | VOP + DMA display path (display=dma), seek (VOL 2x + hold), fast boot | device (2026-10-18) |
 | USB-C earphones | QEMU |
-| 8 GB board: boot, eMMC (on a 1-bit bus), playback, USB disk, ReChord's own updater | device, 8 GB (2026-11-23) |
+| 8 GB board: boot, eMMC on the 8-bit bus (USB disk: writes 6 MB/s, reads 8 MB/s), playback, ReChord's own updater | device, 8 GB (2026-11-23) |
 | Lyrics and Up Next views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
-selected at build time (`BOARD=512m | 8g`). On the factory 8 GB unit the eMMC's wide bus fails,
-so the 8 GB build falls back to a 1-bit bus (slower, still plenty for playback; see that
-document). Keep maskrom recovery at hand.
+selected at build time (`BOARD=512m | 8g`). The factory 8 GB unit runs its eMMC on the 8-bit
+bus, as stock does; if a wide bus ever fails, the 8 GB build falls back to 1 bit and logs why (see
+that document). Keep maskrom recovery at hand.
 
 **Next:**
 - a key's way to the screen, measured in parts on the device (key->px: in, loop, wait, render,

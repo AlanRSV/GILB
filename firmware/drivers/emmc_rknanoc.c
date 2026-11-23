@@ -51,6 +51,20 @@ static uint32_t s_shift;             /* card address = LBA << s_shift: 9 = byte 
 #if BOARD == BOARD_8G
 uint32_t g_emmc_diag[3] = { 0xFFFFu, 0xEEEEEEEEu, 0xEEEEEEEEu };   /* (drivers/emmc.h) */
 static uint8_t s_narrow;             /* init redone on a 1-bit bus (a wide one failed: emmc_init) */
+static uint8_t s_slow;               /* init redone with the wide bus tried at 12 MHz */
+static uint32_t s_ints, s_bt;        /* RINTSTS at the last data error; the bus test's bytes back */
+/* Each width try (emmc.h): [0] 8-bit, [2] 4-bit at 24 MHz, [4], [6] the same at 12 MHz; even: stage << 28
+ * | (rc & 0xFF) << 20 | RINTSTS at the error; odd: the bus test's two bytes | R1 after SWITCH << 16. */
+uint32_t g_emmc_wd[8];
+static void __attribute__((noinline)) wd_put(int width, int odd, uint32_t v)
+{
+    g_emmc_wd[(s_slow ? 4 : 0) + (width == 4 ? 2 : 0) + odd] = v;
+}
+#define WD(st, rc) wd_put(width, 0, (uint32_t)(st) << 28 | ((uint32_t)(rc) & 0xFFu) << 20 | (s_ints & 0xFFFFu))
+#define WB(r1) wd_put(width, 1, (s_bt & 0xFFFFu) | (uint32_t)(r1) << 16)
+#else
+#define WD(st, rc) ((void)0)
+#define WB(r1) ((void)0)
 #endif
 static uint32_t s_blksz = 512u;      /* data block size (the bus test uses 4 or 8) */
 static int s_width = 1;              /* data lines in use */
@@ -167,8 +181,12 @@ static int xfer_start(uint32_t idx, uint32_t arg, uint32_t *buf, uint32_t len, i
     while (words) {
         uint32_t n;
 
-        if (MMC[RINTSTS] & 0xAF82u)
+        if (MMC[RINTSTS] & 0xAF82u) {
+#if BOARD == BOARD_8G
+            s_ints = MMC[RINTSTS];
+#endif
             return -12;
+        }
         n = (MMC[STATUS] & 0x3FFFFFFFu) >> 17;  /* words in FIFO */
         if (write)
             n = n < s_fifo_words ? s_fifo_words - n : 0u;
@@ -205,6 +223,10 @@ static int xfer_finish(void)
     }
     if (!ret && (MMC[RINTSTS] & 0xAE80u))
         ret = -11;
+#if BOARD == BOARD_8G
+    if (ret)
+        s_ints = MMC[RINTSTS];
+#endif
     MMC[RINTSTS] = 0xFFFFFFFFu;
     return ret;
 }
@@ -274,11 +296,18 @@ static int bus_test(int width)
     }
     MMC[CTYPE] = width == 8 ? 0x10000u : 1u;
     s_blksz = n;
-    r = xfer_data(19, 0, out, n, 1);
-    if (!r)
-        r = xfer_data(14, 0, in, n, 0);
+    /* CMD19's write ends without a CRC status from the card (JEDEC: there is none for the bus test),
+     * which the controller reports as an end-bit error: that result is not the test's. Stock does not
+     * look at it either (HIFIEC40 0x39780); CMD14 always follows, or the card waits in its bus-test
+     * state and answers nothing else (the factory 8 GB unit, 2026-11-23: every wide try failed so, the
+     * next read timing out). */
+    (void)xfer_data(19, 0, out, n, 1);
+    r = xfer_data(14, 0, in, n, 0);
     s_blksz = 512u;
     MMC[CTYPE] = 0;
+#if BOARD == BOARD_8G
+    s_bt = in[0];
+#endif
     if (r)
         return -1;
     return (uint8_t)(q[0] ^ o[0]) == 0xFFu && (width != 8 || (uint8_t)(q[1] ^ o[1]) == 0xFFu) ? 0 : -1;
@@ -288,14 +317,33 @@ static int bus_test(int width)
  * same as at 1 bit; otherwise stay at 1 bit. 0 = switched. */
 static int set_width(int width)
 {
-    if (read_idb(s_idb1) || bus_test(width) ||
-        send_cmd(6, width == 8 ? 0x03B70200u : 0x03B70100u, F_RESP | F_CRC, 1) || wait_tran())
-        return -1;
+    int r;
+
+#if BOARD == BOARD_8G
+    s_ints = s_bt = 0;
+#endif
+    if ((r = read_idb(s_idb1)) != 0)
+        return WD(1, r), -1;
+    if ((r = bus_test(width)) != 0)
+        return WB(0), WD(2, r), -1;
+    r = send_cmd(6, width == 8 ? 0x03B70200u : 0x03B70100u, F_RESP | F_CRC, 1);
+    WB(MMC[RESP0] & 0xFFFFu);
+#if BOARD == BOARD_8G
+    if (!r && (MMC[RESP0] & 0x80u))         /* SWITCH_ERROR (stock checks it too) */
+        r = -20;
+#endif
+    if (r)
+        return WD(3, r), -1;
+    if ((r = wait_tran()) != 0)
+        return WD(4, r), -1;
     MMC[CTYPE] = width == 8 ? 0x10000u : 1u;
-    if (read_idb(s_idbw) == 0 && !memcmp(s_idb1, s_idbw, sizeof s_idbw)) {
+    r = read_idb(s_idbw);
+    if (r == 0 && !memcmp(s_idb1, s_idbw, sizeof s_idbw)) {
         s_width = width;
+        WD(7, 0);
         return 0;
     }
+    WD(r ? 5 : 6, r);
     MMC[CTYPE] = 0;                         /* back to 1 bit, on both ends */
     send_cmd(6, 0x03B70000u, F_RESP | F_CRC, 1);
     wait_tran();
@@ -453,15 +501,21 @@ int emmc_init(void)
      * (set_width's way back is not checked): then every read fails, and init still "worked" (a
      * factory 8 GB unit, 2026-11-23: no read at 0x40 or 0x2000). So a read of sector 0x40 now; if
      * it fails, init again from CMD0 (the card back on 1 bit) and stay on 1 bit. */
+    /* (2026-11-23 the factory unit: the wide bus failed at 24 MHz. A second try at 12 MHz -- 4 bits
+     * there are still twice 1 bit at 24 -- before the 1-bit bus; each try logged, g_emmc_wd.) */
     if (!s_narrow) {
+        if (s_slow && set_clock(12000))
+            return -8;
         if (set_width(8))
             set_width(4);
-        if (read_idb(s_idbw)) {
-            s_narrow = 1;
+        if (read_idb(s_idbw) || s_width == 1) {
+            if (s_slow)
+                s_narrow = 1;
+            s_slow = 1;
             return emmc_init();
         }
     }
-    g_emmc_diag[0] = s_narrow ? 0x101u : (uint32_t)s_width;   /* (s_width: a report only) */
+    g_emmc_diag[0] = s_narrow ? 0x101u : (s_slow ? 0x200u : 0u) | (uint32_t)s_width;   /* (a report only) */
 #else
     if (set_width(8))                       /* the widest the bus test and a read-back agree on */
         set_width(4);

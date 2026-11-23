@@ -90,7 +90,8 @@ const char *emmc_kind(void) { return "image file"; }
 int emmc_width(void) { return 8; }
 uint32_t emmc_sectors(void) { return s_emmc.sectors; }
 int emmc_layout(uint32_t *user_start) { *user_start = SIM_USER_START; return 0; }
-uint32_t g_emmc_diag[3];             /* (the 8 GB build's recovery-screen values: never shown here) */
+uint32_t g_emmc_diag[3];
+uint32_t g_emmc_wd[8];             /* (the 8 GB build's recovery-screen values: never shown here) */
 int emmc_read(uint32_t lba, uint32_t count, void *buf) { return disk_read(&s_emmc, lba, count, buf); }
 int emmc_write(uint32_t lba, uint32_t count, const void *buf) { return disk_write(&s_emmc, lba, count, buf); }
 int emmc_write_async(uint32_t lba, uint32_t count, const void *buf) { return disk_write(&s_emmc, lba, count, buf); }
