@@ -34,6 +34,20 @@ void player_note_track(uint32_t clus)
     snprintf(g_cfg.track, sizeof g_cfg.track, "%c:%lu:%s", s_tree ? 't' : 'f', (unsigned long)clus, s_src);
 }
 
+/* The saved queue's source (services/queue.c QUEUE.BIN; both in the npx overlay, firmware_ap.ld). */
+int player_src_get(char *out, unsigned long n)
+{
+    snprintf(out, n, "%s", s_src);
+    return s_tree;
+}
+
+void player_src_set(const char *src, int tree)
+{
+    snprintf(s_src, sizeof s_src, "%s", src);
+    s_tree = tree;
+    s_open = 1;
+}
+
 /* Kept for browser_screen's error text (the core-A FLAC adapter is gone). */
 unsigned flac_diag_block, flac_diag_channels;
 unsigned long flac_diag_need;

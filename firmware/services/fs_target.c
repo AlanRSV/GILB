@@ -1030,6 +1030,26 @@ int fs_ref_name(const fs_ref_t *r, char *out, unsigned long n)
     return FS_ERR_OPEN;
 }
 
+int fs_ref_check(const fs_ref_t *r)
+{
+    const vol_t *v;
+    ent_t dir;
+    cur_t d;
+
+    if (ref_vol(r, &v))
+        return FS_ERR_ARG;
+    memset(&dir, 0, sizeof dir);
+    dir.is_dir = 1;
+    dir.clus = r->pclus;
+    dir.size = r->psize;
+    dir.contig = (r->flags & FS_REF_PCONTIG) != 0;
+    cur_init(&d, v, &dir);
+    while (dir_read(&d, &s_ent) == 1)
+        if (s_ent.slot == r->slot)
+            return s_ent.clus == r->clus && s_ent.size == r->size && !s_ent.is_dir ? 0 : FS_ERR_OPEN;
+    return FS_ERR_OPEN;
+}
+
 fs_file_t *fs_open_read(const char *path)
 {
     const vol_t *v;

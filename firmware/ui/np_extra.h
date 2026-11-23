@@ -29,7 +29,12 @@ typedef struct {
     void (*splash)(void);              /* the boot splash (startup/ap_ui.c) */
     void (*rg)(const fs_ref_t *ref, int kind, int32_t g[2]);   /* ReplayGain (audio/rg_read.c) */
     void (*clock)(void);               /* the time of day (services/clock_set.c) */
+    long (*queue)(int op);             /* the saved queue (services/queue.c npx_queue) */
 } npx_api_t;
+long npx_queue(int op);
+/* startup/ap_ovl.c: QUEUE.BIN. op 0 save, 1 load (the time to resume at; < 0: none), 2 check after a
+ * USB session that wrote; < 0 also when the overlay cannot be had (USB-C earphones streaming). */
+long ap_npx_queue(int op);
 void npx_clock(void);
 void ap_npx_clock(void);               /* startup/ap_ovl.c: at boot and after a USB disk session */
 void rg_read(const fs_ref_t *ref, int kind, int32_t g[2]);

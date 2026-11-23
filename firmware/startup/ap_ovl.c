@@ -425,7 +425,7 @@ int ap_lib_tags(uint32_t (*rd)(void *, uint32_t, void *, uint32_t), void *u, uin
 void npx_draw(int v);
 void npx_tick(void);
 void npx_splash(void);
-static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg_read, npx_clock };
+static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg_read, npx_clock, npx_queue };
 OVL_HEADER(npx, OVL_NPX, &k_npx);
 
 /* Not while USB-C earphones hold the window (loading the views would stop them), as for libtag;
@@ -482,6 +482,11 @@ void ap_npx_clock(void)
 {
     if (npx_ok())
         GATE_V(ovl_get, OVL_NPX, npx_api_t, clock());
+}
+
+long ap_npx_queue(int op)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_NPX, npx_api_t, -9L, queue(op)) : -9L;
 }
 
 void ap_npx_tick(void)

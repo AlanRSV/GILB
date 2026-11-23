@@ -89,6 +89,8 @@ int fs_scan(const char *path, fs_scan_cb cb, void *u);
 int fs_scan_ref(const fs_ref_t *dir, fs_scan_cb cb, void *u);
 fs_file_t *fs_open_ref(const fs_ref_t *r);
 int fs_ref_name(const fs_ref_t *r, char *out, unsigned long n);
+/* The reference still names that file (its entry: same slot, first cluster and size): 0, or < 0. */
+int fs_ref_check(const fs_ref_t *r);
 
 /* Open a file for reading. NULL on failure. */
 fs_file_t *fs_open_read(const char *path);

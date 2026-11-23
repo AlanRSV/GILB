@@ -235,3 +235,157 @@ const fs_ref_t *queue_ref(int pos)
 {
     return pos >= 0 && pos < s_n ? &s_q[s_order[pos]].ref : NULL;
 }
+
+/* ---- the queue on the disk: QUEUE.BIN ------------------------------------------------------------
+ * Saved at power-off, screen off and a USB session, read back by a "Last track" start, so the same
+ * queue (a library list, a playlist, shuffle's order) plays on from the same track and time. These
+ * functions are in the npx overlay (firmware_ap.ld, by section): startup/ap_ovl.c ap_npx_queue.
+ * A saved file reference is checked against its directory entry before it is used again
+ * (fs_ref_check): tracks the computer deleted or replaced meanwhile are dropped. */
+#include "fs.h"
+#include "log.h"
+#include "player.h"
+
+#define QF_PATH  "/Internal/RECHORD/QUEUE.BIN"
+#define QF_MAGIC 0x31455551u                 /* "QUE1" */
+#define QK_BAD   0x80u                       /* (kind's top bit: a reference that no longer holds) */
+
+static uint8_t s_lost;                       /* qf_check: the heard track was among those dropped */
+
+typedef struct {
+    uint32_t magic, n, pos, ms;
+    uint8_t mode, tree, ent, rsv;
+    char src[152];
+} qf_hdr_t;
+
+int player_src_get(char *out, unsigned long n);       /* player/player_audio.c (this overlay) */
+void player_src_set(const char *src, int tree);
+
+static int qf_save(void)
+{
+    qf_hdr_t h;
+    fs_file_t *f;
+    int ps = player_get_state(), ok;
+
+    if (!s_n)
+        return -1;
+    memset(&h, 0, sizeof h);
+    h.magic = QF_MAGIC;
+    h.n = (uint32_t)s_n;
+    h.pos = (uint32_t)s_pos;
+    h.ms = ps == PLAYER_PLAYING || ps == PLAYER_PAUSED ? (uint32_t)player_get_position_ms() : 0u;
+    h.mode = (uint8_t)s_mode;
+    h.tree = (uint8_t)player_src_get(h.src, sizeof h.src);
+    h.ent = (uint8_t)sizeof s_q[0];
+    if (!(f = fs_open_write(QF_PATH)))
+        return -2;
+    ok = fs_write(f, &h, sizeof h) == (long)sizeof h &&
+         fs_write(f, s_q, (unsigned long)s_n * sizeof s_q[0]) == (long)((unsigned long)s_n * sizeof s_q[0]) &&
+         fs_write(f, s_order, (unsigned long)s_n * sizeof s_order[0]) == (long)((unsigned long)s_n * sizeof s_order[0]);
+    fs_close(f);
+    return ok ? 0 : -3;
+}
+
+static long read_all(fs_file_t *f, void *buf, unsigned long n)
+{
+    unsigned long got = 0;
+    long r;
+
+    while (got < n && (r = fs_read(f, (uint8_t *)buf + got, n - got)) > 0)
+        got += (unsigned long)r;
+    return (long)got;
+}
+
+/* Drops the tracks whose file is no longer what the reference says; the heard position moves to the
+ * next track kept. Returns the number dropped. */
+static int qf_check(void)
+{
+    int bad = 0, np = 0, newpos = -1, w = 0;
+
+    for (int i = 0; i < s_n; i++)
+        if (fs_ref_check(&s_q[i].ref) != 0) {
+            s_q[i].kind |= QK_BAD;
+            bad++;
+        }
+    s_lost = s_n && (s_q[s_order[s_pos]].kind & QK_BAD);
+    if (!bad)
+        return 0;
+    for (int p = 0; p < s_n; p++) {          /* the order over the kept entries, renumbered */
+        int e = s_order[p], before = 0;
+
+        if (s_q[e].kind & QK_BAD)
+            continue;
+        if (p >= s_pos && newpos < 0)
+            newpos = np;
+        for (int i = 0; i < e; i++)
+            before += !(s_q[i].kind & QK_BAD);
+        s_order[np++] = (uint16_t)before;
+    }
+    for (int i = 0; i < s_n; i++)
+        if (!(s_q[i].kind & QK_BAD))
+            s_q[w++] = s_q[i];
+    s_n = w;
+    s_pos = s_stream = newpos >= 0 ? newpos : 0;
+    return bad;
+}
+
+static long qf_load(void)
+{
+    qf_hdr_t h;
+    fs_file_t *f = fs_open_read(QF_PATH);
+    uint32_t t0 = time_ms();
+    long ms;
+    int ok, bad;
+
+    if (!f)
+        return -1;
+    ok = read_all(f, &h, sizeof h) == (long)sizeof h && h.magic == QF_MAGIC && h.n && h.n <= Q_MAX &&
+         h.ent == sizeof s_q[0] && h.pos < h.n && h.mode < Q_MODES;
+    if (ok) {
+        queue_clear();
+        ok = read_all(f, s_q, h.n * sizeof s_q[0]) == (long)(h.n * sizeof s_q[0]) &&
+             read_all(f, s_order, h.n * sizeof s_order[0]) == (long)(h.n * sizeof s_order[0]);
+        for (uint32_t i = 0; ok && i < h.n; i++)
+            ok = s_order[i] < h.n && !(s_q[i].kind & QK_BAD);
+    }
+    fs_close(f);
+    if (!ok) {
+        queue_clear();
+        log_printf("queue: %s not usable", QF_PATH);
+        return -2;
+    }
+    s_n = (int)h.n;
+    s_pos = s_stream = (int)h.pos;
+    s_mode = h.mode;
+    bad = qf_check();
+    if (!s_n)
+        return -3;
+    ms = s_lost ? 0 : (long)h.ms;
+    h.src[sizeof h.src - 1] = 0;
+    player_src_set(h.src, h.tree);
+    log_printf("queue: %d tracks restored (%d gone), track %d at %ld ms, %s, %u ms", s_n, bad, s_pos + 1, ms,
+               queue_mode_name(s_mode), (unsigned)(time_ms() - t0));
+    return ms;
+}
+
+/* The npx overlay's entry (np_extra.h): 0 save, 1 load (the time to resume at, or < 0), 2 check the
+ * queue in memory (after the computer wrote to the disk). */
+long npx_queue(int op)
+{
+    if (op == 0) {
+        int r = qf_save();
+
+        if (r != -1)
+            log_printf("queue: saved %d tracks, track %d (%d)", s_n, s_pos + 1, r);
+        return r;
+    }
+    if (op == 1)
+        return qf_load();
+    {
+        int bad = qf_check();
+
+        if (bad)
+            log_printf("queue: %d tracks gone after the USB session, %d left", bad, s_n);
+        return bad;
+    }
+}

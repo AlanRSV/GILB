@@ -261,8 +261,12 @@ static void save_state(const char *why)
 
 /* RECHO's order (docs/RECHO_POWER_CFG.md C.6): stop, save, say so, 500 ms,
  * backlight off, cut the supply. why: shown for a moment first (low battery). */
+static long s_resume_ms;                 /* the boot's resume: QUEUE.BIN's time in the track */
+
 static void power_off(const char *why)
 {
+    if (s_user)
+        ap_npx_queue(0);                 /* the queue and the time in the track, before the stop */
     player_stop();
     log_printf("ui: power off%s%s", why ? ": " : "", why ? why : "");
     save_state("power off");
@@ -481,6 +485,7 @@ static void usb_session(void)
         snprintf(s_usb, sizeof s_usb, "no user volume");
         return;
     }
+    ap_npx_queue(0);                     /* (where the music was: before the stop) */
     player_stop();                       /* the PC may rewrite the files we stream */
     ap_lib_volume(0, LIB_EV_SUSPEND);    /* the library's files closed: the computer's now */
     save_state("usb");
@@ -506,6 +511,8 @@ static void usb_session(void)
     log_printf("usb: disk session ended: exit %d, read %u MB, written %u MB, cable %d", r,
                (unsigned)(rd >> 11), (unsigned)(wr >> 11), usb_cable());
     ap_npx_clock();                      /* Echo Library may have left the PC's time (TIME.TXT) */
+    if (wr)
+        ap_npx_queue(2);                 /* tracks the PC deleted or replaced leave the queue */
     if (config_reload_if_changed()) {    /* the PC's edit wins over our copy (services/config.c) */
         queue_set_mode(g_cfg.play);
         audio_set_volume_db(g_cfg.volume == CFG_VOLUME_MUTE ? -90 : g_cfg.volume);
@@ -1262,8 +1269,10 @@ void ap_update(void)
 void ap_screen(int on)
 {
     power_screen(on);
-    if (!on)
+    if (!on) {
         config_save();                   /* RECHO saves at screen off */
+        ap_npx_queue(0);
+    }
     else
         ui_invalidate_all();
 }
@@ -1381,8 +1390,10 @@ void ap_ui_loop(void)
     if (g_cfg.resume == CFG_RESUME_OFF)
         g_cfg.browse[0] = 0;             /* (Folders opens where you were only with resume on) */
     nav_reset(&pg_home);
-    if (s_user && g_cfg.resume == CFG_RESUME_TRACK && g_cfg.track[0] &&
-        player_resume(g_cfg.track) == 0 && player_play() == PLAYER_OK) {
+    if (s_user && g_cfg.resume == CFG_RESUME_TRACK &&
+        ((s_resume_ms = ap_npx_queue(1)) >= 0 ? (audio_start_at((uint32_t)s_resume_ms), 1)
+                                      : g_cfg.track[0] && player_resume(g_cfg.track) == 0) &&
+        player_play() == PLAYER_OK) {
         nav_push(&pg_np, 0);
         log_printf("ui: resumed %s", g_cfg.track);
     } else if (s_user && g_cfg.resume == CFG_RESUME_FOLDER && g_cfg.browse[0] == '/' && g_cfg.browse[1]) {

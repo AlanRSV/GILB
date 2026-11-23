@@ -28,7 +28,8 @@ the panel is 320×170).*
   WavPack, APE, WMA (v1/v2, Pro, Lossless), DSD (DSF/DFF).
 - **Decoding:** core B decodes; core A feeds it and the DACs (two CS43131).
 - **Library basics:** tags (ID3v2/ID3v1/APEv2/Vorbis/MP4/RIFF), a play queue, play modes, and
-  resume after power-off.
+  resume after power-off: with Resume at power-on set to Last track, the same queue (a Library
+  list, a playlist, shuffle's order) plays on from the same song and time (`RECHORD/QUEUE.BIN`).
 - **Library:** Songs, Albums, Artists, Genres, Favourites and Playlists, indexed in the background
   (it re-reads only what changed, and refreshes by itself when a card goes in or the PC wrote).
   Playlists are made and edited on the player and kept as M3U8 files on the microSD card
@@ -113,7 +114,7 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | VOP + DMA display path (display=dma), seek (VOL 2x + hold), fast boot | device (2026-10-18) |
 | USB-C earphones | QEMU |
 | 8 GB board: boot, eMMC (on a 1-bit bus), playback, USB disk, ReChord's own updater | device, 8 GB (2026-11-23) |
-| Lyrics and Up Next views, boot splash, ReplayGain, the clock | device, 8 GB (2026-11-23) |
+| Lyrics and Up Next views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and

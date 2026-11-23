@@ -1595,6 +1595,12 @@ int audio_skip(int dir)
     return pos < 0 ? -3 : audio_play(pos);
 }
 
+void audio_start_at(uint32_t ms)            /* the next audio_play's first track from ms on */
+{
+    s_seek_ms = ms;
+    s_seek_on = ms != 0;
+}
+
 int audio_seek(uint32_t ms)
 {
     audio_status_t st;

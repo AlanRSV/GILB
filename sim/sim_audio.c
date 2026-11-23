@@ -517,6 +517,11 @@ int audio_seek(uint32_t ms)
     return r;
 }
 
+void audio_start_at(uint32_t ms)
+{
+    s_seek_ms = ms;
+}
+
 int audio_pause(int on)
 {
     pthread_mutex_lock(&s_mx);

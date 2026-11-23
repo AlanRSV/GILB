@@ -154,6 +154,9 @@ SECTIONS
             *tags_rg.o(.text* .rodata*)
             *rtc_pcf8563.o(.text* .rodata*)
             *clock_set.o(.text* .rodata*)
+            *queue.o(.text.qf_* .text.read_all .text.npx_queue .rodata.qf_* .rodata.npx_queue*)
+            *player_audio.o(.text.player_src_get .text.player_src_set)
+            *fs_target.o(.text.fs_ref_check)
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */
@@ -229,6 +232,10 @@ SECTIONS
         KEEP(*(.ovl_hdr.lib))
         *(.ovl.lib.*)
         *lib_*.o(.text* .rodata*)
+        /* resident files' functions only the library calls */
+        *fs_target.o(.text.fs_remove_part .text.fs_place_get .text.fs_place_set)
+        *player_audio.o(.text.player_open_list)
+        *screens.o(.text.np_play_fn)
         . = ALIGN(4);
     }
 
