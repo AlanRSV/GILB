@@ -56,7 +56,7 @@ static int s_pass_held;         /* this pass held a USB disk session: not timed 
 static uint32_t s_power_down_ms;     /* time_ms() when the power key went down */
 static int s_power_armed;    /* power key seen released since boot */
 static uint32_t s_user;              /* user volume start, 0 = unknown */
-static char s_emmc[32], s_usb[32] = "plug in";
+static char s_emmc[BOARD == BOARD_8G ? 48 : 32], s_usb[32] = "plug in";
 
 /* Read-only eMMC probe for the root menu: size and user volume start. */
 static int s_storage_failed;          /* our driver could not use the storage the ROM booted from */
@@ -81,7 +81,12 @@ static void emmc_probe(void)
     r = emmc_layout(&user);
     if (r) {
         s_storage_failed = 1;                    /* (no IDB where the ROM just found one: we read wrong) */
+#if BOARD == BOARD_8G
+        snprintf(s_emmc, sizeof s_emmc, "%uM lay %d w%x %08x %08x", (unsigned)(emmc_sectors() >> 11), r,
+                 (unsigned)g_emmc_diag[0], (unsigned)g_emmc_diag[1], (unsigned)g_emmc_diag[2]);
+#else
         snprintf(s_emmc, sizeof s_emmc, "%uM lay %d", (unsigned)(emmc_sectors() >> 11), r);
+#endif
     }
     else
         snprintf(s_emmc, sizeof s_emmc, "%uM u%x", (unsigned)(emmc_sectors() >> 11),

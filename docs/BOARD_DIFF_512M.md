@@ -82,17 +82,38 @@ A rockusb read of the first 128 MB (`rl 0 0x40000` through the boot ROM's loader
 - **no IDB magic anywhere** in it, and no FAT/exFAT/MBR (the user volume is further on).
 
 The rockusb view starts at physical 0x2000 (loader LBA 0x22000 holds the "SAVE" block noted at
-physical 0x24000), so the IDB at physical 0x40 is outside the dump: why it isn't recognised there
-is still open. Everything else matches the unit the IDB was read from in October (7456 MiB, area
-0x22000, slot 2 at 0x11000, SAVE at 0x24000, volume at 0x88000); that unit had been through
-RECHO, which rewrote part of the boot area; this one is factory stock 4.0.0.
+physical 0x24000), so the IDB at physical 0x40 is outside the dump. Everything else matches the
+unit the IDB was read from in October (7456 MiB, area 0x22000, slot 2 at 0x11000, SAVE at
+0x24000, volume at 0x88000); that unit had been through RECHO; this one is factory stock 4.0.0.
 
-**Fix (8 GB build only, 2026-11-23):** `drivers/emmc_layout.h` (emmc_layout(), now a header the
-driver includes and the host test builds) takes the firmware area from the two slots when no IDB
-is recognised: slot 1's header at 0x2000, slot 2 the first 1 MiB step past slot 1's image with a
-header identical to it (stock leaves another image's header at 0x10000, with copies at 0xFD00 and
-0x1FD00, which a magic-only match took). It logs the word read at 0x40. The 512 MB build is
-unchanged. `drivers/tests/test_emmc_layout.c` checks both boards; with `EMMC_DUMP=` set to this
-unit's dump it finds area 0x22000 and volume 0x88000. Not yet run on hardware. Stock was restored with `rkdeveloptool wl 0 HIFIEC40.IMG` (docs/DEBRICK-LINUX.md) from an
-Ubuntu live USB booted with `toram`; WSL + usbipd cannot attach the 2207:262d loader ("Device in
-error state").
+### Cause and fix (2026-11-23): reads failed after a half-done bus width switch
+Two builds narrowed it down, each written to both slots from an Ubuntu live USB and showing what it
+read on the recovery screen:
+1. The firmware area from the slots when no IDB is recognised (`drivers/emmc_layout.h`): still
+   `lay -1`.
+2. PARTITION_CONFIG (EXT_CSD 179) on screen with the words read at 0x40 and at 0x2000:
+   `7456M lay -1 p0 eeeeeeee eeeeeeee`. The user area was selected (p0), and **both reads
+   failed** (`eeeeeeee`: "not read"); the EXT_CSD read during init had worked, on 1 bit.
+
+`set_width()` switches the card to 8 (then 4) bits after a bus test and keeps the width only if
+sector 0x40 reads back the same; otherwise it sends CMD6 back to 1 bit **without checking it**.
+On this unit the wide read fails, the card is left out of `tran` and refuses that CMD6, and stays
+on the wide bus while the host is on 1 bit: every later read fails, and init still returns 0. The
+October unit's wide bus passed, so this path never ran there.
+
+**Fix (8 GB build):** after the width is chosen, `emmc_init()` reads sector 0x40; if that fails it
+runs again from CMD0 (which puts the card back on 1 bit) and stays on 1 bit. The slot fallback
+stays (`drivers/tests/test_emmc_layout.c`: both boards; `EMMC_DUMP=` this unit's dump finds area
+0x22000 and volume 0x88000). On a failed layout the 8 GB recovery screen shows
+`<size> lay <r> w<width, +0x100 = init redone on 1 bit> <word at 0x40> <word at 0x2000+0x1F8>`.
+
+**Verified on this unit (2026-11-23):** boots to the UI (first frame 232 ms), ECHOLOG
+`emmc: eMMC, 1-bit, 15269888 sectors`, Internal mounted, the library indexed, USB disk works,
+an APE track played, storage `errors 0`. Still open: why the 8- and 4-bit reads fail on this unit
+(the bus test passes or the switch would not be tried); 1 bit is slower (24 MHz x 1 bit, about
+3 MB/s) but enough for playback.
+
+Recovery, as used here: `rkdeveloptool wl 0 HIFIEC40.IMG` (docs/DEBRICK-LINUX.md) from an Ubuntu
+live USB booted with `toram` (without it the live system lost its own USB stick); test builds
+written with `wl 0` and `wl 0x11000` and read back. WSL + usbipd cannot attach the 2207:262d
+loader ("Device in error state").

@@ -3,7 +3,7 @@
  * drivers/emmc.h). Included by emmc_rknanoc.c only, where it is compiled as part of the driver
  * (the same code, the same size), and by drivers/tests/test_emmc_layout.c, which gives it a disk
  * image instead. The includer provides: s_sectors, s_buf[256] (uint32_t), s_write_floor,
- * s_fw_sectors, emmc_read() and, on the 8 GB board, log_printf().
+ * s_fw_sectors, emmc_read() and, on the 8 GB board, g_emmc_diag.
  *
  * Physical layout, both units measured (docs/HANDOVER.md verdict #22, docs/BOARD_DIFF_512M.md):
  * the IDB at 0x40 (copies every 0x400), the firmware area from EMMC_FW_BASE (0x2000) for the
@@ -40,17 +40,16 @@ static int is_volume_start(uint32_t lba)
  * copies at 0xFD00 and 0x1FD00). 0 when slot 1 has no header or no slot 2 matches it. */
 static uint32_t fw_from_slots(void)
 {
-    const uint8_t *b = (const uint8_t *)s_buf;
     uint32_t img;
 
-    if (emmc_read(EMMC_FW_BASE, 1, s_buf) || memcmp(b + 0x1F8, "RKnanoFW", 8))
+    if (emmc_read(EMMC_FW_BASE, 1, s_buf))
         return 0;
-    img = ((uint32_t)b[0x1F4] | (uint32_t)b[0x1F5] << 8 | (uint32_t)b[0x1F6] << 16 |
-           (uint32_t)b[0x1F7] << 24) >> 9;   /* (its header copy at img: never taken for slot 2) */
-    for (uint32_t half = 0x800u; half <= 0x40000u && EMMC_FW_BASE + 2u * half < s_sectors; half += 0x800u) {
-        if (half <= img)
-            continue;
-        if (!emmc_read(EMMC_FW_BASE + half, 1, s_buf + 128) && !memcmp(s_buf, s_buf + 128, 512))
+    g_emmc_diag[2] = s_buf[0x1F8 / 4];  /* ("RKna": a header; shown when no layout is found) */
+    if (memcmp((const uint8_t *)s_buf + 0x1F8, "RKnanoFW", 8))
+        return 0;
+    img = s_buf[0x1F4 / 4] >> 9;         /* (its header copy at img: never taken for slot 2) */
+    for (uint32_t half = 0x800u; half <= 0x40000u; half += 0x800u) {   /* (the 7456 MiB part's area: 0x22000) */
+        if (half > img && !emmc_read(EMMC_FW_BASE + half, 1, s_buf + 128) && !memcmp(s_buf, s_buf + 128, 512))
             return 2u * half;
     }
     return 0;
@@ -68,21 +67,21 @@ int emmc_layout(uint32_t *user_start)
     uint32_t fw = 0;
 
     for (uint32_t n = 0; n < 5u && !fw; n++) {
-        if (emmc_read(0x40u + n * 0x400u, 2, s_buf) || s_buf[0] != 0xFCDC8C3Bu ||
-            memcmp(b + 0x20A, "NANO", 4) != 0)
+        if (emmc_read(0x40u + n * 0x400u, 2, s_buf))
+            continue;
+#if BOARD == BOARD_8G
+        if (!n)
+            g_emmc_diag[1] = s_buf[0];     /* (the word at 0x40: shown when no layout is found) */
+#endif
+        if (s_buf[0] != 0xFCDC8C3Bu || memcmp(b + 0x20A, "NANO", 4) != 0)
             continue;
         fw = (uint32_t)(b[0x202] | b[0x203] << 8) * 0x800u;
         if (fw > s_sectors - 0x2000u)
             fw = 0;
     }
 #if BOARD == BOARD_8G
-    if (!fw) {
-        uint32_t w0 = emmc_read(0x40u, 1, s_buf) ? 0u : s_buf[0];
-
-        fw = fw_from_slots();
-        log_printf("emmc: no IDB at 0x40 (%08x): firmware area from its slots: %x sectors",
-                   (unsigned)w0, (unsigned)fw);
-    }
+    if (!fw)
+        fw = fw_from_slots();              /* (no room for a log line: the screen shows g_emmc_diag) */
 #endif
     if (!fw)
         return -1;

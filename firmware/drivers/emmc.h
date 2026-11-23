@@ -51,6 +51,12 @@ int emmc_layout(uint32_t *user_start);
  * slots of emmc_fw_sectors()/2. Writes are bounded to the area; -30 else. */
 #define EMMC_FW_BASE 0x2000u
 uint32_t emmc_fw_sectors(void);
+
+/* 8 GB build: what the storage looked like, for the screen when the layout is not found
+ * (drivers/emmc_rknanoc.c): [0] the bus width used (1/4/8; +0x100: init redone on 1 bit after a
+ * wide bus failed a read), [1] the word at 0x40, [2] the word at the firmware area's +0x1F8.
+ * 0xFFFF / 0xEEEEEEEE: not read. */
+extern uint32_t g_emmc_diag[3];
 int emmc_fw_write(uint32_t rel, uint32_t count, const void *buf);
 
 /* microSD slot (second DW-MMC instance). sd_init(): 0 = ready, -1 = no card, other negative =

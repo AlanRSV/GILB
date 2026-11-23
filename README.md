@@ -101,7 +101,7 @@ covered by the emulator test suite. The full table is in [docs/ROADMAP.md](docs/
 
 **512 MB board only, so far.** The differences from the 8 GB board come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
-selected at build time (`BOARD=512m | 8g`). The 8 GB build's first hardware boot could not find the storage layout on a factory unit; a fix, checked against that unit's dump, is in but not yet run on hardware (see that document). Have maskrom recovery ready before flashing it.
+selected at build time (`BOARD=512m | 8g`). The 8 GB build runs on a factory 8 GB unit since 2026-11-23, its eMMC on a 1-bit bus (the wide bus fails there; see that document). Keep maskrom recovery at hand.
 
 **Next:**
 - a key's way to the screen, measured in parts on the device (key->px: in, loop, wait, render,

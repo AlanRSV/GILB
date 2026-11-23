@@ -17,6 +17,7 @@
 static uint32_t s_sectors = 15269888u;           /* 7456 MiB, both measured units */
 static uint32_t s_buf[256];
 static uint32_t s_write_floor = 0xFFFFFFFFu, s_fw_sectors;
+uint32_t g_emmc_diag[3];                        /* (the driver's: what the screen shows) */
 
 /* ---- the fake disk: a few sectors set by the test, a real dump, zeros elsewhere ---- */
 #define MAXS 64
@@ -147,7 +148,7 @@ int main(void)
     r = layout(&user);
 #if BOARD == BOARD_8G
     CHECK(r == 0 && user == 0x88000u && s_fw_sectors == 0x22000u);
-    CHECK(strstr(s_log, "firmware area from its slots: 22000") != NULL);
+    CHECK(g_emmc_diag[2] == 0x616E4B52u);         /* "RKna": slot 1's header, as the screen would show */
 #else
     CHECK(r == -1 && s_fw_sectors == 0 && s_write_floor == 0xFFFFFFFFu);   /* 512 MB: as before */
 #endif
@@ -174,10 +175,11 @@ int main(void)
     fat32(0x88000);
     CHECK(layout(&user) == -1 && s_fw_sectors == 0 && s_write_floor == 0xFFFFFFFFu);
 
-    /* no slot 1 either */
+    /* no slot 1 either: the screen's words are what was read (zeros here) */
     reset();
+    g_emmc_diag[1] = g_emmc_diag[2] = 0x12345678u;
     fat32(0x88000);
-    CHECK(layout(&user) == -1);
+    CHECK(layout(&user) == -1 && g_emmc_diag[1] == 0 && g_emmc_diag[2] == 0);
 
     /* the area found, no volume after it */
     reset();

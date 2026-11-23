@@ -48,6 +48,10 @@ enum {                       /* DW-MMC word offsets */
 static uint32_t s_sectors, s_fifo_words = 16u;
 static uint32_t s_rca = RCA_ARG;     /* the internal part's RCA (an SD NAND publishes its own) */
 static uint32_t s_shift;             /* card address = LBA << s_shift: 9 = byte addressed */
+#if BOARD == BOARD_8G
+uint32_t g_emmc_diag[3] = { 0xFFFFu, 0xEEEEEEEEu, 0xEEEEEEEEu };   /* (drivers/emmc.h) */
+static uint8_t s_narrow;             /* init redone on a 1-bit bus (a wide one failed: emmc_init) */
+#endif
 static uint32_t s_blksz = 512u;      /* data block size (the bus test uses 4 or 8) */
 static int s_width = 1;              /* data lines in use */
 static const char *s_kind = "none";
@@ -444,8 +448,24 @@ int emmc_init(void)
     if (s_sectors < 0x20000u)               /* under 64 MiB: not this player's storage */
         return -12;
     s_kind = s_shift ? "eMMC, byte addressed" : "eMMC";
+#if BOARD == BOARD_8G
+    /* A width switch that fails half way can leave the card on the wide bus and the host on 1 bit
+     * (set_width's way back is not checked): then every read fails, and init still "worked" (a
+     * factory 8 GB unit, 2026-11-23: no read at 0x40 or 0x2000). So a read of sector 0x40 now; if
+     * it fails, init again from CMD0 (the card back on 1 bit) and stay on 1 bit. */
+    if (!s_narrow) {
+        if (set_width(8))
+            set_width(4);
+        if (read_idb(s_idbw)) {
+            s_narrow = 1;
+            return emmc_init();
+        }
+    }
+    g_emmc_diag[0] = s_narrow ? 0x101u : (uint32_t)s_width;   /* (s_width: a report only) */
+#else
     if (set_width(8))                       /* the widest the bus test and a read-back agree on */
         set_width(4);
+#endif
     clk_gate(0x6C, 0);
     return 0;
 }
