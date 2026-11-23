@@ -50,8 +50,8 @@ const char *bt_state_text(bt_state_t st);   /* ap_bt.c */
 
 /* ---- key tables (DESIGN.md 3.2) ---------------------------------------------------------------- */
 
-#define LIST_MOVE { KEY_UP, IG_DOWN, A_UP, "UP" }, { KEY_UP, IG_REPEAT, A_UP, NULL }, \
-                  { KEY_DOWN, IG_DOWN, A_DOWN, "DOWN" }, { KEY_DOWN, IG_REPEAT, A_DOWN, NULL }
+#define LIST_MOVE { KEY_LIST_UP, IG_DOWN, A_UP, "UP" }, { KEY_LIST_UP, IG_REPEAT, A_UP, NULL }, \
+                  { KEY_LIST_DN, IG_DOWN, A_DOWN, "DOWN" }, { KEY_LIST_DN, IG_REPEAT, A_DOWN, NULL }
 const keydef_t k_list[] = {
     LIST_MOVE,
     { KEY_SELECT, IG_TAP, A_OPEN, VERB }, { KEY_SELECT, IG_HOLD, A_OPEN_HOLD, VERB },
@@ -122,7 +122,7 @@ static const keydef_t k_slider[] = {
     { 0 }
 };
 static const keydef_t k_view[] = {          /* paged: VOL turns pages */
-    { KEY_UP, IG_DOWN, A_UP, VERB }, { KEY_DOWN, IG_DOWN, A_DOWN, VERB },
+    { KEY_LIST_UP, IG_DOWN, A_UP, VERB }, { KEY_LIST_DN, IG_DOWN, A_DOWN, VERB },
     { KEY_MENU, IG_TAP, A_NP, "PLAYING" }, { KEY_MENU, IG_HOLD, A_OPTIONS, "OPTIONS" },
     { KEY_BACK, IG_TAP, A_BACK, "BACK" }, { KEY_BACK, IG_HOLD, A_HOME, "HOME" },
     { 0 }

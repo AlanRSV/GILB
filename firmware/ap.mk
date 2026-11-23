@@ -189,6 +189,8 @@ AP_ARCH_FLAGS := -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
 # Board variant (firmware/drivers/board.h): make BOARD=512m (default) or 8g.
 BOARD ?= 512m
 BOARD_ID := $(if $(filter 8g,$(BOARD)),1,2)
+# REVERSE_LISTS=1: VOL- moves up in lists, VOL+ down (ui/nav.h KEY_LIST_UP)
+REVERSE_LISTS ?= 0
 
 AP_CFLAGS := $(AP_ARCH_FLAGS) -Os -Wall \
   -Wno-unused-parameter -Wno-unused-variable \
@@ -196,7 +198,7 @@ AP_CFLAGS := $(AP_ARCH_FLAGS) -Os -Wall \
   -Wno-builtin-declaration-mismatch -Wno-incompatible-pointer-types \
   -Wno-return-mismatch -Wno-int-conversion -Wno-return-type \
   -ffunction-sections -fdata-sections -MMD -MP -fcommon \
-  -DRECHORD_AP_BUILD -DBOARD=$(BOARD_ID) \
+  -DRECHORD_AP_BUILD -DBOARD=$(BOARD_ID) -DRECHORD_LISTS_REVERSED=$(REVERSE_LISTS) \
   $(addprefix -I,$(AP_INCLUDE_DIRS)) \
   -include firmware/rockchip/include/armcc_compat.h
 

@@ -18,6 +18,18 @@
 #include "frame.h"
 #include "services/input.h"
 
+/* The volume key that moves up in lists (and back a page): VOL+ by default. A build with
+ * REVERSE_LISTS=1 (make; -DRECHORD_LISTS_REVERSED=1) gives it to VOL- and down to VOL+, for whom
+ * the lower button should move up. Only list movement and paging: the volume, value editors and
+ * the power-on keys keep their keys. Key table data only: no code. */
+#if defined(RECHORD_LISTS_REVERSED) && RECHORD_LISTS_REVERSED
+#define KEY_LIST_UP KEY_DOWN
+#define KEY_LIST_DN KEY_UP
+#else
+#define KEY_LIST_UP KEY_UP
+#define KEY_LIST_DN KEY_DOWN
+#endif
+
 /* ---- actions ---- */
 enum {
     A_NONE = 0,

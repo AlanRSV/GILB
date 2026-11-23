@@ -14,8 +14,10 @@ OUT     := $(ROOT)/build/sim
 # as firmware/ap.mk
 BOARD   ?= 512m
 BOARD_ID := $(if $(filter 8g,$(BOARD)),1,2)
-# objects per board (BOARD is a -D)
-OBJ     := $(OUT)/obj-$(BOARD)
+# REVERSE_LISTS=1: VOL- moves up in lists (firmware/ui/nav.h), as in the firmware build
+REVERSE_LISTS ?= 0
+# objects per board and key option (both are -D)
+OBJ     := $(OUT)/obj-$(BOARD)$(if $(filter 1,$(REVERSE_LISTS)),-rl)
 
 CC      ?= cc
 SDL_CFLAGS := $(shell sdl2-config --cflags)
@@ -25,7 +27,7 @@ SDL_LIBS   := $(shell sdl2-config --libs)
 # 64-bit PC the dangerous ones (a pointer through an int, a function used without a prototype)
 # are errors here, so the simulator never runs code that would silently truncate a pointer.
 CFLAGS  ?= -O1 -g
-CFLAGS  += -std=gnu11 -D_DEFAULT_SOURCE -DRECHORD_SIM -DRECHORD_AP_BUILD -DBOARD=$(BOARD_ID) \
+CFLAGS  += -std=gnu11 -D_DEFAULT_SOURCE -DRECHORD_SIM -DRECHORD_AP_BUILD -DBOARD=$(BOARD_ID) -DRECHORD_LISTS_REVERSED=$(REVERSE_LISTS) \
            -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function \
            -Wno-unused-but-set-variable -Wno-missing-braces -Wno-format-truncation \
            -Wno-stringop-truncation -Wno-misleading-indentation -Wno-address-of-packed-member \

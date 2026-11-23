@@ -83,8 +83,8 @@ static void push(const page_t *p, int kind, int vol, int sec, uint32_t first, ui
 
 /* ---- keys ---- */
 
-#define LIST_MOVE { KEY_UP, IG_DOWN, A_UP, "UP" }, { KEY_UP, IG_REPEAT, A_UP, NULL }, \
-                  { KEY_DOWN, IG_DOWN, A_DOWN, "DOWN" }, { KEY_DOWN, IG_REPEAT, A_DOWN, NULL }
+#define LIST_MOVE { KEY_LIST_UP, IG_DOWN, A_UP, "UP" }, { KEY_LIST_UP, IG_REPEAT, A_UP, NULL }, \
+                  { KEY_LIST_DN, IG_DOWN, A_DOWN, "DOWN" }, { KEY_LIST_DN, IG_REPEAT, A_DOWN, NULL }
 #define k_lst k_list                /* screens.c's: the same keys as its lists */
 #define k_opt k_opts
 #define k_ask k_question
