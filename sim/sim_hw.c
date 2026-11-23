@@ -166,6 +166,7 @@ void keys_isr_start(void) { s_keys_isr = 1; input_isr_sampling(1); }
 int keys_adc(void) { return s_keys_isr ? s_key_now : g_sim_adc; }
 int keys_power(void) { return g_sim_power; }
 uint32_t keys_release_stats(void) { return 0; }
+uint32_t keys_blip_stats(void) { return 0; }
 int adc_value(unsigned ch) { return ch == 1 ? keys_adc() : SIM_ADC_IDLE; }
 const uint32_t *adc_diag(void) { static uint32_t d[ADC_DIAG_N]; return d; }
 int board_adc_ch2(void) { return SIM_ADC_IDLE; }

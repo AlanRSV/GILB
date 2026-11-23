@@ -106,6 +106,8 @@ void input_sample_edges(int adc_value, int power, uint32_t now_ms, uint32_t pres
 /* 1: the samples come from the timer (input_scan() then only says the loop is alive). */
 void input_isr_sampling(int on);
 int input_isr_active(void);
+/* (input_sample_edges: the value is the driver's stable band, so a release counts at its first
+ * sample; input_sample: raw readings, two agreeing samples for everything.) */
 /* The clock input_scan() stamps its samples with (NULL: INPUT_TICK_MS per call, the host tests). */
 void input_set_clock(uint32_t (*now_ms)(void));
 

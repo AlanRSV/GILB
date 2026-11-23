@@ -91,6 +91,7 @@ int keys_power(void);
 /* The last release: ms from its edge to the first idle reading (bits 0-15) and, since boot, presses
  * that read idle and went back down within 30 ms (bits 16-31). */
 uint32_t keys_release_stats(void);
+uint32_t keys_blip_stats(void);       /* blips read idle <= 10 | <= 20 << 10 | <= 30 ms << 20 */
 /* Developer > Panel TE (test): which GPIO inputs change with the panel's TE output on and off (log). */
 void panel_te_probe(void);
 void board_power_off(void);   /* does not return */

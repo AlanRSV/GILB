@@ -423,7 +423,8 @@ static void test_edges(void)
     edges(1023, 2, p1, r1);
     CHECK(next_is(KEY_SELECT, IG_DOWN, 1));
     CHECK(input_next(&ev) == 1 && ev.gesture == IG_TAP && ev.t_ms == r1 && ev.held_ms == r1 - p1 &&
-          ev.in_ms == s_t - r1);             /* (in: the release edge to the TAP, key->px's "in") */
+          ev.in_ms == s_t - 10 - r1);        /* (in: the release edge to the TAP, key->px's "in"; the
+                                              * driver's idle counts at its first sample: 10 ms sooner) */
     edges(1023, 15, 0, r1);
     p2 = s_t + 5;                            /* tap 2: MENU's band stable 30 ms first */
     edges(360, 2 + 2, p2, 0);

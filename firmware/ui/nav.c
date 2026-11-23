@@ -384,9 +384,10 @@ static void log_key(const input_event_t *g)
             log_printf("ui: key %s.repeat on %s t=%u held=%u steps=%u n=%u", input_key_name(g->key), on,
                        (unsigned)g->t_ms, (unsigned)g->held_ms, (unsigned)g->steps, (unsigned)g->repeat);
         else    /* (in: the edge to this event; rise, blips: the ladder's last release, panel_io.h) */
-            log_printf("ui: key %s.%s on %s t=%u held=%u in=%u rise=%u blips=%u", input_key_name(g->key),
+            log_printf("ui: key %s.%s on %s t=%u held=%u in=%u rise=%u blips=%u %x", input_key_name(g->key),
                        input_gesture_name(g), on, (unsigned)g->t_ms, (unsigned)g->held_ms, (unsigned)g->in_ms,
-                       (unsigned)(keys_release_stats() & 0xFFFFu), (unsigned)(keys_release_stats() >> 16));
+                       (unsigned)(keys_release_stats() & 0xFFFFu), (unsigned)(keys_release_stats() >> 16),
+                       (unsigned)keys_blip_stats());   /* (blips by how long they read idle: panel_io.h) */
     }
     /* the old events' lines too (input_poll's: VOL on its press and repeats, the others on a tap or a
      * hold, the chord), which the tests count */

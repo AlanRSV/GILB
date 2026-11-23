@@ -234,10 +234,19 @@ static uint32_t s_press_ms, s_release_ms, s_idle_ms;
  * at its first idle reading, as stock's KeyScan does (05_keys_adc.md 1.3: SHORT_UP on the first
  * scan that decodes no key), instead of after the 20 ms of stability below and input.c's 2 samples. */
 static uint16_t s_rise_ms, s_blips;
+/* How long each blip read idle (its first idle sample to the key back down): counts at <= 10, <= 20,
+ * <= 30 ms. With the driver's 20 ms of idle stability a blip up to 20 ms never becomes a release;
+ * if none take longer than 10 ms, the release could be taken 10 ms sooner (the next step). */
+static uint16_t s_blip_n[3];
 
 uint32_t keys_release_stats(void)
 {
     return s_rise_ms | (uint32_t)s_blips << 16;
+}
+
+uint32_t keys_blip_stats(void)
+{
+    return s_blip_n[0] | (uint32_t)s_blip_n[1] << 10 | (uint32_t)s_blip_n[2] << 20;
 }
 
 static void key_edges(int v)
@@ -254,8 +263,13 @@ static void key_edges(int v)
         }
         s_press_ms = 0;
     } else if (!s_press_ms) {
-        if (s_idle_ms && now - s_idle_ms <= 30u)
+        if (s_idle_ms && now - s_idle_ms <= 30u) {
+            uint32_t d = now - s_idle_ms;
+
             s_blips++;                          /* (idle for a sample or two: no release after all) */
+            if (s_blip_n[d <= 10u ? 0 : d <= 20u ? 1 : 2] < 1023u)
+                s_blip_n[d <= 10u ? 0 : d <= 20u ? 1 : 2]++;
+        }
         s_press_ms = now;
         s_release_ms = 0;
     } else if (s_key_min <= 1000 && v > s_key_min + KEY_RISE) {

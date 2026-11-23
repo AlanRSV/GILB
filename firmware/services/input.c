@@ -326,12 +326,17 @@ static void held(uint32_t now)
         emit_repeat(t);
 }
 
-static void sample(int key, uint32_t now)
+/* stable: the reading comes from the driver's ladder decoder (input_sample_edges), whose idle is
+ * already 20 ms stable (drivers: keys_adc, KEY_STABLE_US): a ladder key's release is taken at its
+ * first sample, 10 ms sooner. The device's log (2026-11-23: 344 releases, a held key reading idle
+ * for a moment once in 20..30 presses) is why the driver's 20 ms stays. */
+static void sample(int key, uint32_t now, int stable)
 {
     k.now = now;
     if (key != k.last) {                     /* not stable yet */
         k.last = key;
-        return;
+        if (!(stable && key == KEY_NONE && k.key != KEY_NONE && k.key != KEY_POWER))
+            return;
     }
     if (k.ignore) {                          /* a chord, or a key held across a clear */
         if (key == KEY_NONE)
@@ -390,12 +395,8 @@ static unsigned s_rep_left;
  * power menu (DESIGN 1.2). */
 static int s_power_seen_up;
 
-void input_sample(int adc_value, int power, uint32_t now_ms)
-{
-    input_sample_edges(adc_value, power, now_ms, 0, 0);
-}
-
-void input_sample_edges(int adc_value, int power, uint32_t now_ms, uint32_t press_ms, uint32_t release_ms)
+static void sample_in(int adc_value, int power, uint32_t now_ms, uint32_t press_ms, uint32_t release_ms,
+                      int stable)
 {
     k.edge_press = press_ms;
     k.edge_release = release_ms;
@@ -403,7 +404,17 @@ void input_sample_edges(int adc_value, int power, uint32_t now_ms, uint32_t pres
         s_power_seen_up = 1;
     else if (!s_power_seen_up)
         power = 0;
-    sample(power ? KEY_POWER : input_map_adc(adc_value), now_ms);
+    sample(power ? KEY_POWER : input_map_adc(adc_value), now_ms, stable);
+}
+
+void input_sample(int adc_value, int power, uint32_t now_ms)
+{
+    sample_in(adc_value, power, now_ms, 0, 0, 0);
+}
+
+void input_sample_edges(int adc_value, int power, uint32_t now_ms, uint32_t press_ms, uint32_t release_ms)
+{
+    sample_in(adc_value, power, now_ms, press_ms, release_ms, 1);
 }
 
 void input_isr_sampling(int on)

@@ -75,9 +75,12 @@ Nothing in ReChord may change what the ROM sees on that path:
   writes cross the panel's scan (MADCTL 0x60) and nothing syncs them to it. The bus now runs at
   stock's timing (a shorter slant); a tear-free change needs the panel's TE line (Developer >
   Panel TE (test) asks the device whether it is wired) and writes in the scan's order.
-- **Tap latency:** a release is confirmed ~50 ms after the finger lets go (the voltage's rise,
-  then 20 ms of stability and two samples); stock takes it at the first idle reading. The gesture
-  lines' rise= and blips= say on the device whether that is safe.
+- **Tap latency:** a release is confirmed 30..60 ms after the finger lets go (the voltage's rise,
+  0..30 ms, then the driver's 20 ms of idle stability; since 2026-11-23 no second sample after it).
+  Stock takes it at the first idle reading, but the 8 GB unit's log (344 releases) shows a held key
+  reading idle for a moment once in 20..30 presses: taken at once, that would be a phantom x2. The
+  gesture lines now end with the blips by length (<= 10 | <= 20 << 10 | <= 30 ms << 20, hex): if
+  none read idle past 10 ms, the driver's 20 ms can be 10.
 
 ### 2. Features
 - Library follow-ups: Years and Composers views.
