@@ -67,3 +67,23 @@ The SoC already does USB device mode (MSC + UAC "USB DAC"). The DW OTG core can 
 2. CC / ID detection for host role.
 3. RAM budget for a minimal host stack (enumeration + isochronous OUT to one UAC1/UAC2 endpoint).
 4. Decode on core B → I2S today; route PCM to USB isochronous instead.
+
+## First 8 GB hardware run (2026-11-22): storage layout not found
+`HIFIEC90.IMG` (BOARD=8g), installed through the stock 4.0.0 updater, booted on an 8 GB unit
+(Samsung eMMC, 7456 MB, 15269888 sectors), recognised the board, then stopped at the boot-ROM
+recovery screen: `7456M lay -1`. `emmc_layout()` (`drivers/emmc_rknanoc.c`) finds no IDB at LBA
+`0x40 + n*0x400` (magic `0xFCDC8C3B`, "NANO" at +0x20A) on this eMMC, so Internal is never mounted
+and the updater and Recovery cannot run.
+
+A rockusb read of the first 128 MB (`rl 0 0x40000` through the boot ROM's loader) showed:
+- the firmware area from LBA 0: slot 1 at 0, **slot 2 at 0x11000** (as on 512M), each the 5 MB
+  envelope (fw size `0x450000` at +0x1F4, "RKnanoFW" at +0x1F8), both byte-identical to the
+  flashed image;
+- **no IDB magic anywhere** in it, and no FAT/exFAT/MBR (the user volume is further on).
+
+Likely: on this eMMC the IDB is in a hardware boot partition, not the user area the driver reads.
+Before another 8 GB attempt, `emmc_layout()` needs a fallback when no IDB is found (the firmware
+area from the slot header, then the forward scan for the volume), tested in QEMU with an 8 GB
+layout. Stock was restored with `rkdeveloptool wl 0 HIFIEC40.IMG` (docs/DEBRICK-LINUX.md) from an
+Ubuntu live USB booted with `toram`; WSL + usbipd cannot attach the 2207:262d loader ("Device in
+error state").

@@ -101,7 +101,7 @@ covered by the emulator test suite. The full table is in [docs/ROADMAP.md](docs/
 
 **512 MB board only, so far.** The differences from the 8 GB board come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
-selected at build time (`BOARD=512m | 8g`). The 8 GB build has not been tested on hardware.
+selected at build time (`BOARD=512m | 8g`). The 8 GB build does not run yet: on its first hardware boot it could not find the storage layout (see that document); don't flash it.
 
 **Next:**
 - a key's way to the screen, measured in parts on the device (key->px: in, loop, wait, render,

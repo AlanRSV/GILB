@@ -231,7 +231,14 @@ def build_scatter_table(elf: Elf32):
         lo = min(s["vaddr"] for s in rw)
         hi = max(s["vaddr"] + s["memsz"] for s in rw)
         if noinit and noinit[1] and hi > noinit[0]:
-            raise SystemExit("SAFETY: the RW row would cover .noinit")
+            # The linker puts .bss and .noinit in one LOAD segment when the gap between them is
+            # small: the row then ends where .bss (or .data) does, below .noinit, as when they
+            # were apart. Anything else reaching .noinit is still refused.
+            ends = [s[0] + s[1] for s in (elf.section(".bss"), elf.section(".data")) if s and s[1]]
+            if noinit[0] > lo and ends and max(ends) <= noinit[0]:
+                hi = max(ends)
+            else:
+                raise SystemExit("SAFETY: the RW row would cover .noinit")
         data = [s for s in rw
                 if s["filesz"] and not is_header_shadow(s)]
         init = sum(s["filesz"] for s in data)
