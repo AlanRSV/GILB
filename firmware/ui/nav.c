@@ -13,6 +13,9 @@
 
 #include "nav.h"
 #include "ui.h"
+#include "np_extra.h"
+#include "drivers/display.h"
+#include "drivers/text.h"
 #include "drivers/clock.h"
 #include "drivers/panel_io.h"
 #include "services/config.h"
@@ -53,7 +56,7 @@ static void entered(int first)
 
     if (is_list(p)) {
         L.y0 = p->kind == PK_QUESTION ? 64 : LIST_Y;
-        L.nr = p->kind == PK_QUESTION ? 4 : NROWS;
+        L.nr = p->kind == PK_QUESTION || p->kind == PK_GRID ? 4 : NROWS;
     }
     s_force = 1;
     if (p && p->enter)
@@ -157,13 +160,15 @@ static int fill(int s, int i)
 
 static void inval_slot(int s)
 {
-    if (s >= 0 && s < L.nr)
+    if (s >= 0 && s < L.nr && nav_top() && nav_top()->kind == PK_GRID)
+        ui_invalidate((s & 1) * 160, LIST_Y + (s >> 1) * 73, (s & 1) * 160 + 159, LIST_Y + (s >> 1) * 73 + 72);
+    else if (s >= 0 && s < L.nr)
         ui_invalidate(0, L.y0 + s * ROW_H, 315, L.y0 + s * ROW_H + ROW_H - 1);
 }
 
 static void inval_list(void)
 {
-    ui_invalidate(0, L.y0, DISPLAY_W - 1, L.y0 + L.nr * ROW_H - 1);
+    ui_invalidate(0, L.y0, DISPLAY_W - 1, L.y0 + (nav_top() && nav_top()->kind == PK_GRID ? 2 * 73 : L.nr * ROW_H) - 1);
 }
 
 static void clamp_view(ent_t *e)
@@ -178,6 +183,11 @@ static void clamp_view(ent_t *e)
         e->top = (int16_t)(e->cur - L.nr + 1);
     if (e->top > L.n - L.nr)
         e->top = (int16_t)(L.n - L.nr > 0 ? L.n - L.nr : 0);
+    if (nav_top() && nav_top()->kind == PK_GRID) {   /* (a row of two at a time) */
+        e->top &= ~1;
+        if (e->cur >= e->top + 4)
+            e->top += 2;
+    }
 }
 
 void list_reload(void)
@@ -282,11 +292,16 @@ static void draw_row(int s, int y, int sel)
     ui_text(c->flags & R_BOLD ? &font_m13 : &font_b13, 24, y + 15, right - vw - 24, 0, c->t, fg, y, y + ROW_H - 1);
 }
 
+int ap_grid_draw(void);                   /* startup/ap_ovl.c: nav_grid_draw in the viz overlay */
+
 static void list_draw(void)
 {
     const theme_t *t = T;
     const ent_t *e = top();
     int h = L.nr * ROW_H;
+
+    if (nav_top()->kind == PK_GRID && ap_grid_draw())
+        return;                           /* (else as a list of four) */
 
     ui_fill(0, L.y0, DISPLAY_W, h, t->background);
     if (!L.n) {
@@ -301,6 +316,88 @@ static void list_draw(void)
         th = th < 8 ? 8 : th;
         y = L.y0 + 2 + (h - 4 - th) * e->top / (L.n - L.nr);
         ui_fill(317, L.y0 + 2, 1, h - 4, t->divider);
+        ui_fill(316, y, 3, th, t->scroll);
+    }
+}
+
+/* ---- PK_GRID: a list as a 2 x 2 grid of covers (Library > Albums) -----------------------------------
+ * The list's own model (cursor, rows, scrolling), four rows visible, a row of two at a time; drawn by
+ * nav_grid_draw() in the viz overlay (firmware_ap.ld, by section) through ap_grid_draw(). Each album's
+ * cover56.rgb (56 x 56 RGB565) is streamed from its file band by band while the screen is flushed:
+ * no picture in RAM. g_grid_cover (ui/lib_ui.c, as it gives the rows): the visible albums' covers. */
+#define GRID_CW 160
+#define GRID_CH 73
+#define GRID_Y0 LIST_Y
+
+static void grid_cover(const display_band_t *b)
+{
+    uint16_t rows[16 * 56];                    /* (a band's rows of one cover: 1.8 KB of stack) */
+    int n = b->yb - b->ya + 1;
+    fs_file_t *f = fs_open_ref(&g_grid_cover[b->arg & 3u]);
+    long got = 0;
+
+    if (f && n <= 16 && fs_seek(f, (long)(b->ya - b->y0) * 112) >= 0)
+        got = fs_read(f, rows, (unsigned long)n * 112u);
+    if (f)
+        fs_close(f);
+    for (int y = b->ya; y <= b->yb; y++) {
+        uint16_t *row = b->band + (y - b->band_y) * DISPLAY_W;
+        const uint16_t *src = rows + (y - b->ya) * 56;
+
+        for (int x = b->cx0; x <= b->cx1; x++)
+            row[x] = got == (long)n * 112 ? src[x - b->x0] : 0x2104;
+    }
+}
+
+void nav_grid_draw(void)
+{
+    static const uint16_t hues[8] = { 0x7A7A, 0x2C70, 0xC287, 0x3B78, 0xAA2B, 0x5C65, 0xB3C3, 0x4AF5 };
+    const theme_t *t = T;
+    const ent_t *e = top();
+    int h = L.nr ? 7 * ROW_H : 0;
+
+    ui_fill(0, GRID_Y0, DISPLAY_W, 7 * ROW_H, t->background);
+    if (!L.n) {
+        ui_text(&font_b13, 0, GRID_Y0 + 50, DISPLAY_W, 1, "Nothing here", t->text_dim, GRID_Y0, GRID_Y0 + h - 1);
+        return;
+    }
+    for (int s = 0; s < 4 && e->top + s < L.n; s++) {
+        const rc_t *c = &L.c[s];
+        int x = (s & 1) * GRID_CW, y = GRID_Y0 + (s >> 1) * GRID_CH, sel = e->top + s == e->cur;
+        int cy0 = y, cy1 = y + GRID_CH - 1, ty;
+        text_line_t ln[2];
+        int nl = text_wrap(&font_b13, c->t, -1, 84, 2, ln);
+        char b[100];
+        const fs_ref_t *cv = &g_grid_cover[(e->top + s) & 3];
+
+        if (sel)
+            ui_fill(x + 2, y + 1, GRID_CW - 4, GRID_CH - 2, t->sel_bg);
+        if (cv->size == 56u * 56u * 2u && g_grid_index[(e->top + s) & 3] == e->top + s) {
+            display_custom(x + 8, y + 8, x + 63, y + 63, grid_cover, (uint32_t)((e->top + s) & 3), 1);
+        } else {                               /* no cover: the monogram tile, as Now Playing's */
+            int k = (uint8_t)c->t[0], len = (k & 0xE0) == 0xC0 ? 2 : (k & 0xF0) == 0xE0 ? 3 : 1;
+
+            ui_fill(x + 8, y + 8, 56, 56, hues[k & 7]);
+            memcpy(b, c->t, (size_t)len);
+            b[c->t[0] ? len : 0] = 0;
+            ui_text(&font_t17, x + 8, y + 42, 56, 1, b, 0xFFFF, cy0, cy1);
+        }
+        ty = y + 22;
+        for (int i = 0; i < nl; i++, ty += 16) {
+            int len = ln[i].len < (int)sizeof b - 1 ? ln[i].len : (int)sizeof b - 1;
+
+            memcpy(b, c->t + ln[i].off, (size_t)len);
+            b[len] = 0;
+            ui_text(&font_b13, x + 70, ty, 84, 0, b, sel ? t->sel_text : t->text, cy0, cy1);
+        }
+        ui_text(&font_b13, x + 70, ty + 2, 84, 0, c->v, sel ? t->sel_text : t->text_dim, cy0, cy1);
+    }
+    if (L.n > 4) {                             /* the scrollbar, by rows of two */
+        int rows = (L.n + 1) / 2, th = (h - 4) * 2 / rows, y;
+
+        th = th < 8 ? 8 : th;
+        y = GRID_Y0 + 2 + (h - 4 - th) * (e->top / 2) / (rows - 2 > 0 ? rows - 2 : 1);
+        ui_fill(317, GRID_Y0 + 2, 1, h - 4, t->divider);
         ui_fill(316, y, 3, th, t->scroll);
     }
 }

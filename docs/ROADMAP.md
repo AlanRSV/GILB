@@ -51,6 +51,7 @@ published yet.
 | Clock: the battery-backed PCF8563-type chip on I2C1 (GPIO2.12/2.13, as stock uses it), read at boot, the time in the header (12/24-hour, off), set from Echo Library's `RECHORD/TIME.TXT` | device, 8 GB (2026-11-23); simulator |
 | Queue kept across power-off (`RECHORD/QUEUE.BIN`: the queue, its order, the song and the time; saved at power-off, screen off and USB disk; each file checked against its directory entry at the start, gone ones dropped), resumed with Resume at power-on: Last track | device, 8 GB (2026-11-23); simulator |
 | Spectrum view (Now Playing, BACK tap: its own overlay, viz): a 256-point FFT of the PCM block being heard, 24 bars, peak caps; the module table now two sectors (41 entries) | device, 8 GB (2026-11-23); simulator |
+| Library > Albums as a 2 x 2 cover grid (ui/nav.c PK_GRID: the list's model, drawn in the viz overlay; each visible album's cover56.rgb streamed from its file while the screen is flushed) | device, 8 GB (2026-11-23); simulator |
 | Desktop simulator (the firmware's UI, library and player on a PC) | Linux, WSL |
 
 ## The recovery path comes first

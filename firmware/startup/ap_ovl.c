@@ -429,9 +429,20 @@ void npx_splash(void);
 static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg_read, npx_clock, npx_queue };
 OVL_HEADER(npx, OVL_NPX, &k_npx);
 
-void viz_draw(void), viz_tick(void);
-typedef struct { void (*draw)(void); void (*tick)(void); } viz_api_t;
-static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick };
+void viz_draw(void), viz_tick(void), nav_grid_draw(void);
+typedef struct { void (*draw)(void); void (*tick)(void); void (*grid)(void); } viz_api_t;
+static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw };
+
+static int npx_ok(void);
+
+/* Library > Albums' cover grid (ui/nav.c PK_GRID), drawn in this overlay: 0 = draw it as a list. */
+int ap_grid_draw(void)
+{
+    if (!npx_ok())
+        return 0;
+    GATE_V(ovl_get, OVL_VIZ, viz_api_t, grid());
+    return ovl_current() == OVL_VIZ;
+}
 OVL_HEADER(viz, OVL_VIZ, &k_viz);
 
 /* Not while USB-C earphones hold the window (loading the views would stop them), as for libtag;

@@ -162,6 +162,7 @@ SECTIONS
             *queue.o(.text.qf_* .text.read_all .text.npx_queue .rodata.qf_* .rodata.npx_queue*)
             *player_audio.o(.text.player_src_get .text.player_src_set)
             *fs_target.o(.text.fs_ref_check)
+            *str.o(.text.strncasecmp)          /* (only the lyrics file match calls it) */
             . = ALIGN(4);
         }
         /* Now Playing's Spectrum view (ui/spectrum.c) and the samples it reads (audio_pcm_window) */
@@ -171,6 +172,7 @@ SECTIONS
             *(.ovl.viz.*)
             *spectrum.o(.text* .rodata*)
             *audio.o(.text.audio_pcm_window)
+            *nav.o(.text.nav_grid_draw .text.grid_cover .rodata.hues*)   /* (its strings stay: shared with the list's) */
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */
@@ -226,6 +228,7 @@ SECTIONS
             *(.ovl.lwalk.*)
             *lib_scan.o(.text* .rodata*)
             *lib_dir.o(.text* .rodata*)
+            *ap_ovl.o(.text.ap_lib_tags)       /* (only the walk calls it) */
             . = ALIGN(4);
         }
         /* the build: the views from the RAW, the external sort (lib_build.c, lib_sort.c) */

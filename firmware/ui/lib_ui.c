@@ -57,7 +57,7 @@ static uint32_t s_changed;           /* g_lib.changed when the pages were last r
 static ctx_t *C(void) { int d = nav_depth(); return &s_ctx[d > 0 && d <= NCTX ? d - 1 : 0]; }
 static ctx_t *below(void) { int d = nav_depth(); return &s_ctx[d > 1 && d <= NCTX ? d - 2 : 0]; }
 
-extern const page_t pg_lroot, pg_lview, pg_llists, pg_lopts, pg_lpick, pg_lletter, pg_ltext, pg_lask;
+extern const page_t pg_lroot, pg_lview, pg_lgrid, pg_llists, pg_lopts, pg_lpick, pg_lletter, pg_ltext, pg_lask;
 
 /* The context of the page about to be pushed (its rows are read as it is pushed). */
 static ctx_t *ctx_new(int kind, int vol, int sec, uint32_t first, uint32_t n, const char *name)
@@ -553,7 +553,7 @@ static void root_act(int a, int i)
         else
             push(&pg_lview, V_SONGS, s_vol, LS_SONGS, 0, idx_rows(s_vol, LS_SONGS), "All songs");
         break;
-    case R_ALBUMS:  push(&pg_lview, V_ALBUMS, s_vol, LS_ALBUMS, 0, idx_rows(s_vol, LS_ALBUMS), "Albums"); break;
+    case R_ALBUMS:  push(&pg_lgrid, V_ALBUMS, s_vol, LS_ALBUMS, 0, idx_rows(s_vol, LS_ALBUMS), "Albums"); break;
     case R_ARTISTS: push(&pg_lview, V_ARTISTS, s_vol, LS_ARTISTS, 0, idx_rows(s_vol, LS_ARTISTS), "Artists"); break;
     case R_GENRES:  push(&pg_lview, V_GENRES, s_vol, LS_GENRES, 0, idx_rows(s_vol, LS_GENRES), "Genres"); break;
     case R_FAVS:
@@ -630,6 +630,35 @@ static int view_rd(ctx_t *c, int i, lib_row_t *r, int *sec)
     return rd(c->vol, *sec, k, r) ? -2 : 0;
 }
 
+/* ---- Library > Albums' covers (ui/nav.c PK_GRID) ---- */
+fs_ref_t g_grid_cover[4];
+int16_t g_grid_index[4] = { -1, -1, -1, -1 };
+
+static int grid_find(void *u, const char *name, const fs_ref_t *r)
+{
+    if ((r->flags & FS_REF_DIR) || r->size != 56u * 56u * 2u || strcasecmp(name, "cover56.rgb"))
+        return 0;
+    *(fs_ref_t *)u = *r;
+    return 1;
+}
+
+/* The cover56.rgb in the folder of album row x's first track, into slot i & 3. */
+static void grid_cover(int vol, int i, const lib_row_t *x)
+{
+    fs_ref_t *c = &g_grid_cover[i & 3];
+    lib_row_t t;
+
+    c->size = 0;
+    g_grid_index[i & 3] = (int16_t)i;
+    if (!rd(vol, LS_ALBTRK, x->a, &t)) {
+        fs_ref_t d = { .clus = t.ref.pclus, .size = t.ref.psize, .vol = t.ref.vol,
+                       .flags = (uint8_t)(FS_REF_DIR | ((t.ref.flags & FS_REF_PCONTIG) ? FS_REF_CONTIG : 0)) };
+
+        if (fs_scan_ref(&d, grid_find, c) < 0)
+            c->size = 0;
+    }
+}
+
 static void view_row(int i, row_t *r)
 {
     ctx_t *c = C();
@@ -680,6 +709,8 @@ static void view_row(int i, row_t *r)
         r->icon = ICON_ALBUM;
         r->flags = R_CHEV;
         put(r->text, sizeof r->text, x.s1, "Unknown album");
+        if (nav_top() == &pg_lgrid)
+            grid_cover(c->vol, i, &x);
         if (c->kind == V_ARTIST && x.year)
             snprintf(r->value, sizeof r->value, "%u", x.year);
         else
@@ -813,6 +844,12 @@ static void view_enter(int first)
 
 const page_t pg_lview = {
     .name = "libview", .kind = PK_LIST, .icon = ICON_LIBRARY, .keys = k_lst, .title_fn = view_title,
+    .count = view_count, .row = view_row, .act = view_act, .enter = view_enter, .tick = view_tick,
+    .verb = view_verb, .options = &pg_lopts,
+};
+/* Library > Albums: the same view as a 2 x 2 cover grid (ui/nav.c PK_GRID) */
+const page_t pg_lgrid = {
+    .name = "albums", .kind = PK_GRID, .icon = ICON_LIBRARY, .keys = k_lst, .title_fn = view_title,
     .count = view_count, .row = view_row, .act = view_act, .enter = view_enter, .tick = view_tick,
     .verb = view_verb, .options = &pg_lopts,
 };

@@ -32,6 +32,10 @@ typedef struct {
     long (*queue)(int op);             /* the saved queue (services/queue.c npx_queue) */
 } npx_api_t;
 long npx_queue(int op);
+/* The grid's covers (ui/lib_ui.c fills them as it gives Library > Albums' rows; ui/nav.c PK_GRID draws
+ * them): slot i & 3 holds row g_grid_index[slot]'s cover56.rgb, size 0 when it has none. */
+extern fs_ref_t g_grid_cover[4];
+extern int16_t g_grid_index[4];
 /* startup/ap_ovl.c: QUEUE.BIN. op 0 save, 1 load (the time to resume at; < 0: none), 2 check after a
  * USB session that wrote; < 0 also when the overlay cannot be had (USB-C earphones streaming). */
 long ap_npx_queue(int op);

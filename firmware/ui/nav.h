@@ -65,7 +65,7 @@ typedef struct {
 } row_t;
 
 /* ---- pages ---- */
-enum { PK_LIST, PK_QUESTION, PK_CUSTOM };
+enum { PK_LIST, PK_QUESTION, PK_CUSTOM, PK_GRID };   /* PK_GRID: a list as a 2 x 2 cover grid */
 typedef struct page page_t;
 struct page {
     const char *name;
