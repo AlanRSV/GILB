@@ -1,8 +1,13 @@
 # ReChord
 
-A free, from-source custom firmware for the **SNOWSKY (FiiO) Echo Mini**: our own code on both
-of the player's cores, from boot to the screen you see. It runs on both boards: it is the daily
-firmware on a **512 MB** unit and, since 2026-11-23, on an **8 GB** unit.
+A free, from-source custom firmware for the **SNOWSKY (FiiO) Echo Mini**: its own code on both
+of the player's cores, from boot to the screen you see. It runs on both boards: the 512 MB line is
+its author's daily firmware on a **512 MB** unit, and this fork runs it on an **8 GB** unit since
+2026-11-23.
+
+ReChord was started by Bruno Moraga ([brnomt/ReChord](https://github.com/brnomt/ReChord)); the
+firmware that runs today was written by dragarok ([dragarok/ReChord](https://github.com/dragarok/ReChord));
+this repository is a fork of dragarok's. Who did what: [Sources and acknowledgements](#sources-and-acknowledgements).
 
 <p>
 <img src="docs/images/np_hires.png" width="320" alt="Now Playing: a 24/96 FLAC with its badges, bit rate and progress">
@@ -213,10 +218,21 @@ That machine and the suite live in a separate repository, not published yet.
 
 ## Sources and acknowledgements
 
-- **Upstream:** this repository is a fork of
-  [brnomt/ReChord](https://github.com/brnomt/ReChord), which started the from-source idea. The
-  512 MB line here has since been rewritten largely independently. Ideas from upstream's later
-  work are noted in [docs/UPSTREAM_IDEAS.md](docs/UPSTREAM_IDEAS.md).
+- **The authors, in order:**
+  - **Bruno Moraga** ([brnomt/ReChord](https://github.com/brnomt/ReChord)) started ReChord (from
+    2026-07): the from-source idea, the decompilation and reverse engineering of the stock
+    firmware (most of `tools/` and `docs/`), and the first firmware's drivers and start-up code that
+    the rest was built on. Ideas from his project's later work are noted in
+    [docs/UPSTREAM_IDEAS.md](docs/UPSTREAM_IDEAS.md).
+  - **dragarok** ([dragarok/ReChord](https://github.com/dragarok/ReChord)) forked it and wrote the
+    512 MB line (from 2026-10-14): all of core B (the decoders, the EQ, the HIFI work), and most of
+    core A -- the UI, the library, storage, USB, Bluetooth, power and the board port. Where this
+    README says "we", it is mostly dragarok's work, on Bruno's ground.
+  - **This fork** ([AlanRSV/ReChord](https://github.com/AlanRSV/ReChord), from 2026-11) brings it to
+    the 8 GB board (the storage layout, the 8-bit eMMC bus), and adds ReplayGain, the clock, the
+    queue kept across power-off, Now Playing's Lyrics, Up Next and Spectrum views, the album
+    cover grid, the boot splash, high-speed USB disk, the reversed list keys and the desktop
+    simulator; written with Claude (Anthropic), as the commits' co-author lines say.
 - **The stock firmware is the main source.** We disassembled and decompiled the official
   firmware images and traced them in QEMU to learn:
   - the boot path and the board differences;
@@ -247,6 +263,7 @@ That machine and the suite live in a separate repository, not published yet.
   - Tremor and libogg
   - libopus and opusfile
   - WavPack
+  - Apple ALAC (Apache 2.0)
   - Noto Sans fonts (SIL OFL 1.1)
 
   Their licenses are in their directories.
