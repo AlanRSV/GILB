@@ -1,8 +1,8 @@
 # ReChord
 
 A free, from-source custom firmware for the **SNOWSKY (FiiO) Echo Mini**: our own code on both
-of the player's cores, from boot to the screen you see. This line targets the **512 MB board**
-and is the player's daily firmware on one 512 MB unit.
+of the player's cores, from boot to the screen you see. It runs on both boards: it is the daily
+firmware on a **512 MB** unit and, since 2026-11-23, on an **8 GB** unit.
 
 <p>
 <img src="docs/images/np_hires.png" width="320" alt="Now Playing: a 24/96 FLAC with its badges, bit rate and progress">
@@ -67,6 +67,7 @@ the panel is 320×170).*
   - BACK goes up; hold BACK for Home. PLAY held on a menu goes to Now Playing.
     - On Now Playing: tap BACK to switch views (MENU goes back to the list, as before).
   - MENU switches between Now Playing and the library; hold MENU for Options.
+  - A `REVERSE_LISTS=1` build swaps the list keys: VOL− moves up, VOL+ down.
 - **Text and themes:** Noto Sans in five sizes, with Latin, curly quotes and Devanagari, and
   four themes: Classic, Paper, Night and Contrast.
 - **Fast:** keys are sampled every 10 ms on a timer and timed in milliseconds. Each key press
@@ -94,8 +95,9 @@ the panel is 320×170).*
 
 ## Status
 
-"Device" means verified on a real 512 MB unit and recorded in its own log; "QEMU" means
-covered by the emulator test suite. The full table is in [docs/ROADMAP.md](docs/ROADMAP.md).
+"Device" means verified on a real unit (the 512 MB one unless it says 8 GB) and recorded in its
+own log; "QEMU" means covered by the emulator test suite. The full table is in
+[docs/ROADMAP.md](docs/ROADMAP.md).
 
 | Area | Verified |
 |---|---|
@@ -106,17 +108,20 @@ covered by the emulator test suite. The full table is in [docs/ROADMAP.md](docs/
 | Bluetooth earphones, reconnect, routing | device |
 | VOP + DMA display path (display=dma), seek (VOL 2x + hold), fast boot | device (2026-10-18) |
 | USB-C earphones | QEMU |
+| 8 GB board: boot, eMMC (on a 1-bit bus), playback, USB disk, ReChord's own updater | device, 8 GB (2026-11-23) |
+| Lyrics and Up Next views, boot splash, ReplayGain | device, 8 GB (2026-11-23) |
 
-**512 MB board only, so far.** The differences from the 8 GB board come from comparing the stock
+**Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
-selected at build time (`BOARD=512m | 8g`). The 8 GB build runs on a factory 8 GB unit since 2026-11-23, its eMMC on a 1-bit bus (the wide bus fails there; see that document). Keep maskrom recovery at hand.
+selected at build time (`BOARD=512m | 8g`). On the factory 8 GB unit the eMMC's wide bus fails,
+so the 8 GB build falls back to a 1-bit bus (slower, still plenty for playback; see that
+document). Keep maskrom recovery at hand.
 
 **Next:**
 - a key's way to the screen, measured in parts on the device (key->px: in, loop, wait, render,
   push): a full screen is 13 ms on DMA; most of the ~70 ms after a tap is the release's
   confirmation (~50 ms), not the display
 - boot: the first folder listing (~0.5 s) and the USB wake (~0.9 s)
-- ReplayGain on core B
 - an on-device self-test mode
 - hardware decoding
 - a Bluetooth control channel
@@ -127,12 +132,13 @@ See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 > Keep the stock firmware at hand. Flashing modified firmware is at your own risk.
 
-- **Updater:** copy `MINIV900.IMG` (512 MB board) to the player's root, eject, and confirm on
-  the player.
+- **Updater:** copy `MINIV900.IMG` (512 MB board) or `HIFIEC90.IMG` (8 GB board) to the player's
+  root, eject, and confirm on the player. Stock's updater takes it the first time; after that
+  ReChord's own does it (it shows the file's SHA-256; PLAY installs).
 - **Maskrom:**
   1. Unplug USB, press RST with a paperclip, hold every key except power, and plug USB in.
   2. Pad the image to 512-byte sectors and write it with `rkdeveloptool wl` to both firmware
-     slots, LBA `0` and `0x11000` on the 512 MB board.
+     slots, LBA `0` and `0x11000` (both boards, as the boot ROM's loader numbers them).
   3. Read both slots back and compare them.
 
   Use only `ld`, `td`, `rid`, `rfi`, `rl`, `wl` and `rd`; never `db`. See

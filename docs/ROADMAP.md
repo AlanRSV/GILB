@@ -1,20 +1,21 @@
-# ReChord roadmap and status (512 MB Echo Mini, branch `echo512`, 2026-10-17)
+# ReChord roadmap and status (Echo Mini, 512 MB and 8 GB, 2026-11-23)
 
 This is the current picture. `STATUS.md` and `HANDOVER.md` are the history of the earlier
 approaches (SDK splice, hybrid fw1/BB) and are kept for reference only.
 
-**512 MB only, so far.** This line targets the 512 MB Echo Mini (`MINIV*.IMG` firmware).
-The differences from the 8 GB board are documented in [BOARD_DIFF_512M.md](BOARD_DIFF_512M.md),
-from a comparison of the stock 512 MB and 8 GB firmware, and selected at build time
-(`BOARD=512m | 8g`). All device testing was done on a single 512 MB unit, the only one we
-have. The 8 GB build has not been tested on hardware.
+**Both boards.** This line was built on the 512 MB Echo Mini (`MINIV*.IMG` firmware) and runs
+on the 8 GB one (`HIFIEC*.IMG`) since 2026-11-23. The differences are documented in
+[BOARD_DIFF_512M.md](BOARD_DIFF_512M.md), from a comparison of the stock 512 MB and 8 GB
+firmware, and selected at build time (`BOARD=512m | 8g`). Most device testing was done on one
+512 MB unit; the 8 GB rows below say so.
 
 How each part was learned is in [Sources](#sources): mainly the stock firmware, with RECHO as
 a second reference for some parts.
 
 ## Where it stands
 
-"Device" means verified on a real 512 MB unit and recorded in its own log (`ECHOLOG.TXT`).
+"Device" means verified on a real unit (the 512 MB one unless it says 8 GB) and recorded in its
+own log (`ECHOLOG.TXT`).
 "QEMU" means covered by the milestone suite on the `echo-mini` machine (strict hardware
 models with checkers). That suite and the machine live in a separate repository, not
 published yet.
@@ -43,6 +44,11 @@ published yet.
 | Display: display list in 16-row bands, dirty rectangles with column windows; VOP + DMA path by default behind a trial guard (stock's bus timing), GPIO writer as the fallback (display=gpio) | device (DMA trial passed every boot, 2026-10-18), QEMU |
 | No stalls: storage writes queued behind the audio, settings saved at pause, core B at full speed on resume | device |
 | No stalls on the microSD card: its writes through the same queue (runs of blocks as one command), a stuck card failed and unmounted in 3.5 s instead of holding the loop | QEMU (sd-async) |
+| 8 GB board: boot, eMMC (falls back to a 1-bit bus when the wide one fails), the firmware area from its slots, playback, USB disk, ReChord's own updater | device, 8 GB (2026-11-23) |
+| Now Playing's Lyrics (tags or .lrc, timed or plain) and Up Next views, album covers made on the PC, boot splash (`RECHORD/SPLASH.RGB`) | device, 8 GB (2026-11-23) |
+| ReplayGain on core B (Off / Track / Album, tags of every format with tags, peak-limited, sample-exact at gapless boundaries) | device, 8 GB (2026-11-23); simulator |
+| `REVERSE_LISTS=1` builds: VOL- moves up in lists | device, 8 GB (2026-11-23) |
+| Desktop simulator (the firmware's UI, library and player on a PC) | Linux, WSL |
 
 ## The recovery path comes first
 
@@ -62,7 +68,7 @@ Nothing in ReChord may change what the ROM sees on that path:
 
 ## Next
 
-### 1. Display speed and seek
+### 1. Display speed
 - **Tearing:** a screen change shows for one refresh as part old, part new, split on a slant: the
   writes cross the panel's scan (MADCTL 0x60) and nothing syncs them to it. The bus now runs at
   stock's timing (a shorter slant); a tear-free change needs the panel's TE line (Developer >
@@ -70,17 +76,14 @@ Nothing in ReChord may change what the ROM sees on that path:
 - **Tap latency:** a release is confirmed ~50 ms after the finger lets go (the voltage's rise,
   then 20 ms of stability and two samples); stock takes it at the first idle reading. The gesture
   lines' rise= and blips= say on the device whether that is safe.
-- **Seek:** VOL+ or VOL- twice, then held, seeks forward or back in the track (codec-side seek on
-  core B for each format).
 
 ### 2. Features
-- Library follow-ups: Years and Composers views, an edit merged into the index instead of a
-  rebuild, very large folders scanned in more than one slice.
+- Library follow-ups: Years and Composers views.
 - Settings and the resume point in a double-buffered, checksummed record that survives a power
   cut mid-write; the log appended and rotated.
-- ReplayGain applied on core B.
-- A real-time clock, a persistent queue across power-off, hold-to-boot, a battery-empty
-  shutdown, and swap up/down.
+- A real-time clock, a persistent queue across power-off, hold-to-boot, and a battery-empty
+  shutdown.
+- 8 GB board: why its eMMC's 8- and 4-bit reads fail (it runs on 1 bit).
 - A spectrum view.
 - Settings from a phone or a computer. Open question: the stock Bluetooth module has no data
   channel.
