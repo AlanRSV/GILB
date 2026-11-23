@@ -1312,6 +1312,10 @@ void ap_diag_row(int i, row_t *r)
     }
 }
 
+#ifndef SPLASH_MS
+#define SPLASH_MS 400u               /* the first frame no earlier (the user: at most 0.4 s) */
+#endif
+
 void ap_ui_loop(void)
 {
     input_event_t ev;
@@ -1330,6 +1334,14 @@ void ap_ui_loop(void)
     bootcrumb_kv(BCK_EMMC_WIDTH, (uint32_t)emmc_width());
     if (s_storage_failed)
         rockusb_flow(s_emmc[0] ? s_emmc : "storage failed");
+    /* The splash (the user, 2026-11-23): RECHORD and the build's date (as About shows it), from the
+     * moment the fonts are in (about 0.18 s) until the first frame, which waits for SPLASH_MS. */
+    display_clear(0x0000);
+    display_text(&font_d28, 0, 0, DISPLAY_W - 1, DISPLAY_H - 1,
+                 (DISPLAY_W - text_width(&font_d28, "RECHORD", 7)) / 2, 92, "RECHORD", 7, 0xFFFF);
+    display_text(&font_b13, 0, 0, DISPLAY_W - 1, DISPLAY_H - 1,
+                 (DISPLAY_W - text_width(&font_b13, __DATE__, 11)) / 2, 118, __DATE__, 11, 0x8410);   /* (display_text: a byte count, not -1) */
+    display_flush_rows(0, DISPLAY_H - 1);
     bootcrumb(BC_SLOTS);
     if (s_user) {         /* a slot left invalid (an update cut short): copied from the good one */
         int r;
@@ -1381,15 +1393,13 @@ void ap_ui_loop(void)
     {   /* the USB block as the ROM left it, before the park (USB DAC audit D6, SoC report 6.1) */
         uint32_t r[10];
 
-        usb_regs_read(r);
-        log_printf("usb: ROM state: gotgctl %08x gusbcfg %08x gintsts %08x pcgcctl %x hwcfg2 %08x hwcfg3 %08x "
-                   "hwcfg4 %08x snpsid %08x uoc0 %04x dsts %x", (unsigned)r[0], (unsigned)r[1], (unsigned)r[2],
-                   (unsigned)r[3], (unsigned)r[4], (unsigned)r[5], (unsigned)r[6], (unsigned)r[7], (unsigned)r[8],
-                   (unsigned)r[9]);
+        usb_regs_read(r);            /* (its log line went for the splash's room, 2026-11-23) */
         bootcrumb_kv(BCK_USB_HWCFG3, r[5]);
         bootcrumb_kv(BCK_USB_HWCFG4, r[6]);
         bootcrumb_kv(BCK_USB_SNPSID, r[7]);
     }
+    while (time_ms() < SPLASH_MS)    /* (the splash: on screen until then; a slower boot waits not) */
+        cpu_wait_tick();
     bootcrumb(BC_LOOP);
     watchdog_start();                /* as stock, once the boot is done (services/watchdog.c) */
     (void)panel_io_select(g_cfg.display);   /* the panel's pixel path: the VOP as a trial, now the

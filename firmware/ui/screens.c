@@ -18,6 +18,7 @@
 #include "nav.h"
 #include "ui.h"
 #include "audio/audio.h"
+#include "drivers/board.h"
 #include "drivers/bt_jieli.h"
 #include "drivers/clock.h"
 #include "drivers/usb_uac.h"
@@ -1592,7 +1593,7 @@ static void about_row(int i, row_t *r)
 
     switch (i) {
     case 0: pair(r, "Firmware", "ReChord " __DATE__); break;
-    case 1: pair(r, "Board", "512 MB (MINIV)"); break;
+    case 1: pair(r, "Board", BOARD == BOARD_8G ? "8 GB (HIFIEC)" : "512 MB (MINIV)"); break;
     case 2: pair(r, "Battery", power_battery_text()); break;
     case 3: snprintf(v, sizeof v, "%u h %02u min", (unsigned)(s / 3600u), (unsigned)(s / 60u % 60u)); pair(r, "Uptime", v); break;
     case 4: pair(r, "Display", panel_io_path()); break;

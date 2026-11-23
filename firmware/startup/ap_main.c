@@ -57,8 +57,8 @@ uint32_t Main(void)
     display_set_logger(log_printf);   /* "ui: frame ..." when slow, "ui: key->px ..." */
     display_init();
     bootcrumb(BC_SPLASH);
-    /* No splash: the panel stays as display_init() cleared it until the first real screen
-     * (the user, 2026-10-18: no boot animation, straight to where you were). */
+    /* The panel stays as display_init() cleared it until the fonts are in: the splash is drawn
+     * then (startup/ap_ui.c, the user 2026-11-23: RECHORD and the build, at most 0.4 s). */
     bootcrumb(BC_UI);
 
 #ifdef AP_TRIAL
