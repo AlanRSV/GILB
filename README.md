@@ -61,6 +61,8 @@ the panel is 320×170).*
     lyrics per song.
   - **Up Next:** the title, artist and album on the left, the next six songs in the queue on the
     right.
+  - **Spectrum:** 24 bars, about 170 Hz to 16 kHz, from the audio being heard (25 frames a
+    second), with peak caps.
   - Then the cover again. Not available while USB-C earphones are on (they share the memory the
     views load into).
 - **Keys:** each key has one meaning everywhere.
@@ -114,7 +116,7 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | VOP + DMA display path (display=dma), seek (VOL 2x + hold), fast boot | device (2026-10-18) |
 | USB-C earphones | QEMU |
 | 8 GB board: boot, eMMC on the 8-bit bus (USB disk: writes 6 MB/s, reads 8 MB/s), playback, ReChord's own updater | device, 8 GB (2026-11-23) |
-| Lyrics and Up Next views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
+| Lyrics, Up Next and Spectrum views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and

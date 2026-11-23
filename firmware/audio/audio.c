@@ -1595,6 +1595,19 @@ int audio_skip(int dir)
     return pos < 0 ? -3 : audio_play(pos);
 }
 
+int audio_pcm_window(int16_t *out, int n)   /* (in the viz overlay: firmware_ap.ld) */
+{
+    const int32_t *p;
+
+    if (!s_playing || s_paused || !s_dma_on || n > (int)AS_BLOCK_FRAMES)
+        return -1;
+    p = (const int32_t *)(AS_PCM_RING + AS->pcm_played % AS_PCM_BLOCKS * AS_BLOCK_BYTES) +
+        2 * ((AS_BLOCK_FRAMES - (uint32_t)n) / 2u);
+    for (int i = 0; i < n; i++)
+        out[i] = (int16_t)((p[2 * i] >> 17) + (p[2 * i + 1] >> 17));
+    return (int)AS->rate;
+}
+
 void audio_start_at(uint32_t ms)            /* the next audio_play's first track from ms on */
 {
     s_seek_ms = ms;

@@ -50,6 +50,7 @@ published yet.
 | `REVERSE_LISTS=1` builds: VOL- moves up in lists | device, 8 GB (2026-11-23) |
 | Clock: the battery-backed PCF8563-type chip on I2C1 (GPIO2.12/2.13, as stock uses it), read at boot, the time in the header (12/24-hour, off), set from Echo Library's `RECHORD/TIME.TXT` | device, 8 GB (2026-11-23); simulator |
 | Queue kept across power-off (`RECHORD/QUEUE.BIN`: the queue, its order, the song and the time; saved at power-off, screen off and USB disk; each file checked against its directory entry at the start, gone ones dropped), resumed with Resume at power-on: Last track | device, 8 GB (2026-11-23); simulator |
+| Spectrum view (Now Playing, BACK tap: its own overlay, viz): a 256-point FFT of the PCM block being heard, 24 bars, peak caps; the module table now two sectors (41 entries) | device, 8 GB (2026-11-23); simulator |
 | Desktop simulator (the firmware's UI, library and player on a PC) | Linux, WSL |
 
 ## The recovery path comes first
@@ -87,7 +88,6 @@ Nothing in ReChord may change what the ROM sees on that path:
 - Settings and the resume point in a double-buffered, checksummed record that survives a power
   cut mid-write; the log appended and rotated.
 - Hold-to-boot. (The battery-empty shutdown is done: power.c's 3.45 V cut-off, "Battery low".)
-- A spectrum view.
 - Settings from a phone: not through Bluetooth. The JieLi module's firmware is closed, it is an
   audio source only (never discoverable, no LE), and nothing can update it; dropped (2026-11-23).
 

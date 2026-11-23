@@ -11,7 +11,7 @@
 
 #include "services/fs.h"
 
-enum { NPV_COVER = 0, NPV_LYRICS, NPV_NEXT, NPV_COUNT };
+enum { NPV_COVER = 0, NPV_LYRICS, NPV_NEXT, NPV_SPECTRUM, NPV_COUNT };   /* (Spectrum: the viz overlay) */
 
 /* What Now Playing shows (ui/screens.c's N). */
 typedef struct {

@@ -42,6 +42,9 @@ int audio_set_volume_db(int db);
  * there is none), Q4.28, each lowered so the tagged peak stays below full scale; 0 = no tag. */
 void audio_rg_read(const fs_ref_t *ref, int kind, int32_t g[2]);
 void audio_start_at(uint32_t ms);    /* the next audio_play() starts its first track at ms (a resume) */
+/* The n frames (mono, 16-bit) in the middle of the PCM block being played: the sample rate, or <= 0
+ * when nothing plays (the Spectrum view, ui/spectrum.c; in its overlay). */
+int audio_pcm_window(int16_t *out, int n);
 void audio_eq(void);                 /* g_cfg.eq / eq_gain to core B (coreb/b_eq.c): crossfaded in */
 int audio_get_volume_db(void);
 

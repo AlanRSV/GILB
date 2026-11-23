@@ -129,6 +129,7 @@ AP_SERVICE_SRCS := \
   firmware/services/lib_tags.c \
   firmware/services/lyrics.c \
   firmware/ui/np_extra.c \
+  firmware/ui/spectrum.c \
   firmware/audio/rg_read.c \
   firmware/services/tags_rg.c \
   firmware/drivers/rtc_pcf8563.c \
@@ -213,7 +214,7 @@ AP_CFLAGS := $(AP_ARCH_FLAGS) -Os -Wall \
 # AP_OVL_WRAP: the overlays' functions resident code calls by name; each call from another object
 # reaches a gate (__wrap_<name>, firmware/startup/ap_ovl.c) that loads or checks the overlay.
 AP_OVLS := usbdac:ov_dac usbout:ov_uout dev:ov_dev fsw:ov_fsw lib:ov_lib libtag:ov_ltag lwalk:ov_lwalk lbuild:ov_lbld \
-  npx:ov_npx
+  npx:ov_npx viz:ov_viz
 comma := ,
 AP_OVL_WRAP := $(addprefix -Wl$(comma)--wrap=,usb_uac_key \
   usb_out_active usb_out_status usb_out_start usb_out_stop usb_out_poll usb_out_set_format \

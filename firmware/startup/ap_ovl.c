@@ -64,6 +64,7 @@ const ovl_desc_t ovl_desc[OVL_COUNT] = {
     [OVL_LWALK]  = { "ov_lwalk", "Library", NULL, 3 },
     [OVL_LBUILD] = { "ov_lbld", "Library", NULL, 3 },
     [OVL_NPX]    = { "ov_npx", "Lyrics", NULL, 0 },
+    [OVL_VIZ]    = { "ov_viz", "Spectrum", NULL, 0 },
 };
 
 /* The USB interrupt goes wherever usb_irq_hook points (drivers/usb_msc_rknanoc.c): the USB DAC's
@@ -428,6 +429,11 @@ void npx_splash(void);
 static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg_read, npx_clock, npx_queue };
 OVL_HEADER(npx, OVL_NPX, &k_npx);
 
+void viz_draw(void), viz_tick(void);
+typedef struct { void (*draw)(void); void (*tick)(void); } viz_api_t;
+static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick };
+OVL_HEADER(viz, OVL_VIZ, &k_viz);
+
 /* Not while USB-C earphones hold the window (loading the views would stop them), as for libtag;
  * not when the overlay was refused ("busy" passes: a moment, not a refusal). */
 static int npx_ok(void)
@@ -453,6 +459,10 @@ int ap_npx_draw(void)
 {
     const npx_api_t *a;
 
+    if (s_npv == NPV_SPECTRUM && npx_ok()) {
+        GATE_V(ovl_get, OVL_VIZ, viz_api_t, draw());
+        return ovl_current() == OVL_VIZ;
+    }
     if (!s_npv || !npx_ok() || !(a = ovl_get(OVL_NPX)))
         return 0;
     ovl_hold(1);
@@ -493,4 +503,6 @@ void ap_npx_tick(void)
 {
     if (s_npv == NPV_LYRICS)
         GATE_V(ovl_if, OVL_NPX, npx_api_t, tick());
+    else if (s_npv == NPV_SPECTRUM)
+        GATE_V(ovl_if, OVL_VIZ, viz_api_t, tick());
 }

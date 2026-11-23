@@ -164,6 +164,15 @@ SECTIONS
             *fs_target.o(.text.fs_ref_check)
             . = ALIGN(4);
         }
+        /* Now Playing's Spectrum view (ui/spectrum.c) and the samples it reads (audio_pcm_window) */
+        .ovl_viz
+        {
+            KEEP(*(.ovl_hdr.viz))
+            *(.ovl.viz.*)
+            *spectrum.o(.text* .rodata*)
+            *audio.o(.text.audio_pcm_window)
+            . = ALIGN(4);
+        }
         /* the Developer tests (Settings > Developer) */
         .ovl_dev
         {
@@ -356,8 +365,9 @@ NOCROSSREFS_TO(.ovl_dev .vectors .text .data .ovl_fsw)
 NOCROSSREFS_TO(.ovl_lib .vectors .text .data .ovl_fsw)
 NOCROSSREFS_TO(.ovl_libtag .vectors .text .data .ovl_fsw)
 NOCROSSREFS_TO(.ovl_npx .vectors .text .data .ovl_fsw)
-NOCROSSREFS_TO(.ovl_fsw .vectors .text .data .ovl_usbdac .ovl_usbout .ovl_dev .ovl_lib .ovl_libtag .ovl_lwalk .ovl_lbuild .ovl_npx)
-NOCROSSREFS(.ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
+NOCROSSREFS_TO(.ovl_viz .vectors .text .data .ovl_fsw)
+NOCROSSREFS_TO(.ovl_fsw .vectors .text .data .ovl_usbdac .ovl_usbout .ovl_dev .ovl_lib .ovl_libtag .ovl_lwalk .ovl_lbuild .ovl_npx .ovl_viz)
+NOCROSSREFS(.ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx .ovl_viz)
 /* the phases call the library's code (.ovl_lib, always loaded before them), never the reverse */
 NOCROSSREFS_TO(.ovl_lwalk .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
 NOCROSSREFS_TO(.ovl_lbuild .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)

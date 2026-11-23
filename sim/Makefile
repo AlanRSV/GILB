@@ -42,7 +42,7 @@ CFLAGS  += -std=gnu11 -D_DEFAULT_SOURCE -DRECHORD_SIM -DRECHORD_AP_BUILD -DBOARD
 # Firmware sources used as they are (ap.mk lists, minus the drivers and the core-B audio engine).
 FW_SRCS := \
   startup/ap_ui.c startup/ap_bg.c \
-  ui/ui.c ui/frame.c ui/nav.c ui/screens.c ui/eq_page.c ui/lib_ui.c ui/np_extra.c \
+  ui/ui.c ui/frame.c ui/nav.c ui/screens.c ui/eq_page.c ui/lib_ui.c ui/np_extra.c ui/spectrum.c \
   drivers/display.c drivers/font.c drivers/font8x8.c drivers/panel_init_rknanoc.c \
   drivers/text.c drivers/icons.c drivers/fonts/fonts_s8.c drivers/fonts/icons_data.c \
   drivers/fonts/fonts_blob.c \

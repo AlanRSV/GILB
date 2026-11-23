@@ -517,6 +517,22 @@ int audio_seek(uint32_t ms)
     return r;
 }
 
+/* The Spectrum view's samples: the n frames about to be heard, mono (audio.h). */
+int audio_pcm_window(int16_t *out, int n)
+{
+    int ok;
+
+    pthread_mutex_lock(&s_mx);
+    ok = s_playing && !s_paused && s_wr - s_rd >= (uint32_t)n;
+    for (int i = 0; ok && i < n; i++) {
+        uint32_t k = (s_rd + (uint32_t)i) % RING_FRAMES * 2u;
+
+        out[i] = (int16_t)((s_ring[k] + s_ring[k + 1]) / 2);
+    }
+    pthread_mutex_unlock(&s_mx);
+    return ok ? (int)DEV_RATE : -1;
+}
+
 void audio_start_at(uint32_t ms)
 {
     s_seek_ms = ms;

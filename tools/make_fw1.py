@@ -215,12 +215,14 @@ def add_fonts(out: bytearray, fw1_end: int, font_img: Path) -> None:
     print(f"      fonts from {font_img.name}: small @0x{FONT_SMALL_OFF:X}, large @0x{FONT_LARGE_OFF:X}")
 
 
-# Modules (core-B decoder images...): a table at MODULES_OFF, the blobs behind it,
-# sector-aligned. firmware/services/modules.c reads it from the slot on the eMMC.
+# Modules (core-B decoder images...): a table at MODULES_OFF (two sectors, 41 entries; one
+# sector, 20, before 2026-11-23: modules.c reads both, its loop ends at count), the blobs behind
+# it, sector-aligned. firmware/services/modules.c reads it from the slot on the eMMC.
 #   +0 "RCMOD1\0\0", +8 u32 count, then count x { char name[8]; u32 off, len, sum, 0 }
 #   off: from the start of the image; sum: u32 sum of the little-endian words.
 MODULES_OFF = 0x100000
 MODULES_MAGIC = b"RCMOD1\0\0"
+MODULES_TABLE = 1024
 
 
 def add_modules(out: bytearray, fw1_end: int, modules) -> None:
@@ -229,7 +231,7 @@ def add_modules(out: bytearray, fw1_end: int, modules) -> None:
     if fw1_end > MODULES_OFF:
         raise SystemExit(f"fw1 ends at 0x{fw1_end:X}, past the modules at 0x{MODULES_OFF:X}")
     table = bytearray(MODULES_MAGIC + struct.pack("<I", len(modules)) + bytes(4))
-    off = MODULES_OFF + 512
+    off = MODULES_OFF + MODULES_TABLE
     for name, path in modules:
         blob = Path(path).read_bytes()
         blob += bytes(-len(blob) % 4)
@@ -240,8 +242,8 @@ def add_modules(out: bytearray, fw1_end: int, modules) -> None:
         out[off:off + len(blob)] = blob
         print(f"      module {name}: {len(blob)} B @0x{off:X}")
         off = (off + len(blob) + 511) & ~511
-    if len(table) > 512:
-        raise SystemExit("too many modules for one table sector")
+    if len(table) > MODULES_TABLE:
+        raise SystemExit("too many modules for the table's two sectors")
     out[MODULES_OFF:MODULES_OFF + len(table)] = table
 
 
