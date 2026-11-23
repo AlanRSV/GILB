@@ -45,7 +45,19 @@ typedef struct {
     char title[96], artist[64], album[64];
     uint16_t track;
     uint8_t found;                 /* TAGS_SRC_* bitmask */
+#ifdef TAGS_RG
+    /* ReplayGain (services/tags_rg.c builds this file again with TAGS_RG, into the npx overlay, for
+     * audio/rg_read.c): REPLAYGAIN_TRACK_GAIN, _ALBUM_GAIN, _TRACK_PEAK, _ALBUM_PEAK from Vorbis
+     * comments, APEv2, ID3v2 TXXX and MP4 "----"; rg bit k = value k found; gains in 0.01 dB,
+     * peaks in 1/10000 */
+    uint8_t rg;
+    int16_t rg_db[2];              /* track, album */
+    uint16_t rg_pk[2];
+#endif
 } tag_info_t;
+#ifdef TAGS_RG
+#define tags_read tags_read_rg
+#endif
 #endif
 
 /* Reads n bytes at file offset off into buf; returns the bytes read. */
@@ -58,7 +70,8 @@ typedef uint32_t (*tags_read_at_t)(void *u, uint32_t off, void *buf, uint32_t n)
  *     the end APEv2, appended ID3v2, ID3v1 (Lyrics3v2 is skipped over).
  *   FLAC: ID3v2 tags in front (some taggers add one), then VORBIS_COMMENT.
  *   WAV:  LIST/INFO and "id3 "/"ID3 " chunks, in file order.
- * Reading stops as soon as all four fields are known.
+ * Reading stops as soon as all four fields (and, with TAGS_RG, the four ReplayGain values) are
+ * known.
  *
  * Returns 0 if any field was found, -1 if none was.
  */

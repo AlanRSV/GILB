@@ -35,6 +35,11 @@ the panel is 320×170).*
   (`/SD/RECHORD`, or Internal: Settings > Playback > Library data).
 - **EQ** on core B: stock's six presets (Retro, Bass, Heavy, Pop, Jazz, Unique) and a 10-band
   Custom; Off is bit-exact.
+- **ReplayGain** on core B (Settings > Playback > ReplayGain: Off, Track, Album): the
+  `REPLAYGAIN_*` tags of FLAC, Ogg, MP3 (ID3v2 TXXX or APEv2), APE, WavPack and M4A, read as each
+  track is queued, so the gain changes exactly at the gapless boundary; the tagged peak never
+  clips; tracks without tags play as they are. Not while USB-C earphones stream (the reader is
+  in the overlay window they hold).
 
 **Interface**
 - **Boot splash:** from about 0.18 s after power-on to the first screen at 0.4 s: `RECHORD/SPLASH.RGB`

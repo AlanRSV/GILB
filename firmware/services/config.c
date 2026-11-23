@@ -31,6 +31,7 @@ static const char *const k_hifi[] = { "auto", "off", "verify" };      /* AS_HIFI
 static const char *const k_cpu_b[] = { "96", "auto", "stock" };       /* CFG_CPU_B_* */
 const char *const g_eq_names[8] = { "Off", "Retro", "Bass", "Heavy", "Pop", "Jazz", "Unique", "Custom" };
 static const char *const k_libdata[] = { "sd", "internal" };          /* LIB_DATA_* (library) */
+static const char *const k_rg[] = { "off", "track", "album" };        /* replaygain= */
 
 static uint32_t s_hash, s_save_at;
 static int s_idle_only;              /* the save waiting is the volume's alone: not while playing */
@@ -60,6 +61,7 @@ void config_defaults(void)
     g_cfg.cpu_b = CFG_CPU_B_96;              /* the FLAC point off until asked for (services/cpuclk.h) */
     g_cfg.theme = 0;                         /* Classic */
     g_cfg.eq = 0;                            /* Off, Custom flat */
+    g_cfg.rg = 0;                            /* ReplayGain off */
     memset(g_cfg.eq_gain, 0, sizeof g_cfg.eq_gain);
 }
 
@@ -137,6 +139,8 @@ static void set(const char *k, const char *v)
     }
     else if (!strcmp(k, "libdata") && (i = pick(v, k_libdata, 2)) >= 0)    /* library */
         g_cfg.libdata = (uint8_t)i;
+    else if (!strcmp(k, "replaygain") && (i = pick(v, k_rg, 3)) >= 0)
+        g_cfg.rg = (uint8_t)i;
     else if (!strcmp(k, "usb_out") && (i = pick(v, k_off_on, 2)) >= 0)
         g_cfg.usb_out = (uint8_t)i;
     else if (!strcmp(k, "usb_out_ma") && (i = atoi(v)) >= 100 && i <= 500)
@@ -307,7 +311,8 @@ static int text_of(char *t, unsigned long cap)
             return n + d;
         n += d;
     }
-    n += snprintf(t + n, cap - (unsigned long)n, "eq=%s\neq_gains=", g_eq_names[g_cfg.eq & 7u]);
+    n += snprintf(t + n, cap - (unsigned long)n, "replaygain=%s\neq=%s\neq_gains=", k_rg[g_cfg.rg % 3u],
+                  g_eq_names[g_cfg.eq & 7u]);
     for (int k = 0; k < 10; k++)                    /* (40 B at most: the text stays far below cap) */
         n += snprintf(t + n, cap - (unsigned long)n, "%d,", g_cfg.eq_gain[k]);
     t[n - 1] = '\n';                                /* (the last comma) */

@@ -129,6 +129,8 @@ AP_SERVICE_SRCS := \
   firmware/services/lib_tags.c \
   firmware/services/lyrics.c \
   firmware/ui/np_extra.c \
+  firmware/audio/rg_read.c \
+  firmware/services/tags_rg.c \
   firmware/services/lib_plat.c
 
 # Theme module (same set as $(THEME_SRCS) in firmware/theme/theme.mk).

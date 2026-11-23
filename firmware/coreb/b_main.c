@@ -571,6 +571,16 @@ static int input_ready(void)
     return b_in_avail() >= (want < b_in_need ? want : b_in_need);
 }
 
+/* ReplayGain: n samples times g (Q4.28), saturated. */
+static void rg_scale(int32_t *p, uint32_t n, int32_t g)
+{
+    for (; n; n--, p++) {
+        int64_t v = (int64_t)*p * g >> 28;
+
+        *p = v > 0x7FFFFFFF ? 0x7FFFFFFF : v < -0x7FFFFFFF - 1 ? (int32_t)0x80000000u : (int32_t)v;
+    }
+}
+
 /* One step of work; 0 = nothing to do now. */
 static int produce(void)
 {
@@ -655,6 +665,12 @@ static int produce(void)
     if (b_trk.channels == 1) {                       /* mono: L = R, expand in place */
         for (uint32_t i = got; i-- > 0; )
             dst[2 * i] = dst[2 * i + 1] = dst[i];
+    }
+    {   /* ReplayGain (audio_shared.h rg_src: 0 off, 1 track, 2 album), before the EQ */
+        uint32_t m = AS->rg_src ? *(const volatile uint8_t *)AS->rg_src - 1u : 2u;
+
+        if (got && m < 2u && b_trk.rg[m])
+            rg_scale(dst, 2u * got, b_trk.rg[m]);
     }
     /* the EQ (b_eq.c), in place: with no curve set only this test runs */
     if (got && (b_eq.on || b_eq_watch || AS->eq_seq != b_eq_seq || b_eq_dirty)) {

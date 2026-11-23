@@ -29,6 +29,8 @@
 
 #ifdef TAGS_EXT
 enum { F_TITLE, F_ARTIST, F_ALBUM, F_TRACK, F_AARTIST, F_GENRE, F_DISC, F_YEAR, NF };
+#elif defined TAGS_RG
+enum { F_TITLE, F_ARTIST, F_ALBUM, F_TRACK, F_TG, F_AG, F_TP, F_AP, NF };   /* F_TG..: ReplayGain */
 #else
 enum { F_TITLE, F_ARTIST, F_ALBUM, F_TRACK, NF };
 #endif
@@ -57,6 +59,16 @@ static const char *const k_ape[] = { "title", "artist", "album", "track", "album
 static const char *const k_vorbis[] = { "title", "artist", "album", "tracknumber", "albumartist", "genre",
                                         "discnumber", "date", "\x05album artist", "\x08year", 0 };
 static const char *const k_riff[] = { "inam", "iart", "iprd", "itrk", "", "ignr", "", "icrd", "\x04iprt", 0 };
+#elif defined TAGS_RG
+/* Lower-case names per source in F_* order ("" where a source has none), NULL-terminated; an index
+ * past them is the track. ID3v2 and MP4 keep ReplayGain under these names too (txxx, mp4). */
+#define RG_NAMES "replaygain_track_gain", "replaygain_album_gain", "replaygain_track_peak", \
+                 "replaygain_album_peak"
+static const char *const k_id3v22[] = { "tt2", "tp1", "tal", "trk", 0 };
+static const char *const k_id3v23[] = { "tit2", "tpe1", "talb", "trck", 0 };
+static const char *const k_ape[] = { "title", "artist", "album", "track", RG_NAMES, 0 };
+static const char *const k_vorbis[] = { "title", "artist", "album", "tracknumber", RG_NAMES, 0 };
+static const char *const k_riff[] = { "inam", "iart", "iprd", "itrk", "", "", "", "", "iprt", 0 };
 #else
 /* Lower-case names per source, NULL-terminated; an index past F_TRACK is the track. */
 static const char *const k_id3v22[] = { "tt2", "tp1", "tal", "trk", 0 };
@@ -112,11 +124,19 @@ static int field(const uint8_t *k, uint32_t n, const char *const *names)
         if (f >= NF)
             s++;
 #endif
+#ifdef TAGS_RG
+        while (i < n && s[i] && ((uint32_t)k[i] - 'A' < 26u ? k[i] | 0x20 : k[i]) == (uint8_t)s[i])
+            i++;                       /* (letters only: '_' | 0x20 is no '_') */
+#else
         while (i < n && s[i] && (k[i] | 0x20) == (uint8_t)s[i])
             i++;
+#endif
 #ifdef TAGS_EXT
         if (i == n && !s[i] && n)      /* ("" placeholders never match) */
             return f >= NF ? names[f][0] - 1 : f;
+#elif defined TAGS_RG
+        if (i == n && !s[i] && n)      /* ("" placeholders never match) */
+            return f >= NF ? F_TRACK : f;
 #else
         if (i == n && !s[i])
             return f > F_TRACK ? F_TRACK : f;
@@ -305,6 +325,39 @@ static void set(ctx_t *c, int f, const uint8_t *p, uint32_t n, int enc)
     }
 }
 #else
+#ifdef TAGS_RG
+/* ReplayGain value f (F_TG..F_AP) from "-7.03 dB" / "0.988547": 0.01 dB, or the peak in 1/10000. */
+static void rg_set(ctx_t *c, int f, const uint8_t *p, uint32_t n, int enc)
+{
+    char num[24];
+    const char *s = num;
+    uint32_t v = 0, d = f >= F_TP ? 4u : 2u;
+    int neg;
+
+    put_text(num, sizeof num, p, n, enc);
+    while (*s == ' ')
+        s++;
+    neg = *s == '-';
+    s += *s == '-' || *s == '+';
+    if ((*s < '0' || *s > '9') && *s != '.')
+        return;
+    while (*s >= '0' && *s <= '9' && v < 100000u)
+        v = v * 10u + (uint32_t)(*s++ - '0');
+    s += *s == '.';
+    for (; d; d--) {
+        v *= 10u;
+        if (*s >= '0' && *s <= '9')
+            v += (uint32_t)(*s++ - '0');
+    }
+    if (f < F_TP)
+        c->out->rg_db[f - F_TG] = (int16_t)(neg ? -(int32_t)min32(v, 9999u) : (int32_t)min32(v, 9999u));
+    else
+        c->out->rg_pk[f - F_TP] = (uint16_t)min32(v, 0xFFFFu);
+    c->out->rg |= (uint8_t)(1u << (f - F_TG));
+    c->have |= 1u << f;
+}
+#endif
+
 /* Field f from text p[0..n): first source wins; empty text and track 0 do not count. */
 static void set(ctx_t *c, int f, const uint8_t *p, uint32_t n, int enc)
 {
@@ -313,6 +366,12 @@ static void set(ctx_t *c, int f, const uint8_t *p, uint32_t n, int enc)
 
     if (c->have & 1u << f)
         return;
+#ifdef TAGS_RG
+    if (f >= F_TG) {
+        rg_set(c, f, p, n, enc);
+        return;
+    }
+#endif
     if (f == F_TRACK) {                /* "3", " 03/12" */
         char num[12];
         uint32_t t = 0;
@@ -362,6 +421,43 @@ static uint32_t unsync(uint8_t *p, uint32_t n)
     return o;
 }
 
+#ifdef TAGS_RG
+/* ID3v2 TXXX body: encoding, a description (ASCII in any of the encodings) and its value; only
+ * ReplayGain's descriptions are taken. p is the window's (the value's encoding byte goes in front
+ * of it, where the description's terminator was, for id3_text). */
+static void txxx(ctx_t *c, uint8_t *p, uint32_t n)
+{
+    uint32_t w = p[0] == 1u || p[0] == 2u ? 2u : 1u, i = 1, lo = w - 1u, k = 0;
+    uint8_t key[22];
+    int f;
+
+    if (p[0] > 3u)
+        return;
+    if (p[0] == 1u && n >= 3u && (be16(p + 1) == 0xFFFEu || be16(p + 1) == 0xFEFFu)) {
+        lo = p[1] == 0xFFu ? 0u : 1u;  /* FF FE: little-endian */
+        i = 3;
+    }
+    for (;;) {
+        uint8_t a, z;
+
+        if (n - i < w)
+            return;
+        a = p[i + lo];
+        z = w == 2u ? p[i + 1u - lo] : 0u;
+        i += w;
+        if (!a && !z)
+            break;
+        if (z || k == sizeof key)
+            return;
+        key[k++] = a;
+    }
+    if ((f = field(key, k, k_vorbis)) < F_TG)
+        return;
+    p[i - 1u] = p[0];
+    id3_text(c, f, p + i - 1u, n - i + 1u);
+}
+#endif
+
 /* The ID3v2 tag at pos, within [pos, lim). Returns its whole length (header,
  * footer), 0 if there is no tag at pos. */
 static uint32_t id3v2(ctx_t *c, uint32_t pos, uint32_t lim, uint8_t src)
@@ -399,6 +495,10 @@ static uint32_t id3v2(ctx_t *c, uint32_t pos, uint32_t lim, uint8_t src)
         fsz = ver == 2u ? be24(h + 3) : ver == 3u ? be32(h + 4) : syncsafe(h + 4);
         ffl = ver == 2u ? 0u : be16(h + 8);
         f = field(h, idl, ver == 2u ? k_id3v22 : k_id3v23);
+#ifdef TAGS_RG
+        if (f < 0 && ver > 2u && !memcmp(h, "TXXX", 4))
+            f = NF;                    /* (txxx: no bit of its own in have) */
+#endif
         p += hl;
         if (fsz > end - p)
             break;
@@ -424,6 +524,11 @@ static uint32_t id3v2(ctx_t *c, uint32_t pos, uint32_t lim, uint8_t src)
                         n = unsync(d, n);
                         c->wlen = 0;   /* the window no longer matches the file */
                     }
+#ifdef TAGS_RG
+                    if (f == NF)
+                        txxx(c, d, n);
+                    else
+#endif
                     id3_text(c, f, d, n);
                 }
             }
@@ -544,9 +649,9 @@ static void vorbis(ctx_t *c, uint32_t p, uint32_t end)
         p += 4u;
         if (n > end - p)
             return;
-        m = min32(n, 12u + TEXT_MAX);  /* "TRACKNUMBER=" is the longest key we want */
+        m = min32(n, 22u + TEXT_MAX);  /* "REPLAYGAIN_ALBUM_GAIN=" is the longest key we want */
         if (m && (s = get(c, p, m)) != 0) {
-            while (k < m && k < 12u && s[k] != '=')
+            while (k < m && k < 22u && s[k] != '=')
                 k++;
             if (k < m && s[k] == '=') {
                 int f = field(s, k, k_vorbis);
@@ -721,6 +826,17 @@ static void mp4(ctx_t *c)
         for (int i = 0; i < MP4_ITEMS; i++)
             if (!memcmp(h + 4, k_item[i], 4))
                 f = i;
+#ifdef TAGS_RG
+        /* "----": mean, name (a full box: 4 bytes of version/flags, then the name), data */
+        if (f < 0 && !memcmp(h + 4, "----", 4) && !mp4_child(c, p + 8u, p + n, "name", &db, &de) &&
+            de - db > 4u) {
+            uint32_t kn = min32(de - db - 4u, 22u);
+            const uint8_t *k = get(c, db + 4u, kn);
+
+            if (k && (f = field(k, kn, k_vorbis)) < F_TG)
+                f = -1;
+        }
+#endif
         /* the value: a "data" box, 8 bytes of type and locale, then the bytes */
         if (f >= 0 && !mp4_child(c, p + 8u, p + n, "data", &db, &de) && de - db > 8u) {
             uint32_t len = min32(de - db - 8u, TEXT_MAX);

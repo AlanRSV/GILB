@@ -795,6 +795,7 @@ static int open_next(void)
             s_tracks[(s_seq + 1u) % AS_QUEUE].base = (uint32_t)at;
             s_tracks[(s_seq + 1u) % AS_QUEUE].frames = total;
         }
+        audio_rg_read(&ref, kind, t.rg);    /* (its own handle: s_file stays where it is) */
         t.seq = ++s_seq;
         /* file byte p lands at ring offset in_wr + skip + hdr + (p - start): make that
          * congruent to p mod 4, so whole sectors can be read straight into the ring */
@@ -1492,6 +1493,7 @@ static void as_init(void)
     }
     AS->hifi_mode = g_cfg.hifi;              /* (core B reads it at its first FLAC LPC subframe) */
     AS->eq_src = (uint32_t)&g_cfg.eq;        /* (core B reads the EQ there: audio_shared.h) */
+    AS->rg_src = (uint32_t)&g_cfg.rg;        /* (and the ReplayGain mode) */
     audio_eq();
 }
 

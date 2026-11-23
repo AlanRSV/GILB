@@ -150,6 +150,8 @@ SECTIONS
             *(.ovl.npx.*)
             *np_extra.o(.text* .rodata*)
             *lyrics.o(.text* .rodata*)
+            *rg_read.o(.text* .rodata*)
+            *tags_rg.o(.text* .rodata*)
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */
@@ -159,6 +161,12 @@ SECTIONS
             *(.ovl.dev.*)
             *usb_cdc_rknanoc.o(.text* .rodata*)
             *hifi_probe.o(.text* .rodata*)
+            /* resident drivers' functions only these tests call: the DAC test, USB detect, BT listen,
+               the HIFI probe */
+            *dac_cs43131.o(.text.dac_output_off .text.dac_i2s_feed)
+            *usb_msc_rknanoc.o(.text.usb_detect_state)
+            *audio.o(.text.audio_b_fresh)
+            *clock_rknanoc.o(.text.time_cycles)
             *sd_selftest.o(.text* .rodata*)
             *bt_jieli.o(.text.bt_listen .rodata.bt_listen.*)
             *panel_io_rknanoc.o(.text.panel_te_probe .text.te_watch .rodata.panel_te_probe.*)

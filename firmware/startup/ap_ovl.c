@@ -425,7 +425,7 @@ int ap_lib_tags(uint32_t (*rd)(void *, uint32_t, void *, uint32_t), void *u, uin
 void npx_draw(int v);
 void npx_tick(void);
 void npx_splash(void);
-static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash };
+static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg_read };
 OVL_HEADER(npx, OVL_NPX, &k_npx);
 
 /* Not while USB-C earphones hold the window (loading the views would stop them), as for libtag;
@@ -467,6 +467,14 @@ int ap_npx_draw(void)
 void ap_npx_splash(void)
 {
     GATE_V(ovl_get, OVL_NPX, npx_api_t, splash());
+}
+
+/* ReplayGain (audio/audio.h): a queued track's gains, by the overlay's tag reader; none while the
+ * window cannot be had (USB-C earphones streaming, a test running). */
+void audio_rg_read(const fs_ref_t *ref, int kind, int32_t g[2])
+{
+    if (npx_ok())
+        GATE_V(ovl_get, OVL_NPX, npx_api_t, rg(ref, kind, g));
 }
 
 void ap_npx_tick(void)

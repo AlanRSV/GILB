@@ -51,6 +51,7 @@ typedef struct {
     int8_t eq_gain[10];          /* (right after eq: core B reads the 11 bytes, audio_shared.h eq_src) */
     uint8_t libdata;             /* libdata=sd|internal: where the library's lists and the card's index go
                                   * (services/lib.h LIB_DATA_*); written when not sd */
+    uint8_t rg;                  /* replaygain=off|track|album (core B reads it: audio_shared.h rg_src) */
 } config_t;
 enum { CFG_CPU_B_96 = 0, CFG_CPU_B_AUTO = 1, CFG_CPU_B_STOCK = 2 };
 #define CFG_DISPLAY_AUTO 4       /* = PANEL_PATH_AUTO (drivers/panel_io.h): the build's default path */

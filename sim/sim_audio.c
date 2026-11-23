@@ -7,7 +7,8 @@
  * in dB, what the Now Playing screen shows (audio_status). Each track is read out of the disk image
  * through the firmware's own file system (fs_open_ref/fs_read) into a temp file that ffprobe
  * describes and ffmpeg decodes to 48 kHz stereo; a decoder thread fills a ring that SDL's audio
- * callback drains. The EQ is not applied (core B's EQ isn't simulated).
+ * callback drains. The EQ is not applied (core B's EQ isn't simulated); ReplayGain is, as core B
+ * does (the track's factors from audio_rg_read, the mode read live from g_cfg.rg).
  */
 #define _GNU_SOURCE
 #include <errno.h>
@@ -27,6 +28,7 @@
 #include "audio/audio.h"
 #include "audio/audio_shared.h"
 #include "services/fs.h"
+#include "services/config.h"
 #include "services/log.h"
 #include "services/queue.h"
 
@@ -47,6 +49,7 @@ static uint64_t s_consumed;            /* device frames of this track played */
 static int s_paused;
 static float s_gain = 0.1f;            /* -40 dB, +20 dB for PC speakers (sim_audio_gain_db) */
 static int s_boost_db = 20;
+static int32_t s_rg[2];                /* the playing track's ReplayGain factors (Q4.28, 0 = none) */
 
 static SDL_AudioDeviceID s_dev;
 static int s_no_dev;                   /* no audio device: consumed in real time by the tick */
@@ -55,13 +58,18 @@ static void consume(int16_t *out, uint32_t frames)
 {
     uint32_t have, n, i;
 
+    float g = s_gain;
+    unsigned m = g_cfg.rg - 1u;
+
     pthread_mutex_lock(&s_mx);
+    if (m < 2u && s_rg[m])
+        g *= (float)s_rg[m] / (float)(1 << 28);
     have = s_wr - s_rd;
     n = s_paused ? 0 : frames < have ? frames : have;
     for (i = 0; i < n; i++) {
         uint32_t k = (s_rd + i) % RING_FRAMES * 2u;
         if (out) {
-            float l = s_ring[k] * s_gain, r = s_ring[k + 1] * s_gain;
+            float l = s_ring[k] * g, r = s_ring[k + 1] * g;
             out[2 * i] = (int16_t)(l > 32767.f ? 32767 : l < -32768.f ? -32768 : lrintf(l));
             out[2 * i + 1] = (int16_t)(r > 32767.f ? 32767 : r < -32768.f ? -32768 : lrintf(r));
         }
@@ -366,6 +374,15 @@ static int start_next(uint32_t start_ms)
         if (start_ms && t.frames && (uint64_t)start_ms * t.rate / 1000u >= t.frames)
             start_ms = (uint32_t)((uint64_t)(t.frames - 1u) * 1000u / t.rate);
         t.base = (uint32_t)((uint64_t)start_ms * t.rate / 1000u);
+        {
+            int32_t rg[2] = { 0, 0 };
+
+            audio_rg_read(&ref, kind, rg);
+            pthread_mutex_lock(&s_mx);
+            s_rg[0] = rg[0];
+            s_rg[1] = rg[1];
+            pthread_mutex_unlock(&s_mx);
+        }
         if (decoder_start(s_tmp, start_ms) != 0)
             return -1;
         s_track = t;

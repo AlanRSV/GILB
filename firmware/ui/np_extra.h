@@ -9,6 +9,8 @@
 
 #include <stdint.h>
 
+#include "services/fs.h"
+
 enum { NPV_COVER = 0, NPV_LYRICS, NPV_NEXT, NPV_COUNT };
 
 /* What Now Playing shows (ui/screens.c's N). */
@@ -25,7 +27,9 @@ typedef struct {
     void (*draw)(int v);               /* the body (BODY_Y .. the band) of view v */
     void (*tick)(void);                /* the lyrics redrawn when another line is due */
     void (*splash)(void);              /* the boot splash (startup/ap_ui.c) */
+    void (*rg)(const fs_ref_t *ref, int kind, int32_t g[2]);   /* ReplayGain (audio/rg_read.c) */
 } npx_api_t;
+void rg_read(const fs_ref_t *ref, int kind, int32_t g[2]);
 
 /* The boot splash's picture: SPLASH_PATH on Internal, DISPLAY_W x DISPLAY_H RGB565 little-endian,
  * rows top down, exactly SPLASH_BYTES, no header (cover56.rgb's format, full screen; Echo Library

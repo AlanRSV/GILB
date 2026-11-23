@@ -41,7 +41,7 @@
 #define AS_LLI            (AS_PCM_RING - 0x100u)   /* 8 x 28 B, just below the ring (SRAM ends at 0x030A0000) */
 
 #define AS_MAGIC          0x4F445541u   /* "AUDO" */
-#define AS_VERSION        14u
+#define AS_VERSION        15u
 #define AS_QUEUE          4u
 
 enum { AS_CODEC_FLAC = 1, AS_CODEC_WAV = 2, AS_CODEC_MP3 = 3, AS_CODEC_AIFF = 4, AS_CODEC_AAC = 5, AS_CODEC_ALAC = 6,
@@ -84,6 +84,8 @@ typedef struct {
                               * choice at queue time (services/cpuclk.c); B asks for it at its open */
     uint32_t eq;             /* A: the format's core-B instructions a frame (services/cpuclk.c, its
                               * estimate): B fits the EQ in what is left at the point (coreb/b_eq.c room) */
+    int32_t rg[2];           /* A: ReplayGain, the track's and the album's (Q4.28 factors, peak-limited;
+                              * 0 = no tag): B applies the one rg_src picks (player_audio.c audio_rg_read) */
 } as_track_t;
 
 typedef struct {
@@ -194,6 +196,9 @@ typedef struct {
     volatile uint32_t eq_src;        /* A: the system address of g_cfg.eq (11 bytes: mode, 10 gains) */
     volatile uint32_t eq_seq;        /* A */
     volatile uint32_t eq_ack;        /* B: the eq_seq in effect */
+    /* ReplayGain: the system address of g_cfg.rg (0 off, 1 track, 2 album); B reads it every decode
+     * step, so a change applies at once, the queued tracks included */
+    volatile uint32_t rg_src;        /* A */
 } audio_shared_t;
 
 /* hifi_mode: auto = the HIFI block for FLAC LPC, APE's NN filters and ALAC's LPC, each once its
