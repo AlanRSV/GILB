@@ -152,6 +152,8 @@ SECTIONS
             *lyrics.o(.text* .rodata*)
             *rg_read.o(.text* .rodata*)
             *tags_rg.o(.text* .rodata*)
+            *rtc_pcf8563.o(.text* .rodata*)
+            *clock_set.o(.text* .rodata*)
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */
@@ -163,8 +165,11 @@ SECTIONS
             *hifi_probe.o(.text* .rodata*)
             /* resident drivers' functions only these tests call: the DAC test, USB detect, BT listen,
                the HIFI probe */
-            *dac_cs43131.o(.text.dac_output_off .text.dac_i2s_feed)
-            *usb_msc_rknanoc.o(.text.usb_detect_state)
+            *dac_cs43131.o(.text.dac_output_off .text.dac_i2s_feed .text.dac_scan_result
+                           .text.dac_i2s_fifo_range .text.dac_get_hp_status .text.dac_read_reg)
+            *usb_msc_rknanoc.o(.text.usb_detect_state .text.usb_dwc2_init)
+            *sdcard.o(.text.sdcard_mounted)
+            *fs_target.o(.text.fs_stat .text.fs_rename)
             *audio.o(.text.audio_b_fresh)
             *clock_rknanoc.o(.text.time_cycles)
             *sd_selftest.o(.text* .rodata*)

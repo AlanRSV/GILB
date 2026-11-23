@@ -52,7 +52,9 @@ typedef struct {
     uint8_t libdata;             /* libdata=sd|internal: where the library's lists and the card's index go
                                   * (services/lib.h LIB_DATA_*); written when not sd */
     uint8_t rg;                  /* replaygain=off|track|album (core B reads it: audio_shared.h rg_src) */
+    uint8_t clock;               /* clock=12|24|off: the time in the header (services/wallclock.h) */
 } config_t;
+enum { CFG_CLOCK_12 = 0, CFG_CLOCK_24 = 1, CFG_CLOCK_OFF = 2 };
 enum { CFG_CPU_B_96 = 0, CFG_CPU_B_AUTO = 1, CFG_CPU_B_STOCK = 2 };
 #define CFG_DISPLAY_AUTO 4       /* = PANEL_PATH_AUTO (drivers/panel_io.h): the build's default path */
 #define CFG_BT_VOLUME_UNSET 127

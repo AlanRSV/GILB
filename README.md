@@ -46,7 +46,11 @@ the panel is 320×170).*
   if it's on Internal (320 × 170 RGB565 little-endian, 108,800 bytes; Echo Library makes it from any
   picture), else "RECHORD" and the build date.
 - **Header:** a status line on every screen with play state, volume, a Bluetooth icon while
-  earphones are linked, and the battery.
+  earphones are linked, the time, and the battery.
+- **Clock:** the player's battery-backed clock chip, kept running while it is off. Shown in the
+  header in 12- or 24-hour time (Settings > Display > Clock). Set from Echo Library (Player
+  settings > Player clock): it leaves the PC's time in `RECHORD/TIME.TXT`, which the player takes
+  as it leaves USB disk mode.
 - **Lists:** seven rows, with cursor memory per level.
 - **Now Playing:** shows the cover tile, title, artist and album, format and rate badges, bit
   rate, progress, and the next track. Tap BACK to switch views:
@@ -109,7 +113,7 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | VOP + DMA display path (display=dma), seek (VOL 2x + hold), fast boot | device (2026-10-18) |
 | USB-C earphones | QEMU |
 | 8 GB board: boot, eMMC (on a 1-bit bus), playback, USB disk, ReChord's own updater | device, 8 GB (2026-11-23) |
-| Lyrics and Up Next views, boot splash, ReplayGain | device, 8 GB (2026-11-23) |
+| Lyrics and Up Next views, boot splash, ReplayGain, the clock | device, 8 GB (2026-11-23) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
@@ -124,7 +128,6 @@ document). Keep maskrom recovery at hand.
 - boot: the first folder listing (~0.5 s) and the USB wake (~0.9 s)
 - an on-device self-test mode
 - hardware decoding
-- a Bluetooth control channel
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 

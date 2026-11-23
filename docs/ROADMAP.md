@@ -48,6 +48,7 @@ published yet.
 | Now Playing's Lyrics (tags or .lrc, timed or plain) and Up Next views, album covers made on the PC, boot splash (`RECHORD/SPLASH.RGB`) | device, 8 GB (2026-11-23) |
 | ReplayGain on core B (Off / Track / Album, tags of every format with tags, peak-limited, sample-exact at gapless boundaries) | device, 8 GB (2026-11-23); simulator |
 | `REVERSE_LISTS=1` builds: VOL- moves up in lists | device, 8 GB (2026-11-23) |
+| Clock: the battery-backed PCF8563-type chip on I2C1 (GPIO2.12/2.13, as stock uses it), read at boot, the time in the header (12/24-hour, off), set from Echo Library's `RECHORD/TIME.TXT` | device, 8 GB (2026-11-23); simulator |
 | Desktop simulator (the firmware's UI, library and player on a PC) | Linux, WSL |
 
 ## The recovery path comes first
@@ -81,12 +82,11 @@ Nothing in ReChord may change what the ROM sees on that path:
 - Library follow-ups: Years and Composers views.
 - Settings and the resume point in a double-buffered, checksummed record that survives a power
   cut mid-write; the log appended and rotated.
-- A real-time clock, a persistent queue across power-off, hold-to-boot, and a battery-empty
-  shutdown.
+- A persistent queue across power-off, hold-to-boot, and a battery-empty shutdown.
 - 8 GB board: why its eMMC's 8- and 4-bit reads fail (it runs on 1 bit).
 - A spectrum view.
-- Settings from a phone or a computer. Open question: the stock Bluetooth module has no data
-  channel.
+- Settings from a phone: not through Bluetooth. The JieLi module's firmware is closed, it is an
+  audio source only (never discoverable, no LE), and nothing can update it; dropped (2026-11-23).
 
 ### 3. Bluetooth follow-ups
 - Whether the module answers status polls on a link that came from `CH06`.

@@ -8,7 +8,7 @@
  * The Library's own screens are in the library overlay (ui/lib_ui.c); its Home row, Now Playing's
  * favourite / playlist rows and the Library data setting are here; the EQ's Custom bands are in
  * ui/eq_page.c.
- * Not built yet, so not in the tree (no dead rows): volume limit, sleep timer, clock,
+ * Not built yet, so not in the tree (no dead rows): volume limit, sleep timer,
  * Visualizer, Key guide.
  */
 #include <stdio.h>
@@ -19,6 +19,7 @@
 #include "ui.h"
 #include "audio/audio.h"
 #include "drivers/board.h"
+#include "services/wallclock.h"
 #include "drivers/bt_jieli.h"
 #include "drivers/clock.h"
 #include "drivers/usb_uac.h"
@@ -244,6 +245,7 @@ void nav_header(hdr_t *h)
     h->lock = (uint8_t)g_locked;
     h->batt = (uint8_t)(b->pct10 / 10u > 100u ? 100u : b->pct10 / 10u);
     h->charging = b->vbus && !b->full;
+    wallclock_text(h->clock, sizeof h->clock);
 }
 
 /* ---- Home --------------------------------------------------------------------------------------- */
@@ -1698,6 +1700,7 @@ static const char *const n_usb[] = { "Ask", "USB disk", "USB DAC", "Charge only"
 static const char *const n_vbus[] = { "Port", "GPIO2.1" };
 static const char *const n_dacp[] = { "Battery", "Charge", "Power only" };
 static const char *const n_rg[] = { "Off", "Track", "Album" };
+static const char *const n_clock[] = { "12-hour", "24-hour", "Off" };
 /* -- library (one block: docs/MERGE_NOTES_library.md) -- */
 static const char *const n_libdata[] = { "SD card", "Internal" };
 static void apply_libdata(void) { g_lib.data = g_cfg.libdata; ap_lib_data_changed(); }
@@ -1726,6 +1729,8 @@ static const set_t g_display[] = {
     { ICON_SUN, S_THEME, 0, 0, "Theme", &g_cfg.theme },
     { ICON_SUN, S_SLIDER, 8, 8, "Brightness", &g_cfg.brightness, 0, apply_bright },
     { ICON_MOON, S_CHOICE, 5, 1, "Screen off after", &g_cfg.screen_off, n_screen },
+    /* the time in the header; set from Echo Library (services/clock_set.c) */
+    { ICON_INFO, S_CYCLE, 3, CFG_CLOCK_12, "Clock", &g_cfg.clock, n_clock },
 };
 extern const page_t pg_batt, pg_about, pg_diag, pg_dev;
 static const set_t g_power[] = {

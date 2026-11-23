@@ -28,7 +28,10 @@ typedef struct {
     void (*tick)(void);                /* the lyrics redrawn when another line is due */
     void (*splash)(void);              /* the boot splash (startup/ap_ui.c) */
     void (*rg)(const fs_ref_t *ref, int kind, int32_t g[2]);   /* ReplayGain (audio/rg_read.c) */
+    void (*clock)(void);               /* the time of day (services/clock_set.c) */
 } npx_api_t;
+void npx_clock(void);
+void ap_npx_clock(void);               /* startup/ap_ovl.c: at boot and after a USB disk session */
 void rg_read(const fs_ref_t *ref, int kind, int32_t g[2]);
 
 /* The boot splash's picture: SPLASH_PATH on Internal, DISPLAY_W x DISPLAY_H RGB565 little-endian,

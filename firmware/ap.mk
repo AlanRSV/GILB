@@ -131,6 +131,9 @@ AP_SERVICE_SRCS := \
   firmware/ui/np_extra.c \
   firmware/audio/rg_read.c \
   firmware/services/tags_rg.c \
+  firmware/drivers/rtc_pcf8563.c \
+  firmware/services/clock_set.c \
+  firmware/services/wallclock.c \
   firmware/services/lib_plat.c
 
 # Theme module (same set as $(THEME_SRCS) in firmware/theme/theme.mk).

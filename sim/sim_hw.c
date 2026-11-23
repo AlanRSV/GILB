@@ -20,6 +20,7 @@
 #include "sim.h"
 
 #include "drivers/board.h"
+#include "drivers/rtc.h"
 #include "drivers/clock.h"
 #include "drivers/panel_io.h"
 #include "drivers/dac_cs43131.h"
@@ -373,3 +374,37 @@ void __real_usb_out_stream_start(void) { }
 void __real_usb_out_stream_stop(void) { }
 int __real_usb_out_streaming(void) { return 0; }
 void __real_usb_uac_key(int key) { }
+
+/* ---- the clock chip (drivers/rtc.h): the PC's local time, plus what a write moved it by ---------- */
+
+static long s_rtc_off;
+
+int rtc_read(rtc_time_t *t)
+{
+    time_t now = time(NULL) + s_rtc_off;
+    struct tm tm;
+
+    localtime_r(&now, &tm);
+    t->year = (uint16_t)(tm.tm_year + 1900);
+    t->mon = (uint8_t)(tm.tm_mon + 1);
+    t->day = (uint8_t)tm.tm_mday;
+    t->hour = (uint8_t)tm.tm_hour;
+    t->min = (uint8_t)tm.tm_min;
+    t->sec = (uint8_t)tm.tm_sec;
+    return 0;
+}
+
+int rtc_write(const rtc_time_t *t)
+{
+    struct tm tm = { 0 };
+
+    tm.tm_year = t->year - 1900;
+    tm.tm_mon = t->mon - 1;
+    tm.tm_mday = t->day;
+    tm.tm_hour = t->hour;
+    tm.tm_min = t->min;
+    tm.tm_sec = t->sec;
+    tm.tm_isdst = -1;
+    s_rtc_off = (long)(mktime(&tm) - time(NULL));
+    return 0;
+}

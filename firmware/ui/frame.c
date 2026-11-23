@@ -201,7 +201,7 @@ static void draw_hold(void)
 
 /* ---- the header --------------------------------------------------------------------------------- */
 
-enum { FD_TITLE, FD_PLAY, FD_LOCK, FD_OUT, FD_VOL, FD_BATT, NFD };
+enum { FD_TITLE, FD_PLAY, FD_LOCK, FD_OUT, FD_VOL, FD_BATT, FD_CLOCK, NFD };
 typedef struct { int16_t x0, x1; uint32_t sig; } fld_t;
 
 static hdr_t s_h;
@@ -248,6 +248,15 @@ static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
         ui_text(&font_s8, x - w - 3, 13, w, 0, pct, t->text_dim, HY0, HY1);
     }
     x -= w + 3;
+    if (h->clock[0]) {                     /* the time, left of the battery */
+        w = text_width(&font_s8, h->clock, -1);
+        x -= w + 8;
+        f[FD_CLOCK].x0 = (int16_t)x;
+        f[FD_CLOCK].x1 = (int16_t)(x + w - 1);
+        f[FD_CLOCK].sig = hs(2166136261u, h->clock);
+        if (draw)
+            ui_text(&font_s8, x, 13, w, 0, h->clock, t->text_dim, HY0, HY1);
+    }
     w = text_width(&font_b13, h->vol, -1);
     x -= w + 8;
     f[FD_VOL].x0 = (int16_t)x;

@@ -505,6 +505,7 @@ static void usb_session(void)
     snprintf(s_usb, sizeof s_usb, "x%d r%uM w%uM", r, (unsigned)(rd >> 11), (unsigned)(wr >> 11));
     log_printf("usb: disk session ended: exit %d, read %u MB, written %u MB, cable %d", r,
                (unsigned)(rd >> 11), (unsigned)(wr >> 11), usb_cable());
+    ap_npx_clock();                      /* Echo Library may have left the PC's time (TIME.TXT) */
     if (config_reload_if_changed()) {    /* the PC's edit wins over our copy (services/config.c) */
         queue_set_mode(g_cfg.play);
         audio_set_volume_db(g_cfg.volume == CFG_VOLUME_MUTE ? -90 : g_cfg.volume);
@@ -1339,6 +1340,7 @@ void ap_ui_loop(void)
      * the moment storage and the fonts are in (about 0.18 s) until the first frame, which waits for
      * SPLASH_MS. Drawn by the npx overlay (ui/np_extra.c: the code budget). */
     ap_npx_splash();
+    ap_npx_clock();                      /* (the overlay is in for the splash: ~2 ms) */
     bootcrumb(BC_SLOTS);
     if (s_user) {         /* a slot left invalid (an update cut short): copied from the good one */
         int r;

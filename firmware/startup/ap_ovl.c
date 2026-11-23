@@ -425,7 +425,7 @@ int ap_lib_tags(uint32_t (*rd)(void *, uint32_t, void *, uint32_t), void *u, uin
 void npx_draw(int v);
 void npx_tick(void);
 void npx_splash(void);
-static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg_read };
+static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg_read, npx_clock };
 OVL_HEADER(npx, OVL_NPX, &k_npx);
 
 /* Not while USB-C earphones hold the window (loading the views would stop them), as for libtag;
@@ -475,6 +475,13 @@ void audio_rg_read(const fs_ref_t *ref, int kind, int32_t g[2])
 {
     if (npx_ok())
         GATE_V(ovl_get, OVL_NPX, npx_api_t, rg(ref, kind, g));
+}
+
+/* The time of day: the clock chip, or Echo Library's TIME.TXT (services/clock_set.c). */
+void ap_npx_clock(void)
+{
+    if (npx_ok())
+        GATE_V(ovl_get, OVL_NPX, npx_api_t, clock());
 }
 
 void ap_npx_tick(void)

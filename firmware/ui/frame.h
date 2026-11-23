@@ -60,6 +60,7 @@ typedef struct {
     char title[96];               /* or the NP position "1 / 24" */
     char elapsed[8];
     char vol[16];                 /* "−32", "BT −20" */
+    char clock[10];               /* "3:42 PM", "15:42", "" (services/wallclock.h) */
 } hdr_t;
 void frame_status(const hdr_t *h);        /* compares field by field */
 
