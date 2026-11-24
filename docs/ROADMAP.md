@@ -109,8 +109,8 @@ Nothing in ReChord may change what the ROM sees on that path:
   audio source only (never discoverable, no LE), and nothing can update it; dropped (2026-11-23).
 
 ### 3. Bluetooth follow-ups
-- Whether the module answers status polls on a link that came from `CH06` (never seen on the device:
-  everyday use and auto-reconnect fine, 2026-11-24; the log shows it if it ever happens).
+- (Whether the module answers status polls on a link that came from `CH06`: dropped 2026-11-24, never
+  seen on the device; everyday use and auto-reconnect are fine, and the log would show it.)
 
 ## Sources
 
