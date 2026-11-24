@@ -71,7 +71,9 @@ the panel is 320×170).*
   uses the LCD colours (navy on pale blue-grey) everywhere and its own Now Playing, in GILB's own
   bold pixel font (drawn in `tools/gilb_pixfont.py`; a line with accented letters falls back to Noto Sans): "3 of 12" over
   the cover, the cover in the screen's two colours, title, artist, album and year beside it, an
-  outlined progress bar, the times at its ends and the bit rate between them. The Theme setting
+  outlined progress bar, the times at its ends and the bit rate between them. Its header shows the
+  play state and the volume in dB at the left, the battery in % at the right; on other screens the
+  title is in the pixel font too. The Theme setting
   stays Modern's.
 - **Now Playing:** shows the cover tile, title, artist and album, format and rate badges, bit
   rate, progress, and the next track. Tap BACK to switch views:

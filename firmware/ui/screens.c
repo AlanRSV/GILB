@@ -226,6 +226,7 @@ void nav_header(hdr_t *h)
         snprintf(h->title, sizeof h->title, "%u / %u", st.seq ? (unsigned)st.track.index + 1u : 0u,
                  (unsigned)queue_count());
         h->mode_icon = (uint8_t)mode_icon();
+        h->play = ps == PLAYER_PLAYING ? 1 : ps == PLAYER_PAUSED ? 2 : 0;   /* (Look: Retro shows it: ui/frame.c) */
     } else if (p) {
         if (p->title_fn)
             p->title_fn(h->title, sizeof h->title);

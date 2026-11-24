@@ -9,6 +9,7 @@
 #include "frame.h"
 #include "ui.h"
 #include "services/input.h"
+#include "services/config.h"
 
 /* ---- drawing helpers ---------------------------------------------------------------------------- */
 
@@ -228,42 +229,61 @@ static void battery(int x, int y, int pct, int charging)
 #define HY0 HDR_Y
 #define HY1 (HOLD_Y - 1)
 
+/* Look: Retro (services/config.h): its pixel font for the header's text, the line's own font when
+ * it holds what PX lacks (a "·", accents); on Now Playing the play state and the volume at the left
+ * (the position is in Retro's body: ui/retro.c). */
+static const font_t *hf(const char *s, const font_t *modern)
+{
+    if (!g_cfg.look)
+        return modern;
+    for (; *s; s++)
+        if ((unsigned char)*s >= 0x80u)
+            return modern;
+    return &font_px;
+}
+
 /* Lay the header out right to left (and draw it when draw): each field's span and signature. */
 static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
 {
     const theme_t *t = T;
     char pct[8];
-    int x = 312 - 19, w, tx;
+    int x = 312 - 19, w, tx, rnp = g_cfg.look && h->np, hb = g_cfg.look ? HB + 1 : HB;
+    const font_t *fs;
 
     memset(f, 0, NFD * sizeof *f);
     for (int i = 0; i < NFD; i++)
         f[i].x0 = 1, f[i].x1 = 0;          /* (empty) */
     snprintf(pct, sizeof pct, "%u%%", h->batt);
-    w = text_width(&font_s8, pct, -1);
+    fs = hf(pct, &font_s8);
+    w = text_width(fs, pct, -1);
     f[FD_BATT].x0 = (int16_t)(x - w - 3);
     f[FD_BATT].x1 = 312;
     f[FD_BATT].sig = h->batt | (uint32_t)h->charging << 8 | 1u << 16;
     if (draw) {
         battery(x, 5, h->batt, h->charging);
-        ui_text(&font_s8, x - w - 3, 13, w, 0, pct, t->text_dim, HY0, HY1);
+        ui_text(fs, x - w - 3, g_cfg.look ? hb : 13, w, 0, pct, t->text_dim, HY0, HY1);
     }
     x -= w + 3;
     if (h->clock[0]) {                     /* the time, left of the battery */
-        w = text_width(&font_s8, h->clock, -1);
+        fs = &font_s8;                     /* (the compact fonts here: Retro's pixel font is wide) */
+        w = text_width(fs, h->clock, -1);
         x -= w + 8;
         f[FD_CLOCK].x0 = (int16_t)x;
         f[FD_CLOCK].x1 = (int16_t)(x + w - 1);
         f[FD_CLOCK].sig = hs(2166136261u, h->clock);
         if (draw)
-            ui_text(&font_s8, x, 13, w, 0, h->clock, t->text_dim, HY0, HY1);
+            ui_text(fs, x, 13, w, 0, h->clock, t->text_dim, HY0, HY1);
     }
-    w = text_width(&font_b13, h->vol, -1);
-    x -= w + 8;
-    f[FD_VOL].x0 = (int16_t)x;
-    f[FD_VOL].x1 = (int16_t)(x + w - 1);
-    f[FD_VOL].sig = hs(2166136261u, h->vol);
-    if (draw)
-        ui_text(&font_b13, x, HB, w, 0, h->vol, t->text, HY0, HY1);
+    if (!rnp) {                            /* (Retro's Now Playing: at the left, below) */
+        fs = &font_b13;
+        w = text_width(fs, h->vol, -1);
+        x -= w + 8;
+        f[FD_VOL].x0 = (int16_t)x;
+        f[FD_VOL].x1 = (int16_t)(x + w - 1);
+        f[FD_VOL].sig = hs(2166136261u, h->vol);
+        if (draw)
+            ui_text(fs, x, HB, w, 0, h->vol, t->text, HY0, HY1);
+    }
     x -= 13;
     f[FD_OUT].x0 = (int16_t)x;
     f[FD_OUT].x1 = (int16_t)(x + 11);
@@ -279,10 +299,11 @@ static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
             ui_icon(ICON_LOCK, x, 4, t->warn);
     }
     if (!h->np && h->play) {
-        w = text_width(&font_b13, h->elapsed, -1);
+        fs = &font_b13;
+        w = text_width(fs, h->elapsed, -1);
         x -= w + 8;
         if (draw)
-            ui_text(&font_b13, x, HB, w, 0, h->elapsed, t->text_dim, HY0, HY1);
+            ui_text(fs, x, HB, w, 0, h->elapsed, t->text_dim, HY0, HY1);
         x -= 13;
         f[FD_PLAY].x0 = (int16_t)x;
         f[FD_PLAY].x1 = (int16_t)(x + 13 + w);
@@ -294,9 +315,26 @@ static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
     f[FD_TITLE].x0 = 0;
     f[FD_TITLE].x1 = (int16_t)x;
     f[FD_TITLE].sig = hs(h->icon | (uint32_t)h->np << 8 | (uint32_t)h->mode_icon << 16 | (uint32_t)x << 24, h->title);
+    if (rnp)                               /* (Retro: the play state and the volume are its title) */
+        f[FD_TITLE].sig = hs(f[FD_TITLE].sig ^ h->play, h->vol);
     if (!draw)
         return;
     tx = 5;
+    if (rnp) {                             /* "> -3dB", as an old LCD player's */
+        char v[20], *o = v;
+
+        if (h->play)
+            ui_icon(h->play == 1 ? ICON_PLAY : ICON_PAUSE, 5, 4, t->text);
+
+        for (const char *s = h->vol; *s && o < v + sizeof v - 3; s++)
+            if ((unsigned char)s[0] == 0xE2u && (unsigned char)s[1] == 0x88u && (unsigned char)s[2] == 0x92u)
+                *o++ = '-', s += 2;       /* (U+2212, the minus PX lacks: a hyphen) */
+            else
+                *o++ = *s;
+        memcpy(o, "dB", 3);
+        ui_text(hf(v, &font_m13), 22, hb, x - 22, 0, v, t->text, HY0, HY1);
+        return;
+    }
     if (h->np) {
         ui_icon(ICON_NOTE, 5, 4, t->text_dim);
         tx = 22 + ui_text(&font_m13, 22, HB, x - 22, 0, h->title, t->text, HY0, HY1) + 6;
@@ -308,7 +346,7 @@ static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
         ui_icon(h->icon, 5, 4, t->text_dim);
         tx = 22;
     }
-    ui_text(&font_m13, tx, HB, x - tx, 0, h->title, t->text, HY0, HY1);
+    ui_text(hf(h->title, &font_m13), tx, hb, x - tx, 0, h->title, t->text, HY0, HY1);
 }
 
 void frame_status(const hdr_t *h)
