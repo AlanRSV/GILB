@@ -137,7 +137,8 @@ bus, as stock does; if a wide bus ever fails, the 8 GB build falls back to 1 bit
 that document). Keep maskrom recovery at hand.
 
 **Next:**
-- hardware decoding (the HIFI block's FFT for AAC, Vorbis and WMA: the Developer > HIFI probe first)
+- nothing planned: the HIFI probe (2026-11-24) showed the block's FFT output cannot be read, so
+  AAC, Vorbis and WMA stay in software (docs/HIFI_PLAN.md §4.5)
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 

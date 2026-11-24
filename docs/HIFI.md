@@ -4,8 +4,10 @@ ReChord uses the block for the three things stock MINIV390 uses it for, on core 
 stock's decoder for it does: **FLAC's LPC restore** (§3), **APE's NN filters** (§3b) and **ALAC's
 adaptive LPC** (§3c), each with a self-test, a bounded wait, a check of its jobs against the
 decoder's own software and that software behind it. RECHORD.CFG `hifi=auto|off|verify` (default
-`auto`) covers all three. Nothing here has been measured on the device yet; section 7 lists what
-the next flash must measure and the log lines that carry it.
+`auto`) covers all three. Measured on the device (8 GB, 2026-11-24, HIFI_PLAN.md §4.5): the FLAC
+function is bit-exact and 6-14x faster than core B's own restore, on core B's clock; the block's FFT
+finishes but its output cannot be read back, so no FFT use. Section 7 lists what was asked of the
+device and the log lines that carry it.
 
 Code: `firmware/coreb/b_hifi.c` (the block, FLAC), `b_hifi_fn.c` / `b_hifi_fn.h` (what APE and ALAC
 share), `b_hifi_ape.c`, `b_hifi_alac.c`; the decoders' side `b_flac.c`, `b_ape.c` (+ libdemac's

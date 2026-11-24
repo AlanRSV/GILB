@@ -329,6 +329,33 @@ One run of Developer > HIFI probe (test), then the log through the decoder. No s
 | MAC's operands, width, accumulation, done flag, speed | `hfp: mac` | MAC's future use (no decode path today: §2.4) |
 | No stall, no timeout | `hfp: end ... timeouts 0` × 4, `hfp: done` | the block's safety under these sequences |
 
+### 4.5 The device's answers (8 GB unit, 2026-11-24) [device]
+
+One run of the probe (159 lines; an older run in the same ECHOLOG.TXT gave the same CRCs). No stall:
+four `end` lines and `hfp: done`.
+
+- **cpi** (9000 instructions each, the same cycles at every clock): ALU 1.11 cycles, loads 1.34,
+  stores 1.22. Loads from core A's SRAM (the input ring) cost a fixed time, not cycles: 11.8 cycles
+  at 96 MHz, 7.7 at 48, 5.3 at 24, 4.4 at 12 (about 110 ns, then 2-4 cycles). So section 1's counts
+  run about 1.1-1.35x slower on the device; a format just under a step boundary in QEMU (MP3 320 at
+  28.8 M insn/s, DSD64 at 85.8) is likely a step higher on the device.
+- **flac**: every job `ok`, bit-exact. The block's restore against core B's own: 16-bit order 8
+  53677 vs 421230 cycles (7.8x), order 12 8.6x, n 256 6.9x, order 3 5.9x; 24-bit (against the
+  64-bit loop) order 8 11x, order 32 13.7x. The same cycle counts at all four clocks: the block runs
+  on core B's clock. FLAC-on-HIFI (`hifi=auto`, the default) stays.
+- **win / fft**: every FFT job (64..1024, forward and inverse, 5 vectors) finishes (`done`, INTSR
+  bit 15, start A), in about 10 cycles a point, but **its output is not readable**: every dumped
+  output is one word repeated over the whole window (the impulse at 0 gives 0 everywhere, the
+  impulse at 1 gives 0x4000 everywhere, DC gives 1 / 8), and forward and inverse give the same
+  CRC for the impulses and DC. The window test read back in the first pass but returned one fixed
+  word for all 1024 addresses in the three timing passes (`bad 1024`). Whatever the block computes,
+  the CPU does not see a transform. Nothing in the SDK or any stock firmware reads FFT results, so
+  there is no reference to follow. **The FFT is not usable: AAC, Vorbis, WMA and Opus stay in
+  software** (section 5's rows 4, 5, 9, 10 and 12 close).
+- **mac**: jobs alternate done / timeout whatever the order (1 done, 2 timeout, 3 done, 8 timeout,
+  ...): the block wants a clear between jobs that the SDK does not show. No decode path uses MAC
+  (§2.4). Each timeout was bounded, reset and gated as designed.
+
 ## 5. The ranked plan (benefit to the user: battery and governor steps on real music)
 
 The order assumes the probe answers favourably where marked. "Now" means done on this branch. Rows
