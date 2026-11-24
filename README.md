@@ -134,7 +134,7 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | 8 GB board: boot, eMMC on the 8-bit bus, playback, ReChord's own updater; USB disk at high speed (writes 5.7-5.9 MB/s, reads 8 MB/s) | device, 8 GB (2026-11-23) |
 | Lyrics, Up Next and Spectrum views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
 | Boot: first screen at 0.48 s, a resumed track playing at 0.6 s; the USB wake in steps (no freeze); the microSD card (exFAT, 4-bit) | device, 8 GB (2026-11-23) |
-| Library > Years, the album grid's year (and its Album grid setting), hold-to-boot, the Self-test; the HIFI probe (FLAC block kept, FFT unusable) | device, 8 GB (2026-11-24) |
+| Library > Years, the album grid's year (and its Album grid setting), hold-to-boot, the Self-test, the Pink theme and theme files (RECHORD/THEMES, Refresh themes); the HIFI probe (FLAC block kept, FFT unusable) | device, 8 GB (2026-11-24) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
@@ -210,7 +210,7 @@ firmware/
   services/  config, log, input and gestures, FAT/exFAT, tags, queue, updater, boot guard
   audio/     core A's audio engine, container parsers (MP4, ASF, APE)
   coreb/     core B runtime and decoders
-  theme/     theme tokens and the built-in themes
+  theme/     theme tokens, the built-in themes, theme files (RECHORD/THEMES)
 docs/        ROADMAP (start here), BT_DEVICE_NOTES, BOARD_DIFF_512M, hardware and RE notes
 ```
 
@@ -239,7 +239,7 @@ That machine and the suite live in a separate repository, not published yet.
   - **This fork** ([AlanRSV/ReChord](https://github.com/AlanRSV/ReChord), from 2026-11) brings it to
     the 8 GB board (the storage layout, the 8-bit eMMC bus), and adds ReplayGain, the clock, the
     queue kept across power-off, Now Playing's Lyrics, Up Next and Spectrum views, the album
-    cover grid, Library > Years, the boot splash, hold-to-boot, the Self-test, high-speed USB disk,
+    cover grid, Library > Years, the boot splash, hold-to-boot, the Self-test, the Pink theme and theme files, high-speed USB disk,
     the reversed list keys and the desktop simulator, and ran the HIFI probe on the device; written
     with Claude (Anthropic), as the commits' co-author lines say.
 - **The stock firmware is the main source.** We disassembled and decompiled the official
