@@ -55,6 +55,7 @@ published yet.
 | Library > Albums as a 2 x 2 cover grid (ui/nav.c PK_GRID: the list's model, drawn in the viz overlay; each visible album's cover56.rgb streamed from its file while the screen is flushed) | device, 8 GB (2026-11-23); simulator |
 | The grid's cells: the cover and the year, or the name too (Settings > Display > Album grid, `album_grid=year\|name`) | device, 8 GB (2026-11-24); simulator |
 | Library > Years: the years newest first (none last), each its albums; hold PLAY plays a year (lib_build.c S6: the YEARALB and YEARS sections, index version 3, rebuilt once) | device, 8 GB (2026-11-24); simulator (whole build and merge) |
+| Hold-to-boot: POWER held about 1 s starts the player, a tap switches it back off (startup/ap_ui.c power_hold_check; not with a cable, VOL+/VOL- or after a fault) | device, 8 GB (2026-11-24) |
 | Boot on the 8 GB unit: first screen 0.48 s, a resumed track heard at 0.6 s. The USB wake (the probe's sequence that lets a later cable be seen, ~0.9 s) runs in steps between passes (usb_probe_start/step/abort): no freeze, the cable still seen; stopped and tried again if playback starts meanwhile. The microSD slot: a 128 GB exFAT card up at 0.71 s, 4-bit (an empty slot reads 'card in' and its init fails, -5: harmless) | device, 8 GB (2026-11-23); simulator |
 | Desktop simulator (the firmware's UI, library and player on a PC) | Linux, WSL |
 
@@ -89,10 +90,11 @@ Nothing in ReChord may change what the ROM sees on that path:
   none read idle past 10 ms, the driver's 20 ms can be 10.
 
 ### 2. Features
-- Library follow-up: a Composers view (the composer tag is not in the index yet).
+- Library follow-up: a Composers view (the composer tag is not in the index yet; set aside 2026-11-24: of
+  little use outside classical and soundtracks).
 - Settings and the resume point in a double-buffered, checksummed record that survives a power
   cut mid-write; the log appended and rotated.
-- Hold-to-boot. (The battery-empty shutdown is done: power.c's 3.45 V cut-off, "Battery low".)
+- (Hold-to-boot: done, see Status. The battery-empty shutdown too: power.c's 3.45 V cut-off, "Battery low".)
 - Settings from a phone: not through Bluetooth. The JieLi module's firmware is closed, it is an
   audio source only (never discoverable, no LE), and nothing can update it; dropped (2026-11-23).
 

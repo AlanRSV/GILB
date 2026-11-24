@@ -1196,6 +1196,30 @@ static void boot_key_sample(void)
     }
 }
 
+/* Hold-to-boot (the user, 2026-11-24): a tap of POWER (a bump in a pocket) switches the player
+ * straight back off; POWER held to ~0.8 s of our clock (about 1 s from the press) starts it, the
+ * splash up meanwhile. Not with VOL+/VOL- held (their own choices), a cable in (charging), or
+ * after a fault (recovery's). The simulator has no POWER at its start. */
+static void power_hold_check(void)
+{
+#ifndef RECHORD_SIM
+    bootguard_rec_t rec;
+    uint32_t off = 0;
+
+    if (s_boot_key != KEY_NONE || usb_cable() || bootguard_crashed(&rec))
+        return;
+    while (time_ms() < 800u) {
+        off = keys_power() ? 0u : off + 1u;
+        if (off >= 3u) {                 /* (30 ms of let go: not a glitch) */
+            log_printf("power: POWER let go at %u ms: off again", (unsigned)time_ms());
+            log_flush("tap");
+            board_power_off();
+        }
+        cpu_wait_tick();
+    }
+#endif
+}
+
 /* Recovery (services/bootguard.h): right after the storage is up and before anything else
  * runs, when the last boot ended in a fault or VOL+ is held at power-on. Only the pieces
  * every way back needs: the updater and USB disk. */
@@ -1363,6 +1387,7 @@ void ap_ui_loop(void)
      * SPLASH_MS. Drawn by the npx overlay (ui/np_extra.c: the code budget). */
     ap_npx_splash();
     ap_npx_clock();                      /* (the overlay is in for the splash: ~2 ms) */
+    power_hold_check();
     bootcrumb(BC_SLOTS);
     if (s_user) {         /* a slot left invalid (an update cut short): copied from the good one */
         int r;
