@@ -5,30 +5,39 @@
 both boards: ReChord's 512 MB line is its author's daily firmware on a **512 MB** unit, and this fork
 runs on an **8 GB** unit since 2026-11-23. It was renamed from ReChord to GILB on 2026-11-24.
 
-ReChord was started by Bruno Moraga ([brnomt/ReChord](https://github.com/brnomt/ReChord)); the
-firmware GILB builds on was written by dragarok ([dragarok/ReChord](https://github.com/dragarok/ReChord));
-this repository is a fork of dragarok's. Who did what: [Sources and acknowledgements](#sources-and-acknowledgements).
+The first custom firmware for the Echo Mini is [**RECHO**](https://recho.atzkey.workers.dev), by
+its creator **miauk** ([Ko-fi](https://ko-fi.com/miauk)): it proved what this player can do, and
+ReChord's authors learned from it by decompiling it, alongside the stock firmware. ReChord was
+started by Bruno Moraga ([brnomt/ReChord](https://github.com/brnomt/ReChord)); the firmware GILB
+builds on was written by dragarok ([dragarok/ReChord](https://github.com/dragarok/ReChord)); this
+repository is a fork of dragarok's. Who did what, and what GILB owes RECHO: [Credits](#credits).
 
 **Coming from ReChord?** Install GILB over it as any update. At its first start GILB moves its files
 to their new names: `RECHORD/` becomes `GILB/` (the library's index, playlists, the queue, the splash,
 themes; on the microSD card too, when it is first read) and `RECHORD.CFG` becomes `GILB.CFG`.
 Nothing needs setting up again.
 
+<p><b>Modern</b> (here in the Pink theme)</p>
 <p>
-<img src="docs/images/np_hires.png" width="320" alt="Now Playing: a 24/96 FLAC with its badges, bit rate and progress">
-<img src="docs/images/music.png" width="320" alt="A folder list with a Devanagari folder name">
+<img src="docs/images/modern_np.png" width="320" alt="Modern Now Playing in the Pink theme: a 24/96 FLAC with its cover, badges, bit rate and progress">
+<img src="docs/images/modern_albums.png" width="320" alt="Modern Library > Albums: a 2 x 2 grid of covers with their years">
 </p>
 <p>
-<img src="docs/images/bt_home.png" width="320" alt="Home with the Bluetooth icon in the header while AirPods are connected">
-<img src="docs/images/np_options.png" width="320" alt="The Options sheet over Now Playing">
+<img src="docs/images/modern_home.png" width="320" alt="Modern Home: Now Playing, Folders, Library, Queue, Bluetooth, USB, Settings">
+<img src="docs/images/modern_album.png" width="320" alt="Modern album page: track numbers, titles and lengths">
+</p>
+<p><b>Retro</b> (Settings › Display › Look)</p>
+<p>
+<img src="docs/images/retro_np.png" width="320" alt="Retro Now Playing: the cover in two colours, title, artist, album and year in the pixel font, an outlined progress bar">
+<img src="docs/images/retro_albums.png" width="320" alt="Retro Library > Albums: tinted covers and years in the pixel font">
 </p>
 <p>
-<img src="docs/images/track_info.png" width="320" alt="Track info: format, length, queue position">
-<img src="docs/images/theme_paper.png" width="320" alt="The Paper theme, previewed live">
+<img src="docs/images/retro_home.png" width="320" alt="Retro Home in the pixel font, the cursor's row inverted">
+<img src="docs/images/retro_library.png" width="320" alt="Retro Library list with pixel chevrons and an outlined scrollbar">
 </p>
 
-*Screenshots are QEMU renders of the same firmware image that runs on the device (2x scale;
-the panel is 320×170).*
+*Screenshots from the desktop simulator, which runs the firmware's own UI code (2x scale; the panel
+is 320×170), with a demo library of invented artists and albums.*
 
 ## What it does
 
@@ -187,8 +196,10 @@ Stock goes back the same way.
 ```bash
 export PATH=<arm-gnu-toolchain>/bin:$PATH
 make cfw-ap -j8                               # core A: build/cfw/rechord_ap.elf
-make cfw-img FONT_IMG=<stock MINIV390.IMG>    # + core-B codec images and the fonts module
+make cfw-img FONT_IMG=<stock MINIV390.IMG> \
+             REF_IMG=<RECHO 0.10.1 HIFIEC90.IMG>   # + core-B codec images and the fonts module
 # -> build/MINIV900.IMG (512 MB board); BOARD=8g -> build/HIFIEC90.IMG
+# REF_IMG: RECHO's image, the template of the update image's outer table (see Credits)
 # REVERSE_LISTS=1 (cfw-ap, cfw-img, sim): VOL- moves up in lists, VOL+ down
 make host-tests                               # host unit tests
 make sim                                      # desktop simulator: build/sim/rechord_sim
@@ -240,47 +251,71 @@ Every change is proven first in a QEMU machine of the player:
 
 That machine and the suite live in a separate repository, not published yet.
 
-## Sources and acknowledgements
+## Credits
 
-- **The authors, in order:**
-  - **Bruno Moraga** ([brnomt/ReChord](https://github.com/brnomt/ReChord)) started ReChord (from
-    2026-07): the from-source idea, the decompilation and reverse engineering of the stock
-    firmware (most of `tools/` and `docs/`), and the first firmware's drivers and start-up code that
-    the rest was built on. Ideas from his project's later work are noted in
-    [docs/UPSTREAM_IDEAS.md](docs/UPSTREAM_IDEAS.md).
-  - **dragarok** ([dragarok/ReChord](https://github.com/dragarok/ReChord)) forked it and wrote the
-    512 MB line (from 2026-10-14): all of core B (the decoders, the EQ, the HIFI work), and most of
-    core A -- the UI, the library, storage, USB, Bluetooth, power and the board port. Where this
-    README says "we", it is mostly dragarok's work, on Bruno's ground.
-  - **GILB, this fork** ([AlanRSV/GILB](https://github.com/AlanRSV/GILB), from 2026-11) brings it to
-    the 8 GB board (the storage layout, the 8-bit eMMC bus), and adds ReplayGain, the clock, the
-    queue kept across power-off, Now Playing's Lyrics, Up Next and Spectrum views, the album
-    cover grid, Library > Years, the boot splash, hold-to-boot, the Self-test, the Pink theme and theme files, high-speed USB disk,
-    the reversed list keys and the desktop simulator, and ran the HIFI probe on the device; written
-    with Claude (Anthropic), as the commits' co-author lines say.
-- **The stock firmware is the main source.** We disassembled and decompiled the official
-  firmware images and traced them in QEMU to learn:
-  - the boot path and the board differences;
-  - the panel, keys, storage, DACs and USB PHY;
-  - **all of the Bluetooth support.**
+GILB stands on three projects, in this order. Each one made the next possible.
 
-  The Rockchip RKNanoD SDK, the chip datasheets and the FCC filing photos settled what the code
-  didn't.
-- **RECHO is the second reference.** [RECHO](https://recho.atzkey.workers.dev) is the
-  closed-source custom firmware for the Echo Mini (earlier RefCFW), and it showed first what
-  this hardware can do. We decompiled RECHO 0.9.2 and 0.10.0 and traced them in QEMU to learn
-  from them. Several parts of ReChord, and so of GILB, copy what RECHO does, rewritten in our own C:
-  - the PLL/clock sequence;
-  - I2S/DMA;
-  - backlight and power;
+### RECHO: the first custom firmware for the Echo Mini
+
+[**RECHO**](https://recho.atzkey.workers.dev) (released earlier as RefCFW) is the first custom
+firmware for the Echo Mini, written from scratch by its creator, **miauk**
+([Ko-fi](https://ko-fi.com/miauk)). It proved first what this hardware can do: gapless playback,
+decoding on the second core, the clock at 200 MHz, a firmware of one's own that installs through
+the stock updater and back out again. Its source is not public.
+
+ReChord, and so GILB, owe RECHO directly:
+- **It was studied closely.** ReChord's authors decompiled RECHO 0.9.2 and 0.10.0 and traced them
+  in QEMU to learn how the hardware is driven.
+- **Parts of GILB do what RECHO does,** rewritten in GILB's own C; those places say "RECHO" in
+  their source comments:
+  - the PLL and clock sequence;
+  - the I2S and DMA programming;
+  - the backlight and power behaviour;
   - the battery reading;
-  - the shortcuts;
-  - the settings format and its defaults.
+  - the volume-key shortcuts;
+  - the settings file's `key=value` format and its defaults.
+- **GILB's update image is built in RECHO's image's shape.** `tools/make_fw1.py` takes the outer
+  header table and the end marker of RECHO 0.10.1's `HIFIEC90.IMG` as its template (`REF_IMG`):
+  RECHO's was the first image of its kind proven to boot, so the build needs your own copy of it.
+  No part of RECHO is in this repository.
 
-  Those places say "RECHO" in their source comments.
+**Please support RECHO's creator:** <https://ko-fi.com/miauk>.
 
-  **Please support RECHO's developers:** <https://ko-fi.com/miauk>.
-- **Libraries:**
+### ReChord: the from-source firmware GILB forks
+
+- **Bruno Moraga** ([brnomt/ReChord](https://github.com/brnomt/ReChord)) started ReChord (from
+  2026-07): the from-source idea, the decompilation and reverse engineering of the stock firmware
+  (most of `tools/` and `docs/`), and the first firmware's drivers and start-up code that the rest
+  was built on. Ideas from his project's later work are noted in
+  [docs/UPSTREAM_IDEAS.md](docs/UPSTREAM_IDEAS.md).
+- **dragarok** ([dragarok/ReChord](https://github.com/dragarok/ReChord)) forked it and wrote the
+  512 MB line (from 2026-10-14): all of core B (the decoders, the EQ, the HIFI work), and most of
+  core A: the UI, the library, storage, USB, Bluetooth, power and the board port. Where this
+  README says "we", it is mostly dragarok's work, on Bruno's ground.
+
+### GILB: this fork
+
+[AlanRSV/GILB](https://github.com/AlanRSV/GILB) (from 2026-11; ReChord until it was renamed on
+2026-11-24) brings ReChord to the 8 GB board (the storage layout, the 8-bit eMMC bus) and adds
+ReplayGain, the clock, the queue kept across power-off, Now Playing's Lyrics, Up Next and Spectrum
+views, the album cover grid, Library > Years, the boot splash, hold-to-boot, the Self-test, the Pink
+theme and theme files, the Retro look and its pixel font, high-speed USB disk, the reversed list
+keys and the desktop simulator, and ran the HIFI probe on the device. Written with Claude
+(Anthropic), as the commits' co-author lines say.
+
+### Sources
+
+- **The stock firmware (SNOWSKY / FiiO) is the main source.** Its images were disassembled,
+  decompiled and traced in QEMU to learn the boot path and the board differences; the panel, keys,
+  storage, DACs and USB PHY; and **all of the Bluetooth support.**
+- The Rockchip RKNanoD SDK, the chip datasheets and the FCC filing photos settled what the code
+  didn't.
+
+### Fonts and libraries
+
+- **Fonts:** Noto Sans (SIL OFL 1.1, `firmware/drivers/fonts/OFL.txt`); the Retro look's pixel font
+  PX is GILB's own (`tools/gilb_pixfont.py`).
+- **Decoders:**
   - Rockbox (libdemac, libwma, libwmapro)
   - FFmpeg (WMA Lossless)
   - libmad
@@ -289,12 +324,11 @@ That machine and the suite live in a separate repository, not published yet.
   - libopus and opusfile
   - WavPack
   - Apple ALAC (Apache 2.0)
-  - Noto Sans fonts (SIL OFL 1.1)
 
   Their licenses are in their directories.
 
 ## License and disclaimer
 
 GPL-3.0 (see `LICENSE`); bundled libraries keep their own licenses. GILB, like ReChord, is independent: it
-is not affiliated with FiiO, SNOWSKY, Rockchip or the RECHO developers. No firmware images
+is not affiliated with FiiO, SNOWSKY, Rockchip or RECHO's creator. No firmware images
 (stock or RECHO) are distributed here.
