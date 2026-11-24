@@ -19,6 +19,11 @@
  * so a theme_t copy is fully self-contained — no lifetime traps). */
 #define THEME_NAME_MAX 24
 
+/* The picker's themes: the built-ins, then up to THEME_MAX in all from the
+ * folder of theme files (RECHORD/THEMES/<name>.txt, theme_store.c). */
+#define THEME_MAX 16
+#define THEME_DIR "/Internal/RECHORD/THEMES"
+
 typedef struct theme
 {
     char     name[THEME_NAME_MAX];
@@ -90,6 +95,10 @@ const char   *theme_name(int i);
 int           theme_load_index(int i);
 int           theme_index(const char *name);
 const theme_t *theme_builtin(int i);
+/* Read the theme folder again (the picker's Refresh themes): the names and the
+ * count change, built-ins first. Returns the number of themes. A current file
+ * theme keeps its colours until loaded again (theme_load_index). */
+int           theme_rescan(void);
 
 /* Sanity-check a theme: 0 = usable, <0 = which field failed (see .c). */
 int           theme_validate(const theme_t *t);

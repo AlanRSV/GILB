@@ -36,6 +36,8 @@
 #include "services/fs_target.h"
 #include "ui/np_extra.h"
 #include "ui/ui.h"
+#include "theme/theme.h"
+#include "theme/theme_priv.h"
 
 extern const char __ovl_abi[];       /* absolute: this link's ABI (Makefile) */
 
@@ -432,10 +434,26 @@ static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg
 OVL_HEADER(npx, OVL_NPX, &k_npx);
 
 void viz_draw(void), viz_tick(void), nav_grid_draw(void);
-typedef struct { void (*draw)(void); void (*tick)(void); void (*grid)(void); } viz_api_t;
-static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw };
+typedef struct {
+    void (*draw)(void); void (*tick)(void); void (*grid)(void);
+    int (*theme_scan)(char (*names)[THEME_NAME_MAX], int max);    /* theme/theme_store.c */
+    int (*theme_load)(int i, const char *name, theme_t *out);
+} viz_api_t;
+static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw, theme_store_scan, theme_store_load };
 
 static int npx_ok(void);
+
+/* The themes (theme/theme.c): the built-in table, the folder's files and their parser are this
+ * overlay's. Not while USB-C earphones hold the window (the theme stays as it is). */
+int ap_theme_scan(char (*names)[THEME_NAME_MAX], int max)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, theme_scan(names, max)) : -1;
+}
+
+int ap_theme_load(int i, const char *name, theme_t *out)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, theme_load(i, name, out)) : -1;
+}
 
 /* Library > Albums' cover grid (ui/nav.c PK_GRID), drawn in this overlay: 0 = draw it as a list. */
 int ap_grid_draw(void)

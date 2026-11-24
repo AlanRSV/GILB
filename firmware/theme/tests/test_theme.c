@@ -10,7 +10,7 @@
  *      to the file comes back unchanged, unknown/garbage lines are skipped,
  *      and a partial file overrides only the keys it contains;
  *   4. theme_set()/theme_get() identity;
- *   5. the DESIGN.md 5.1 tokens: four built-ins in order, sample values,
+ *   5. the DESIGN.md 5.1 tokens: five built-ins in order (Pink the fifth), sample values,
  *      readable pairs, selection by index and name, `#RRGGBB` and the
  *      `bg`/`ok` key aliases in files.
  *
@@ -24,6 +24,30 @@
 #include <string.h>
 
 #include "../theme.h"
+#include "../theme_priv.h"
+
+/* The device asks theme_store.c through an overlay (startup/ap_ovl.c); here the built-ins alone. */
+int ap_theme_scan(char (*names)[THEME_NAME_MAX], int max)
+{
+    int n = 0;
+
+    while (n < max && n < theme_builtin_count()) {
+        snprintf(names[n], THEME_NAME_MAX, "%s", theme_builtin_get(n)->name);
+        n++;
+    }
+    return n;
+}
+
+int ap_theme_load(int i, const char *name, theme_t *out)
+{
+    const theme_t *t = theme_builtin_get(i);
+
+    (void)name;
+    if (!t)
+        return -1;
+    *out = *t;
+    return 0;
+}
 
 static int failures = 0;
 
@@ -183,19 +207,19 @@ int main(void)
 
     /* ---- 5. DESIGN.md 5.1 tokens and selection ---------------------- */
     {
-        static const char *const order[] = { "Classic", "Paper", "Night", "Contrast" };
+        static const char *const order[] = { "Classic", "Paper", "Night", "Contrast", "Pink" };
         theme_t t;
         int k;
 
-        CHECK(theme_count() == 4, "four built-in themes");
-        for (k = 0; k < 4; k++)
+        CHECK(theme_count() == 5, "five built-in themes");
+        for (k = 0; k < 5; k++)
             CHECK(theme_name(k) && strcmp(theme_name(k), order[k]) == 0, "built-in order");
         CHECK(theme_index("contrast") == 3 && theme_index("PAPER") == 1, "theme_index is case-insensitive");
         CHECK(theme_index("Sepia") < 0 && theme_index(0) < 0, "theme_index of an unknown name");
         CHECK(theme_load_index(3) == 0 && strcmp(theme_get()->name, "Contrast") == 0, "theme_load_index");
-        CHECK(theme_load_index(4) < 0 && theme_load_index(-1) < 0 &&
+        CHECK(theme_load_index(5) < 0 && theme_load_index(-1) < 0 &&
               strcmp(theme_get()->name, "Contrast") == 0, "out of range leaves the current theme");
-        CHECK(theme_builtin(0) && strcmp(theme_builtin(0)->name, "Classic") == 0 && theme_builtin(4) == 0,
+        CHECK(theme_builtin(0) && strcmp(theme_builtin(0)->name, "Classic") == 0 && theme_builtin(5) == 0,
               "theme_builtin");
         /* sample values (8-bit tokens quantised to RGB565) */
         CHECK(theme_builtin(0)->sel_bg == 0x2B37 && theme_builtin(0)->value == 0x6DBF &&
@@ -204,7 +228,7 @@ int main(void)
         CHECK(theme_builtin(2)->text == 0xAD56 && theme_builtin(2)->sel_bg == 0x1A6F, "Night tokens");
         CHECK(theme_builtin(3)->accent == 0xFEA0 && theme_builtin(3)->divider == 0xFFFF &&
               theme_builtin(3)->sel_text == 0x0000, "Contrast tokens");
-        for (k = 0; k < 4; k++) {
+        for (k = 0; k < 5; k++) {
             const theme_t *b = theme_builtin(k);
 
             CHECK(b->sel_text != b->sel_bg && b->key_text != b->keybar_bg && b->on_accent != b->accent &&

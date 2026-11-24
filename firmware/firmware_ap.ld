@@ -174,6 +174,10 @@ SECTIONS
             *spectrum.o(.text* .rodata*)
             *audio.o(.text.audio_pcm_window)
             *nav.o(.text.nav_grid_draw .text.grid_cover .rodata.hues*)   /* (its strings stay: shared with the list's) */
+            *themes_builtin.o(.text* .rodata*)   /* the themes (theme/theme_store.c): main memory keeps the current one */
+            *theme_store.o(.text* .rodata*)
+            *theme_file.o(.text* .rodata*)
+            *fs_target.o(.text.fs_list_dir_each)   /* (only the theme folder's scan lists a folder) */
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */

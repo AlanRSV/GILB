@@ -1689,6 +1689,18 @@ static void apply_eq(void)
 }
 static void apply_bright(void) { power_brightness_changed(); }
 static void restore_q(void);
+
+/* Display > Refresh themes: RECHORD/THEMES/ read again (a theme added or edited on the PC); the current
+ * theme found again by its name and loaded again (its new colours), else Classic. */
+static void theme_refresh(void)
+{
+    int n = theme_rescan(), i = theme_index(theme_get()->name);
+
+    g_cfg.theme = (uint8_t)(i < 0 ? 0 : i);
+    theme_load_index(g_cfg.theme);
+    config_save_later();
+    nav_toast(ICON_CHECK, TOAST_TEXT, "Themes: %d", n);
+}
 extern const page_t pg_restore;
 
 static const char *const n_resume[] = { "Off", "Folder", "Last track" };
@@ -1729,6 +1741,7 @@ static const set_t g_playback[] = {
 };
 static const set_t g_display[] = {
     { ICON_SUN, S_THEME, 0, 0, "Theme", &g_cfg.theme },
+    { ICON_UPDATE, S_DO, 0, 0, "Refresh themes", 0, 0, theme_refresh },   /* (RECHORD/THEMES/: theme/theme_store.c) */
     { ICON_SUN, S_SLIDER, 8, 8, "Brightness", &g_cfg.brightness, 0, apply_bright },
     { ICON_MOON, S_CHOICE, 5, 1, "Screen off after", &g_cfg.screen_off, n_screen },
     /* the time in the header; set from Echo Library (services/clock_set.c) */

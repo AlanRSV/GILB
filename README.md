@@ -31,7 +31,9 @@ the panel is 320×170).*
 - **Gapless and bit-exact**, across track boundaries and sample-rate changes.
 - **Formats:** FLAC, WAV/AIFF (integer and float), MP3, AAC/HE-AAC, ALAC, Ogg Vorbis, Opus,
   WavPack, APE, WMA (v1/v2, Pro, Lossless), DSD (DSF/DFF).
-- **Decoding:** core B decodes; core A feeds it and the DACs (two CS43131).
+- **Decoding:** core B decodes; core A feeds it and the DACs (two CS43131). FLAC, APE and ALAC
+  hand one step to the chip's HIFI block, as stock does (on the device: bit-exact, 6-14x faster
+  than core B's own code for FLAC).
 - **Library basics:** tags (ID3v2/ID3v1/APEv2/Vorbis/MP4/RIFF), a play queue, play modes, and
   resume after power-off: with Resume at power-on set to Last track, the same queue (a Library
   list, a playlist, shuffle's order) plays on from the same song and time (`RECHORD/QUEUE.BIN`).
@@ -83,7 +85,10 @@ the panel is 320×170).*
   - MENU switches between Now Playing and the library; hold MENU for Options.
   - A `REVERSE_LISTS=1` build swaps the list keys: VOL− moves up, VOL+ down.
 - **Text and themes:** Noto Sans in five sizes, with Latin, curly quotes and Devanagari, and
-  four themes: Classic, Paper, Night and Contrast.
+  five built-in themes: Classic, Paper, Night, Contrast and Pink. More come as files in
+  `RECHORD/THEMES/<name>.txt` (one `key=#RRGGBB` a line; Echo Library's Themes page makes them with a
+  live preview): Settings > Display > Refresh themes reads the folder again, and they are listed
+  under Theme after the built-ins.
 - **Fast:** keys are sampled every 10 ms on a timer and timed in milliseconds. Each key press
   repaints only what changed. On the device, a key reaches the screen in about 8 ms (median).
 
@@ -129,6 +134,7 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | 8 GB board: boot, eMMC on the 8-bit bus, playback, ReChord's own updater; USB disk at high speed (writes 5.7-5.9 MB/s, reads 8 MB/s) | device, 8 GB (2026-11-23) |
 | Lyrics, Up Next and Spectrum views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
 | Boot: first screen at 0.48 s, a resumed track playing at 0.6 s; the USB wake in steps (no freeze); the microSD card (exFAT, 4-bit) | device, 8 GB (2026-11-23) |
+| Library > Years, the album grid's year (and its Album grid setting), hold-to-boot, the Self-test; the HIFI probe (FLAC block kept, FFT unusable) | device, 8 GB (2026-11-24) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
@@ -233,8 +239,9 @@ That machine and the suite live in a separate repository, not published yet.
   - **This fork** ([AlanRSV/ReChord](https://github.com/AlanRSV/ReChord), from 2026-11) brings it to
     the 8 GB board (the storage layout, the 8-bit eMMC bus), and adds ReplayGain, the clock, the
     queue kept across power-off, Now Playing's Lyrics, Up Next and Spectrum views, the album
-    cover grid, the boot splash, high-speed USB disk, the reversed list keys and the desktop
-    simulator; written with Claude (Anthropic), as the commits' co-author lines say.
+    cover grid, Library > Years, the boot splash, hold-to-boot, the Self-test, high-speed USB disk,
+    the reversed list keys and the desktop simulator, and ran the HIFI probe on the device; written
+    with Claude (Anthropic), as the commits' co-author lines say.
 - **The stock firmware is the main source.** We disassembled and decompiled the official
   firmware images and traced them in QEMU to learn:
   - the boot path and the board differences;

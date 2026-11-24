@@ -141,7 +141,9 @@ AP_SERVICE_SRCS := \
 # Theme module (same set as $(THEME_SRCS) in firmware/theme/theme.mk).
 AP_THEME_SRCS := \
   firmware/theme/theme.c \
-  firmware/theme/themes_builtin.c
+  firmware/theme/themes_builtin.c \
+  firmware/theme/theme_store.c \
+  firmware/theme/theme_file.c
 
 # Freestanding libc, build-from-source (same set as $(LIBC_SRCS) in
 # firmware/libc/libc.mk -- listed explicitly so this fragment is standalone).

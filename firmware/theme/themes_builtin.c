@@ -16,6 +16,10 @@
  *   Paper    — warm light/sepia for daylight (no pure white/black pair).
  *   Night    — very dim, for bedside use.
  *   Contrast — black, white and yellow, WCAG ratios 13..21.
+ *   Pink     — deep plum with a rose accent (the user, 2026-11-24).
+ *
+ * On the device this table is in the viz overlay with theme_store.c (main memory keeps only
+ * the current theme: theme.c).
  */
 #include "theme.h"
 #include "theme_priv.h"
@@ -138,6 +142,35 @@ static const theme_t builtin_themes[] =
         .scroll     = 0xFFFF,   /* FFFFFF */
         .spacing = 8, .radius = 0, .font_id = 0,
     },
+    {
+        .name = "Pink",
+        .background = 0x1883,   /* 1E1218 */
+        .surface    = 0x28C4,   /* 2A1A23 */
+        .text       = 0xFF5D,   /* F8E8EF */
+        .text_dim   = 0xBCB3,   /* B8949F */
+        .accent     = 0xFB75,   /* FF6FAE */
+        .danger     = 0xFACB,   /* FF5A5A */
+        .success    = 0x5EB3,   /* 5ED69A */
+        .header_bg  = 0x1883,   /* 1E1218 */
+        .divider    = 0x3926,   /* 3A2630 */
+        .text_off   = 0x6AAC,   /* 6E5560 */
+        .on_accent  = 0xFFFF,   /* FFFFFF */
+        .sel_bg     = 0xC20F,   /* C2427E */
+        .sel_text   = 0xFFFF,   /* FFFFFF */
+        .value      = 0xFCF9,   /* FF9CC8 */
+        .keybar_bg  = 0x20A3,   /* 26171F */
+        .key_text   = 0xF6DC,   /* F0D8E3 */
+        .key_hold   = 0xA411,   /* A0808C */
+        .key_press  = 0xC20F,   /* C2427E */
+        .bar_track  = 0x3926,   /* 3A2630 */
+        .bar_fill   = 0xFB75,   /* FF6FAE */
+        .badge_bg   = 0x3926,   /* 3A2630 */
+        .badge_text = 0xFF5D,   /* F8E8EF */
+        .hires      = 0xFE2D,   /* FFC56B */
+        .warn       = 0xFD88,   /* FFB347 */
+        .scroll     = 0x6AAC,   /* 6E5560 */
+        .spacing = 8, .radius = 6, .font_id = 0,
+    },
 };
 
 #define BUILTIN_COUNT ((int)(sizeof(builtin_themes) / sizeof(builtin_themes[0])))
@@ -152,4 +185,9 @@ const theme_t *theme_builtin_get(int i)
     if (i < 0 || i >= BUILTIN_COUNT)
         return 0;
     return &builtin_themes[i];
+}
+
+const theme_t *theme_builtin(int i)
+{
+    return theme_builtin_get(i);
 }
