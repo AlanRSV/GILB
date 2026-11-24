@@ -1,6 +1,6 @@
-# ReChord simulator
+# GILB simulator
 
-ReChord's own firmware code running in a window on a PC: the same UI, screens, themes, fonts, key
+GILB's own firmware code (a fork of ReChord) running in a window on a PC: the same UI, screens, themes, fonts, key
 handling, file system, library index, playlists, play queue and settings as on the Echo Mini. Only
 the hardware underneath is replaced. You can try a UI change in seconds, without flashing anything.
 
@@ -13,7 +13,7 @@ the hardware underneath is replaced. You can try a UI change in seconds, without
 | UI, navigation, themes, fonts, toasts, the shortcut layer | the firmware's code, unchanged |
 | Keys | the firmware's input code, fed the key ladder's voltages from your keyboard |
 | Internal storage, microSD card | disk-image files (FAT32), read and written by the firmware's own file system |
-| Library index, favourites, playlists (M3U8), `RECHORD.CFG`, `ECHOLOG.TXT` | written into the image, so they are still there on the next run |
+| Library index, favourites, playlists (M3U8), `GILB.CFG`, `ECHOLOG.TXT` | written into the image, so they are still there on the next run |
 | Playback | the firmware's queue (shuffle, repeat, skip, seek, pause, volume in dB). Tracks are decoded by **ffmpeg** on the PC, not by core B's decoders |
 | Screen-off timer, power-key screen toggle, hold-power-to-switch-off | as on the device |
 | Battery | always 100 % |
@@ -33,8 +33,8 @@ the PC.
    ```bash
    sudo apt update
    sudo apt install build-essential libsdl2-dev ffmpeg mtools dosfstools git
-   git clone https://github.com/AlanRSV/ReChord.git
-   cd ReChord
+   git clone https://github.com/AlanRSV/GILB.git
+   cd GILB
    make sim
    ```
 
@@ -45,7 +45,7 @@ the PC.
    ```
 
    Use the folder you would copy to the player (an Echo Library-organised folder works as is, with
-   its playlists in `RECHORD/`). The image is the folder's size plus 64 MB.
+   its playlists in `GILB/`). The image is the folder's size plus 64 MB.
 
 4. Run it:
 
@@ -121,10 +121,10 @@ The image is an ordinary FAT32 volume 1 MiB in. mtools reads and writes it while
 closed:
 
 ```bash
-mdir   -i build/sim/internal.img@@1M ::/RECHORD          # what the firmware wrote
+mdir   -i build/sim/internal.img@@1M ::/GILB             # what the firmware wrote
 mtype  -i build/sim/internal.img@@1M ::/ECHOLOG.TXT      # the firmware's log
 mcopy  -i build/sim/internal.img@@1M -s "New Album" ::/  # add music (then Library > Refresh)
-mcopy  -i build/sim/internal.img@@1M ::/RECHORD.CFG .    # the settings file
+mcopy  -i build/sim/internal.img@@1M ::/GILB.CFG .       # the settings file
 ```
 
 To start fresh, run `mkimage.sh` again.
