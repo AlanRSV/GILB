@@ -208,7 +208,9 @@ make sim                                      # desktop simulator: build/sim/rec
 The **simulator** runs the firmware's own UI, library and player code in a window on a PC (Linux or
 WSL), with your music in a disk image and the sound through the PC: see [sim/README.md](sim/README.md).
 
-On a filesystem with coarse timestamps (exFAT), build from clean: `rm -rf build/cfw build/coreb`.
+Core A is built with link-time optimisation (LTO) for the code that always stays in memory; `LTO=0`
+turns it off. Switching it, or building on a filesystem with coarse timestamps (exFAT), needs a
+clean build: `rm -rf build/cfw build/coreb`.
 
 ## How it is built
 

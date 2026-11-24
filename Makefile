@@ -51,6 +51,20 @@ include firmware/ap.mk
 # this links ONLY firmware/{startup,ui,drivers,services,theme,libc}/*.c.
 CFW_BUILD_DIR := build/cfw
 CFW_OBJS := $(patsubst %.c,$(CFW_BUILD_DIR)/objs/%.o,$(AP_SRCS))
+# LTO (on by default since 2026-11-24, +768 B of resident code room; LTO=0 turns it off):
+# link-time optimisation for the objects firmware_ap.ld never names (all of them resident). The
+# ones it places by name into the overlays (*nav.o(...), *lib_*.o) stay as they are: an LTO
+# build's code comes out of new objects, which those patterns would not match. Make does not see
+# a flag change: switching LTO on or off needs a clean build (rm -rf build/cfw).
+LTO ?= 1
+ifeq ($(LTO),1)
+LD_NAMED := $(shell grep -oE '\*[a-z_0-9/]+\.o' $(AP_LDSCRIPT) | sed 's|.*[*/]||' | sort -u)
+# (and lib_*.o, the library's overlay by wildcard; watchdog.o, its ISR called from inline asm;
+# bootguard.o, so the .noinit crash record keeps its place across an update)
+LTO_OBJS := $(foreach o,$(filter-out $(addprefix %/,$(LD_NAMED) watchdog.o bootguard.o),$(CFW_OBJS)),$(if $(findstring /lib_,$(o)),,$(o)))
+$(LTO_OBJS): AP_CFLAGS += -flto
+AP_LDFLAGS += -flto -Os
+endif
 CFW_ELF := $(CFW_BUILD_DIR)/rechord_ap.elf
 
 # ---- core B (decoder) images: one per codec family, linked at 0. They live in the
