@@ -6,7 +6,7 @@
  *   "3 of 12"            the queue position, over the cover
  *   the cover            cover56.rgb at 1.5x, in the theme's two colours (an LCD's look), or the
  *                        album's initials on a block of the text colour
- *   title, artist, album and year, one line each in T17, beside it
+ *   title, artist, album and year, one line each in GILB's pixel font (PX; T17 for a line PX lacks)
  *   an outlined progress bar, the times at its ends, the bit rate between them
  *
  * Its places keep to Now Playing's own redraw rectangles (np_poll): the bar's fill in rows
@@ -54,6 +54,16 @@ static void tint_band(const display_band_t *b)
     }
 }
 
+/* GILB's pixel font (tools/gilb_pixfont.py) holds ASCII: a line with anything else (É, ô, a
+ * curly quote) is drawn in T17, the size it stands in for, rather than with boxes. */
+static const font_t *px_or_t17(const char *s)
+{
+    for (; *s; s++)
+        if ((unsigned char)*s >= 0x80u)
+            return &font_t17;
+    return &font_px;
+}
+
 static void fmt_t(char *o, int cap, uint32_t s)
 {
     if (s >= 3600u)
@@ -69,7 +79,7 @@ static void body(const theme_t *t)
 
     if (n > 0 && N_SEQ_TRACK()) {
         snprintf(b, sizeof b, "%d of %d", queue_pos() + 1, n);
-        ui_text(&font_b13, CX, 36, 160, 0, b, t->text, BODY_Y, CY - 1);
+        ui_text(&font_px, CX, 37, 160, 0, b, t->text, BODY_Y, CY - 1);
     }
     if (g_np.cover) {
         for (int i = 0; i < 32; i++)
@@ -88,7 +98,7 @@ static void body(const theme_t *t)
         if (y)
             snprintf(b, sizeof b, "%u", y), ln[3] = b;
         for (int i = 0; i < 4; i++)
-            ui_text(&font_t17, TXR, CY + 16 + 22 * i, TWR, 0, ln[i], t->text, BODY_Y, BAND_Y - 1);
+            ui_text(px_or_t17(ln[i]), TXR, CY + 16 + 22 * i, TWR, 0, ln[i], t->text, BODY_Y, BAND_Y - 1);
     }
 }
 
@@ -104,11 +114,11 @@ static void band(const theme_t *t)
     if (hx > 10)
         ui_fill(10, BAND_Y + 3, (hx < 310 ? hx : 310) - 10, 6, t->bar_fill);
     fmt_t(a, sizeof a, pos);
-    ui_text(&font_t17, 8, BAND_Y + 29, 62, 0, a, t->text, BAND_Y + 11, DISPLAY_H - 1);
+    ui_text(&font_px, 8, BAND_Y + 29, 62, 0, a, t->text, BAND_Y + 11, DISPLAY_H - 1);
     if (dur) {
         b[0] = '-';
         fmt_t(b + 1, sizeof b - 1, dur > pos ? dur - pos : 0);
-        ui_text(&font_t17, 232, BAND_Y + 29, 80, 2, b, t->text, BAND_Y + 11, DISPLAY_H - 1);
+        ui_text(&font_px, 232, BAND_Y + 29, 80, 2, b, t->text, BAND_Y + 11, DISPLAY_H - 1);
     }
     if (kb && strchr(g_np.facts, 'K')) {   /* (no bit rate: the facts are the size alone, "41.6 MB") */
         /* lossless and Vorbis/Opus are variable by nature; an MP3 or AAC's rate is shown as it is */
@@ -116,7 +126,7 @@ static void band(const theme_t *t)
                   !strcmp(c, "OGG") || !strcmp(c, "OPUS");
 
         snprintf(b, sizeof b, vbr ? "%u kbps vbr" : "%u kbps", kb);
-        ui_text(&font_b13, 72, BAND_Y + 27, 158, 1, b, t->text, BAND_Y + 11, DISPLAY_H - 1);
+        ui_text(&font_s8, 72, BAND_Y + 26, 158, 1, b, t->text, BAND_Y + 11, DISPLAY_H - 1);
     }
 }
 

@@ -68,7 +68,8 @@ the panel is 320×170).*
   as it leaves USB disk mode.
 - **Lists:** seven rows, with cursor memory per level.
 - **Look** (Settings > Display > Look): **Modern**, or **Retro**, an old LCD player's style. Retro
-  uses the LCD colours (navy on pale blue-grey) everywhere and its own Now Playing: "3 of 12" over
+  uses the LCD colours (navy on pale blue-grey) everywhere and its own Now Playing, in GILB's own
+  bold pixel font (drawn in `tools/gilb_pixfont.py`; a line with accented letters falls back to Noto Sans): "3 of 12" over
   the cover, the cover in the screen's two colours, title, artist, album and year beside it, an
   outlined progress bar, the times at its ends and the bit rate between them. The Theme setting
   stays Modern's.

@@ -9,6 +9,7 @@
  *   font_m13  Noto Sans SemiBold 13 px (line 22)          headers, prompts
  *   font_t17  Noto Sans SemiBold 17 px (line 20)          Now Playing title
  *   font_d28  Noto Sans SemiBold 28 px (line 32)          big values: digits, A-Z, "dB"
+ *   font_px   GILB's own pixel font, 12 px caps (line 20)  Look: Retro (ASCII only: ui/retro.c)
  * B13/M13/T17 hold ASCII, Latin-1, Latin Extended-A, general punctuation, arrows and a
  * few signs, and Devanagari (U+0900..097F plus the half forms, conjuncts and matra
  * variants HarfBuzz produces for Hindi). S8 is compiled in (fonts/fonts_s8.c); the others
@@ -41,6 +42,7 @@ typedef struct font font_t;
 struct font { uint8_t id; };          /* a handle: the data lives in the loaded tables */
 
 extern const font_t font_s8, font_b13, font_m13, font_t17, font_d28;
+extern const font_t font_px;           /* GILB's pixel font (tools/gilb_pixfont.py): ASCII, Look: Retro */
 
 #define TEXT_BAND_W 320                /* a band row is 320 RGB565 pixels */
 

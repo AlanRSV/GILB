@@ -1,5 +1,5 @@
 /*
- * test_config.c — host tests for RECHORD.CFG (services/config.c).
+ * test_config.c — host tests for GILB.CFG (RECHORD.CFG before the rename) (services/config.c).
  *
  * Covers the device's finding of 2026-10-18: a line added on the PC during a USB disk session
  * ("hifi=verify") was overwritten by the player's copy at the next save. After a session,
@@ -30,7 +30,7 @@ uint32_t time_ms(void) { return 1000u; }
 const char *theme_name(int i) { return i == 0 ? "Classic" : NULL; }
 int theme_index(const char *name) { return strcmp(name, "Classic") ? -1 : 0; }
 
-#define FILE_ON_HOST ".work/Internal/RECHORD.CFG"
+#define FILE_ON_HOST ".work/Internal/GILB.CFG"
 
 static void file_put(const char *text)
 {

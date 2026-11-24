@@ -14,12 +14,12 @@
 
 /* ---- fonts --------------------------------------------------------------------- */
 
-enum { F_S8, F_B13, F_M13, F_T17, F_D28, F_COUNT };
+enum { F_S8, F_B13, F_M13, F_T17, F_D28, F_PX, F_COUNT };
 
 const font_t font_s8 = { F_S8 }, font_b13 = { F_B13 }, font_m13 = { F_M13 },
-             font_t17 = { F_T17 }, font_d28 = { F_D28 };
+             font_t17 = { F_T17 }, font_d28 = { F_D28 }, font_px = { F_PX };
 
-static const char k_names[F_COUNT][4] = { "S8", "B13", "M13", "T17", "D28" };
+static const char k_names[F_COUNT][4] = { "S8", "B13", "M13", "T17", "D28", "PX" };
 
 typedef struct {                      /* a glyph record, 8 bytes, as in the blob */
     uint16_t bits;                    /* offset of its rows in the bitmaps */
