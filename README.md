@@ -67,6 +67,11 @@ the panel is 320×170).*
   settings > Player clock): it leaves the PC's time in `GILB/TIME.TXT`, which the player takes
   as it leaves USB disk mode.
 - **Lists:** seven rows, with cursor memory per level.
+- **Look** (Settings > Display > Look): **Modern**, or **Retro**, an old LCD player's style. Retro
+  uses the LCD colours (navy on pale blue-grey) everywhere and its own Now Playing: "3 of 12" over
+  the cover, the cover in the screen's two colours, title, artist, album and year beside it, an
+  outlined progress bar, the times at its ends and the bit rate between them. The Theme setting
+  stays Modern's.
 - **Now Playing:** shows the cover tile, title, artist and album, format and rate badges, bit
   rate, progress, and the next track. Tap BACK to switch views:
   - **Lyrics:** the line being sung, large, with the one before and after. Read from the song's
@@ -90,7 +95,7 @@ the panel is 320×170).*
   - MENU switches between Now Playing and the library; hold MENU for Options.
   - A `REVERSE_LISTS=1` build swaps the list keys: VOL− moves up, VOL+ down.
 - **Text and themes:** Noto Sans in five sizes, with Latin, curly quotes and Devanagari, and
-  five built-in themes: Classic, Paper, Night, Contrast and Pink. More come as files in
+  six built-in themes: Classic, Paper, Night, Contrast, Pink and LCD. More come as files in
   `GILB/THEMES/<name>.txt` (one `key=#RRGGBB` a line; Echo Library's Themes page makes them with a
   live preview): Settings > Display > Refresh themes reads the folder again, and they are listed
   under Theme after the built-ins.

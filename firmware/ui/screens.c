@@ -670,7 +670,8 @@ np_now_t g_np;                        /* (ui/np_extra.h: the npx overlay's views
  * art tile; a track without one keeps the monogram tile. */
 #define COVER_NAME "cover56.rgb"
 #define COVER_W 56
-static uint16_t s_cover[COVER_W * COVER_W];
+uint16_t g_np_cover[COVER_W * COVER_W];   /* (ui/np_extra.h: Look: Retro's cover reads it too) */
+#define s_cover g_np_cover
 
 static int cover_find(void *u, const char *name, const fs_ref_t *r)
 {
@@ -1031,6 +1032,8 @@ static void np_draw(void)
         return;
     }
     if (N.seq == 0xFFFFFFFFu || !ap_npx_draw()) {   /* (the Cover view, or one that can't be had now) */
+        if (g_cfg.look && ap_retro_np(0))   /* Look: Retro (ui/retro.c) */
+            goto band;
         art(N.init, N.hue, N.paused, N.cover);
         if (N.seq == 0xFFFFFFFFu) {           /* starting: the row's name only */
             text_col(N.title, "", "");
@@ -1044,6 +1047,7 @@ static void np_draw(void)
         }
         ui_text(&font_s8, TX, 130, TW, 0, N.facts, t->text_dim, 122, 132);
     }
+band:
     if (N.band == 1) {
         vol_band(player_get_volume(), bt_routed());
         return;
@@ -1052,6 +1056,8 @@ static void np_draw(void)
         seek_band();
         return;
     }
+    if (g_cfg.look && ap_retro_np(1))
+        return;
     {
         int hx = head_x();
 
@@ -1692,12 +1698,32 @@ static void restore_q(void);
 
 /* Display > Refresh themes: RECHORD/THEMES/ read again (a theme added or edited on the PC); the current
  * theme found again by its name and loaded again (its new colours), else Classic. */
+/* The colours the Look wants: Retro's LCD, else the Theme setting's (ui/retro.c). */
+void theme_apply(void)
+{
+    int i = g_cfg.look ? theme_index("LCD") : -1;
+
+    theme_load_index(i >= 0 ? i : g_cfg.theme);
+}
+
+static void look_set(void)
+{
+    theme_apply();
+    frame_invalidate();
+    ui_invalidate_all();
+}
+
 static void theme_refresh(void)
 {
-    int n = theme_rescan(), i = theme_index(theme_get()->name);
+    char nm[THEME_NAME_MAX];
+    int n, i;
+
+    snprintf(nm, sizeof nm, "%s", theme_name(g_cfg.theme) ? theme_name(g_cfg.theme) : "");
+    n = theme_rescan();
+    i = theme_index(nm);
 
     g_cfg.theme = (uint8_t)(i < 0 ? 0 : i);
-    theme_load_index(g_cfg.theme);
+    theme_apply();
     config_save_later();
     nav_toast(ICON_CHECK, TOAST_TEXT, "Themes: %d", n);
 }
@@ -1715,6 +1741,7 @@ static const char *const n_dacp[] = { "Battery", "Charge", "Power only" };
 static const char *const n_rg[] = { "Off", "Track", "Album" };
 static const char *const n_clock[] = { "12-hour", "24-hour", "Off" };
 static const char *const n_grid[] = { "Cover & year", "Cover, name & year" };
+static const char *const n_look[] = { "Modern", "Retro" };
 /* -- library (one block: docs/MERGE_NOTES_library.md) -- */
 static const char *const n_libdata[] = { "SD card", "Internal" };
 static void apply_libdata(void) { g_lib.data = g_cfg.libdata; ap_lib_data_changed(); }
@@ -1740,7 +1767,8 @@ static const set_t g_playback[] = {
     { ICON_LIBRARY, S_CYCLE, 2, LIB_DATA_SD, "Library data", &g_cfg.libdata, n_libdata, apply_libdata },   /* library */
 };
 static const set_t g_display[] = {
-    { ICON_SUN, S_THEME, 0, 0, "Theme", &g_cfg.theme },
+    { ICON_SUN, S_CYCLE, 2, 0, "Look", &g_cfg.look, n_look, look_set },   /* Modern, or Retro (ui/retro.c) */
+    { ICON_SUN, S_THEME, 0, 0, "Theme", &g_cfg.theme, 0, theme_apply },
     { ICON_UPDATE, S_DO, 0, 0, "Refresh themes", 0, 0, theme_refresh },   /* (RECHORD/THEMES/: theme/theme_store.c) */
     { ICON_SUN, S_SLIDER, 8, 8, "Brightness", &g_cfg.brightness, 0, apply_bright },
     { ICON_MOON, S_CHOICE, 5, 1, "Screen off after", &g_cfg.screen_off, n_screen },
@@ -1956,7 +1984,7 @@ static void ch_act(int a, int i)
             s_edit->fn();
         config_save_later();
     } else if (a == A_CANCEL && s_edit->kind == S_THEME) {
-        theme_load_index(s_orig);
+        theme_apply();                    /* (s_orig: the setting is still it) */
     } else if (a != A_CANCEL) {
         return;
     }
@@ -2205,7 +2233,7 @@ static void rq_act(int a, int i)
     if (a == A_OPEN && i == 0) {
         config_defaults();                /* not volume, browse, track or BT (as RECHO) */
         queue_set_mode(g_cfg.play);
-        theme_load_index(g_cfg.theme);
+        theme_apply();
         power_brightness_changed();
         audio_eq();                       /* (EQ off now, not at the next play) */
         config_save_later();

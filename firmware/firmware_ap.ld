@@ -179,6 +179,9 @@ SECTIONS
             *theme_file.o(.text* .rodata*)
             *fs_target.o(.text.fs_list_dir_each)   /* (only the theme scan and the GILB move list a folder) */
             *gilb_move.o(.text* .rodata*)         /* RECHORD/ -> GILB/ (services/gilb_move.c) */
+            *retro.o(.text* .rodata*)             /* Look: Retro's Now Playing (ui/retro.c) */
+            *retro_tags.o(.text* .rodata*)        /* (its year: tags.c again, TAGS_EXT) */
+            *cpuclk.o(.text.cpuclk_log_selftest .rodata.cpuclk_log_selftest*)   /* (once a boot) */
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */

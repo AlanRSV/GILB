@@ -519,7 +519,7 @@ static void usb_session(void)
     if (config_reload_if_changed()) {    /* the PC's edit wins over our copy (services/config.c) */
         queue_set_mode(g_cfg.play);
         audio_set_volume_db(g_cfg.volume == CFG_VOLUME_MUTE ? -90 : g_cfg.volume);
-        theme_load_index(g_cfg.theme);
+        theme_apply();
         log_printf("cfg: changed on the PC, read again: play %s, volume %d (bt=, display=: at the next start)",
                    queue_mode_name(g_cfg.play), g_cfg.volume);
     }
@@ -1426,7 +1426,7 @@ void ap_ui_loop(void)
     s_bt_ready = 1;
     bootcrumb(BC_UI_INIT);
     ui_init();
-    theme_load_index(g_cfg.theme);
+    theme_apply();
     ui_push_screen(&k_rc);               /* one ui.c screen: the page stack draws (ui/nav.c) */
     s_ui_up = 1;
     if (g_cfg.resume == CFG_RESUME_OFF)

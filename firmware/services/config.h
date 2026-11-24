@@ -55,6 +55,7 @@ typedef struct {
     uint8_t clock;               /* clock=12|24|off: the time in the header (services/wallclock.h) */
     uint8_t grid;                /* album_grid=year|name: Library > Albums' cells, the cover and the year
                                   * (0), or its name too (1) (ui/nav.c nav_grid_draw) */
+    uint8_t look;                /* look=modern|retro: Retro is the LCD colours and its Now Playing (ui/retro.c) */
 } config_t;
 enum { CFG_CLOCK_12 = 0, CFG_CLOCK_24 = 1, CFG_CLOCK_OFF = 2 };
 enum { CFG_CPU_B_96 = 0, CFG_CPU_B_AUTO = 1, CFG_CPU_B_STOCK = 2 };

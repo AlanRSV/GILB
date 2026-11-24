@@ -122,6 +122,7 @@ extern const page_t pg_np, pg_home, pg_opts, pg_dac, pg_vols;
 extern const keydef_t k_list[], k_opts[], k_question[];   /* screens.c: lists, options, questions */
 void np_act(int act, int i);              /* Now Playing's keys (also with the screen off) */
 void np_seek_cancel(void);                /* a seek being held ends without going (the chord) */
+void theme_apply(void);                   /* the colours the Look wants: LCD (Retro) or the Theme setting's */
 int np_loaded(void);
 
 #endif

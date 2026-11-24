@@ -439,10 +439,12 @@ typedef struct {
     int (*theme_scan)(char (*names)[THEME_NAME_MAX], int max);    /* theme/theme_store.c */
     int (*theme_load)(int i, const char *name, theme_t *out);
     int (*gilb_move)(int vol);                                    /* services/gilb_move.c */
+    int (*retro_np)(int part);                                    /* ui/retro.c: Look: Retro's Now Playing */
+    int (*cpuclk_log)(void);                                      /* services/cpuclk.c: the self-test's log */
 } viz_api_t;
-int gilb_move(int vol);
+int gilb_move(int vol), retro_np(int part), cpuclk_log_selftest(void);
 static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw, theme_store_scan, theme_store_load,
-                                              gilb_move };
+                                              gilb_move, retro_np, cpuclk_log_selftest };
 
 static int npx_ok(void);
 
@@ -454,6 +456,16 @@ int ap_theme_scan(char (*names)[THEME_NAME_MAX], int max)
 }
 
 /* RECHORD/ and RECHORD.CFG under the firmware's new name, GILB (services/gilb_move.c). */
+int ap_retro_np(int part)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, 0, retro_np(part)) : 0;
+}
+
+int ap_cpuclk_log(void)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, cpuclk_log()) : -1;
+}
+
 int ap_gilb_move(int vol)
 {
     return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, gilb_move(vol)) : -1;

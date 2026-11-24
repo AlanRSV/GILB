@@ -106,6 +106,8 @@ AP_SERVICE_SRCS := \
   firmware/services/sd_selftest.c \
   firmware/services/selftest.c \
   firmware/services/gilb_move.c \
+  firmware/ui/retro.c \
+  firmware/ui/retro_tags.c \
   firmware/services/screenshot.c \
   firmware/services/tags.c \
   firmware/services/modules.c \

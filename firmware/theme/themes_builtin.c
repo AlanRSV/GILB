@@ -17,6 +17,7 @@
  *   Night    — very dim, for bedside use.
  *   Contrast — black, white and yellow, WCAG ratios 13..21.
  *   Pink     — deep plum with a rose accent (the user, 2026-11-24).
+ *   LCD      — navy on pale blue-grey, an old LCD (Settings > Display > Look: Retro).
  *
  * On the device this table is in the viz overlay with theme_store.c (main memory keeps only
  * the current theme: theme.c).
@@ -170,6 +171,35 @@ static const theme_t builtin_themes[] =
         .warn       = 0xFD88,   /* FFB347 */
         .scroll     = 0x6AAC,   /* 6E5560 */
         .spacing = 8, .radius = 6, .font_id = 0,
+    },
+    {
+        .name = "LCD",          /* Settings > Display > Look: Retro (the user, 2026-11-24) */
+        .background = 0xC69C,   /* C5D0E2 */
+        .surface    = 0xBE3B,   /* BAC6DA */
+        .text       = 0x218F,   /* 23317F */
+        .text_dim   = 0x3A72,   /* 3F4D96 */
+        .accent     = 0x218F,   /* 23317F */
+        .danger     = 0x88E5,   /* 8C1F2E */
+        .success    = 0x1B47,   /* 1F6B3A */
+        .header_bg  = 0xC69C,   /* C5D0E2 */
+        .divider    = 0x29D0,   /* 2A3887 */
+        .text_off   = 0x8CB8,   /* 8A95C0 */
+        .on_accent  = 0xC69C,   /* C5D0E2 */
+        .sel_bg     = 0x218F,   /* 23317F */
+        .sel_text   = 0xC69C,   /* C5D0E2 */
+        .value      = 0x218F,   /* 23317F */
+        .keybar_bg  = 0xC69C,   /* C5D0E2 */
+        .key_text   = 0x218F,   /* 23317F */
+        .key_hold   = 0x3A72,   /* 3F4D96 */
+        .key_press  = 0x9D39,   /* 9AA6CC */
+        .bar_track  = 0xC69C,   /* C5D0E2 */
+        .bar_fill   = 0x218F,   /* 23317F */
+        .badge_bg   = 0x218F,   /* 23317F */
+        .badge_text = 0xC69C,   /* C5D0E2 */
+        .hires      = 0x218F,   /* 23317F */
+        .warn       = 0x7A80,   /* 7A5200 */
+        .scroll     = 0x29D0,   /* 2A3887 */
+        .spacing = 8, .radius = 0, .font_id = 0,
     },
 };
 

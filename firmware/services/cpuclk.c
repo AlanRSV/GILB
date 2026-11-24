@@ -474,7 +474,9 @@ static void log_switch(void)
                (unsigned)g[25], (unsigned)g[26]);
 }
 
-static void log_selftest(void)
+/* The self-test's log lines, once a boot: in the viz overlay (main memory is short), through
+ * startup/ap_ovl.c ap_cpuclk_log; cpuclk_poll() asks again until it can be had. */
+__attribute__((noinline)) int cpuclk_log_selftest(void)
 {
     uint32_t a_hz = clock_point() == CLOCK_POINT_FLAC ? clock_core_hz() : 224000000u;
     uint32_t b_hz = clock_point() == CLOCK_POINT_FLAC ? clock_core_b_hz() : 448000000u;
@@ -492,16 +494,17 @@ static void log_selftest(void)
                (unsigned)s_st.a_code, (unsigned)s_a_code_ref, (unsigned)s_st.b_code, (unsigned)s_b_code_ref);
     if (s_st.stage)
         log_printf("cpuclk: failed at %u: back at the UI point (96 MHz), off for this build", s_st.stage);
+    return 0;
 }
+
+int ap_cpuclk_log(void);
 
 void cpuclk_poll(void)
 {
     uint32_t seq = s_sw_seq;
 
-    if (s_st.done) {
+    if (s_st.done && ap_cpuclk_log() == 0)   /* (startup/ap_ovl.c: < 0 while the overlay can't be had) */
         s_st.done = 0;
-        log_selftest();
-    }
     if (seq != s_sw_logged) {
         s_sw_logged = seq;
         log_switch();

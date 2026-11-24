@@ -22,6 +22,10 @@ typedef struct {
     int16_t head;
 } np_now_t;
 extern np_now_t g_np;
+extern uint16_t g_np_cover[56 * 56];   /* the album cover (cover56.rgb) when g_np.cover (ui/screens.c) */
+/* Look: Retro (ui/retro.c, the viz overlay): Now Playing's body (part 0) or its progress band (1);
+ * 0 when it cannot be had now (USB-C earphones hold the window): Modern draws it. */
+int ap_retro_np(int part);
 
 typedef struct {
     void (*draw)(int v);               /* the body (BODY_Y .. the band) of view v */

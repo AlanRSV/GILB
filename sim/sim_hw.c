@@ -314,6 +314,7 @@ int bt_listen(bt_listen_t *r, uint32_t *buf, unsigned words, uint32_t ms) { retu
 int bt_power(int on) { return 0; }
 int bt_version(void) { return -1; }           /* (the self-test: no module answers) */
 void usb_dac_rail_cut(void) { }
+int cpuclk_log_selftest(void) { return 0; }   /* (no clock self-test in the simulator) */
 
 static int bt_count(void) { return 1; }
 
