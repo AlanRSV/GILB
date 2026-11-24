@@ -173,7 +173,8 @@ SECTIONS
             *(.ovl.viz.*)
             *spectrum.o(.text* .rodata*)
             *audio.o(.text.audio_pcm_window)
-            *nav.o(.text.nav_grid_draw .text.grid_cover .rodata.hues*)   /* (its strings stay: shared with the list's) */
+            *nav.o(.text.nav_grid_draw .text.grid_cover .rodata.hues* .text.nav_retro_list .text.nav_retro_row
+                   .text.nav_retro_px)   /* (its strings stay: shared with the list's; Retro's list too) */
             *themes_builtin.o(.text* .rodata*)   /* the themes (theme/theme_store.c): main memory keeps the current one */
             *theme_store.o(.text* .rodata*)
             *theme_file.o(.text* .rodata*)

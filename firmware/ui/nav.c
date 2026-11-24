@@ -293,6 +293,7 @@ static void draw_row(int s, int y, int sel)
 }
 
 int ap_grid_draw(void);                   /* startup/ap_ovl.c: nav_grid_draw in the viz overlay */
+int ap_retro_list(void);                  /* startup/ap_ovl.c: nav_retro_list in the viz overlay; 0: not now */
 
 static void list_draw(void)
 {
@@ -302,6 +303,8 @@ static void list_draw(void)
 
     if (nav_top()->kind == PK_GRID && ap_grid_draw())
         return;                           /* (else as a list of four) */
+    if (g_cfg.look && nav_top()->kind != PK_GRID && ap_retro_list())
+        return;                           /* Look: Retro (nav_retro_list, the viz overlay) */
 
     ui_fill(0, L.y0, DISPLAY_W, h, t->background);
     if (!L.n) {
@@ -320,6 +323,81 @@ static void list_draw(void)
     }
 }
 
+/* ---- Look: Retro's lists (the viz overlay, by section: firmware_ap.ld; through ap_retro_list) -------
+ * An old LCD player's list: the rows in GILB's pixel font (PX), no section icons (the playing mark,
+ * the radio and the track number stay: they say something), a pixel ">" for the rows that open,
+ * the cursor's row inverted, an outlined scrollbar with a solid thumb (as Retro's progress bar).
+ * A row's text was fitted for B13 (fill): fitted again for PX here. A text PX lacks (accents, a
+ * "·") keeps B13. Same rows and places as Modern's, so its redraw rectangles hold. */
+static int nav_retro_px(const char *s)    /* PX holds it all: ASCII and the ellipsis */
+{
+    for (const unsigned char *p = (const unsigned char *)s; *p; p++)
+        if (*p >= 0x80u) {
+            if (p[0] != 0xE2u || p[1] != 0x80u || p[2] != 0xA6u)
+                return 0;
+            p += 2;
+        }
+    return 1;
+}
+
+static void nav_retro_row(int s, int y, int sel)
+{
+    const theme_t *t = T;
+    const rc_t *c = &L.c[s];
+    int off = c->flags & R_OFF, x = 8, right = 306, vw = 0;
+    uint16_t fg = sel ? t->sel_text : off ? t->text_off : t->text;
+    const font_t *f;
+    char b[160];
+
+    ui_fill(0, y, 312, ROW_H, sel ? t->sel_bg : t->background);
+    if (c->flags & (R_PLAYING | R_RADIO)) {
+        ui_icon(c->flags & R_PLAYING ? ICON_SPEAKER : c->flags & R_ON ? ICON_RADIO_ON : ICON_RADIO_OFF, 6, y + 5, fg);
+        x = 24;
+    } else if (c->flags & R_NUM) {
+        snprintf(b, sizeof b, "%u", c->num);
+        ui_text(&font_px, 0, y + 16, 24, 2, b, fg, y, y + ROW_H - 1);
+        x = 30;
+    }
+    if (c->flags & R_CHEV) {
+        ui_text(&font_px, right - 7, y + 16, 9, 0, ">", fg, y, y + ROW_H - 1);
+        right -= 14;
+    }
+    if (c->v[0]) {
+        f = nav_retro_px(c->v) ? &font_px : &font_b13;
+        text_fit(f, c->v, -1, 140, b, sizeof b);
+        vw = text_width(f, b, -1);
+        ui_text(f, right - vw, f == &font_px ? y + 16 : y + 15, vw, 0, b, fg, y, y + ROW_H - 1);
+        vw += 10;
+    }
+    f = nav_retro_px(c->t) ? &font_px : &font_b13;
+    text_fit(f, c->t, -1, right - vw - x, b, sizeof b);
+    ui_text(f, x, f == &font_px ? y + 16 : y + 15, right - vw - x, 0, b, fg, y, y + ROW_H - 1);
+}
+
+int nav_retro_list(void)
+{
+    const theme_t *t = T;
+    const ent_t *e = top();
+    int h = L.nr * ROW_H;
+
+    ui_fill(0, L.y0, DISPLAY_W, h, t->background);
+    if (!L.n) {
+        ui_text(&font_px, 0, L.y0 + 50, DISPLAY_W, 1, "Nothing here", t->text, L.y0, L.y0 + h - 1);
+        return 1;
+    }
+    for (int s = 0; s < L.nr && e->top + s < L.n; s++)
+        nav_retro_row(s, L.y0 + s * ROW_H, e->top + s == e->cur);
+    if (L.n > L.nr) {
+        int th = (h - 6) * L.nr / L.n, y;
+
+        th = th < 8 ? 8 : th;
+        y = L.y0 + 3 + (h - 6 - th) * e->top / (L.n - L.nr);
+        ui_frame_rect(313, L.y0 + 1, 6, h - 2, t->text);
+        ui_fill(315, y, 2, th, t->text);
+    }
+    return 1;
+}
+
 /* ---- PK_GRID: a list as a 2 x 2 grid of covers (Library > Albums) -----------------------------------
  * The list's own model (cursor, rows, scrolling), four rows visible, a row of two at a time; drawn by
  * nav_grid_draw() in the viz overlay (firmware_ap.ld, by section) through ap_grid_draw(). Each album's
@@ -328,6 +406,9 @@ static void list_draw(void)
 #define GRID_CW 160
 #define GRID_CH 73
 #define GRID_Y0 LIST_Y
+
+static uint8_t s_gtint;                    /* Look: Retro: the covers in the theme's two colours */
+static uint16_t s_gpal[32];                /* (dark: the text .. light: the background, as ui/retro.c) */
 
 static void grid_cover(const display_band_t *b)
 {
@@ -344,8 +425,13 @@ static void grid_cover(const display_band_t *b)
         uint16_t *row = b->band + (y - b->band_y) * DISPLAY_W;
         const uint16_t *src = rows + (y - b->ya) * 56;
 
-        for (int x = b->cx0; x <= b->cx1; x++)
-            row[x] = got == (long)n * 112 ? src[x - b->x0] : 0x2104;
+        for (int x = b->cx0; x <= b->cx1; x++) {
+            uint16_t p = got == (long)n * 112 ? src[x - b->x0] : 0x2104;
+
+            if (s_gtint)
+                p = s_gpal[((p >> 11) * 8u * 77u + ((p >> 5) & 63u) * 4u * 150u + (p & 31u) * 8u * 29u) >> 11];
+            row[x] = p;
+        }
     }
 }
 
@@ -354,11 +440,15 @@ void nav_grid_draw(void)
     static const uint16_t hues[8] = { 0x7A7A, 0x2C70, 0xC287, 0x3B78, 0xAA2B, 0x5C65, 0xB3C3, 0x4AF5 };
     const theme_t *t = T;
     const ent_t *e = top();
-    int h = L.nr ? 7 * ROW_H : 0;
+    int h = L.nr ? 7 * ROW_H : 0, r = g_cfg.look;   /* r: Look: Retro (PX, tinted covers, its scrollbar) */
 
+    s_gtint = (uint8_t)r;
+    for (int i = 0; r && i < 32; i++)
+        s_gpal[i] = ui_mix(t->text, t->background, i * 8 + 4);
     ui_fill(0, GRID_Y0, DISPLAY_W, 7 * ROW_H, t->background);
     if (!L.n) {
-        ui_text(&font_b13, 0, GRID_Y0 + 50, DISPLAY_W, 1, "Nothing here", t->text_dim, GRID_Y0, GRID_Y0 + h - 1);
+        ui_text(r ? &font_px : &font_b13, 0, GRID_Y0 + 50, DISPLAY_W, 1, "Nothing here", t->text_dim, GRID_Y0,
+                GRID_Y0 + h - 1);
         return;
     }
     for (int s = 0; s < 4 && e->top + s < L.n; s++) {
@@ -366,21 +456,26 @@ void nav_grid_draw(void)
         int x = (s & 1) * GRID_CW, y = GRID_Y0 + (s >> 1) * GRID_CH, sel = e->top + s == e->cur;
         int cy0 = y, cy1 = y + GRID_CH - 1, ty;
         text_line_t ln[2];
-        int nl = text_wrap(&font_b13, c->t, -1, 84, 2, ln);
+        const font_t *fn = r && nav_retro_px(c->t) ? &font_px : &font_b13, *fv = r ? &font_px : &font_b13;
+        int nl = text_wrap(fn, c->t, -1, 84, 2, ln);
         char b[100];
         const fs_ref_t *cv = &g_grid_cover[(e->top + s) & 3];
 
         if (sel)
             ui_fill(x + 2, y + 1, GRID_CW - 4, GRID_CH - 2, t->sel_bg);
         if (cv->size == 56u * 56u * 2u && g_grid_index[(e->top + s) & 3] == e->top + s) {
+            if (r && sel)                      /* (Retro: a tinted cover's frame on the cursor's cell) */
+                ui_frame_rect(x + 6, y + 6, 60, 60, t->sel_text);
             display_custom(x + 8, y + 8, x + 63, y + 63, grid_cover, (uint32_t)((e->top + s) & 3), 1);
         } else {                               /* no cover: the monogram tile, as Now Playing's */
             int k = (uint8_t)c->t[0], len = (k & 0xE0) == 0xC0 ? 2 : (k & 0xF0) == 0xE0 ? 3 : 1;
 
-            ui_fill(x + 8, y + 8, 56, 56, hues[k & 7]);
+            /* (Retro: one colour, inverted on the cursor's cell, which is that colour) */
+            ui_fill(x + 8, y + 8, 56, 56, r ? (sel ? t->sel_text : t->text) : hues[k & 7]);
             memcpy(b, c->t, (size_t)len);
             b[c->t[0] ? len : 0] = 0;
-            ui_text(&font_t17, x + 8, y + 42, 56, 1, b, 0xFFFF, cy0, cy1);
+            ui_text(r && len == 1 ? &font_px : &font_t17, x + 8, y + 42, 56, 1, b,
+                    r ? (sel ? t->sel_bg : t->background) : 0xFFFF, cy0, cy1);
         }
         ty = g_cfg.grid ? y + 22 : y + 42;     /* (album_grid: year only, beside the cover's middle) */
         for (int i = 0; g_cfg.grid && i < nl; i++, ty += 16) {
@@ -388,9 +483,9 @@ void nav_grid_draw(void)
 
             memcpy(b, c->t + ln[i].off, (size_t)len);
             b[len] = 0;
-            ui_text(&font_b13, x + 70, ty, 84, 0, b, sel ? t->sel_text : t->text, cy0, cy1);
+            ui_text(fn, x + 70, ty, 84, 0, b, sel ? t->sel_text : t->text, cy0, cy1);
         }
-        ui_text(&font_b13, x + 70, ty + (g_cfg.grid ? 2 : 0), 84, 0, c->v, sel ? t->sel_text : g_cfg.grid ?
+        ui_text(fv, x + 70, ty + (g_cfg.grid ? 2 : 0), 84, 0, c->v, sel ? t->sel_text : g_cfg.grid ?
                 t->text_dim : t->text, cy0, cy1);
     }
     if (L.n > 4) {                             /* the scrollbar, by rows of two */
@@ -398,8 +493,13 @@ void nav_grid_draw(void)
 
         th = th < 8 ? 8 : th;
         y = GRID_Y0 + 2 + (h - 4 - th) * (e->top / 2) / (rows - 2 > 0 ? rows - 2 : 1);
-        ui_fill(317, GRID_Y0 + 2, 1, h - 4, t->divider);
-        ui_fill(316, y, 3, th, t->scroll);
+        if (r) {                               /* (Retro's: outlined, as its lists') */
+            ui_frame_rect(313, GRID_Y0 + 1, 6, h - 2, t->text);
+            ui_fill(315, y, 2, th, t->text);
+        } else {
+            ui_fill(317, GRID_Y0 + 2, 1, h - 4, t->divider);
+            ui_fill(316, y, 3, th, t->scroll);
+        }
     }
 }
 

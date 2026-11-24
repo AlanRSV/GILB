@@ -73,7 +73,10 @@ the panel is 320×170).*
   the cover, the cover in the screen's two colours, title, artist, album and year beside it, an
   outlined progress bar, the times at its ends and the bit rate between them. Its header shows the
   play state and the volume in dB at the left, the battery in % at the right; on other screens the
-  title is in the pixel font too. The Theme setting
+  title is in the pixel font too. Lists and menus are in the pixel font as well, without section
+  icons, with a pixel ">" for rows that open, the cursor's row inverted and an outlined scrollbar;
+  Library > Albums' grid has the pixel font, covers in the screen's two colours and the same scrollbar.
+  The Theme setting
   stays Modern's.
 - **Now Playing:** shows the cover tile, title, artist and album, format and rate badges, bit
   rate, progress, and the next track. Tap BACK to switch views:
