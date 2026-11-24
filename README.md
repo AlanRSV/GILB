@@ -35,7 +35,7 @@ the panel is 320×170).*
 - **Library basics:** tags (ID3v2/ID3v1/APEv2/Vorbis/MP4/RIFF), a play queue, play modes, and
   resume after power-off: with Resume at power-on set to Last track, the same queue (a Library
   list, a playlist, shuffle's order) plays on from the same song and time (`RECHORD/QUEUE.BIN`).
-- **Library:** Songs, Albums, Artists, Genres, Favourites and Playlists, indexed in the background
+- **Library:** Songs, Albums, Artists, Genres, Years (newest first), Favourites and Playlists, indexed in the background
   (it re-reads only what changed, and refreshes by itself when a card goes in or the PC wrote).
   Playlists are made and edited on the player and kept as M3U8 files on the microSD card
   (`/SD/RECHORD`, or Internal: Settings > Playback > Library data). Albums is a 2 x 2 grid of

@@ -67,7 +67,7 @@ static int trailer_of(fs_file_t *f, lib_trailer_t *t)
     if (size < (long)sizeof *t || fs_seek(f, size - (long)sizeof *t) < 0 ||
         fs_read(f, t, sizeof *t) != (long)sizeof *t)
         return -1;
-    if (t->magic != LIB_IDX_MAGIC || t->version - 1u > LIB_VERSION - 1u ||   /* (1 or 2: the same rows) */
+    if (t->magic != LIB_IDX_MAGIC || t->version != LIB_VERSION ||
         t->crc != lib_crc(0, t, (uint32_t)(sizeof *t - 4u)))
         return -2;
     return 0;
@@ -293,6 +293,7 @@ int idx_row(int vol, int sec, uint32_t i, lib_row_t *r, uint8_t *buf, uint32_t c
     case LS_ARTALB:
     case LS_ALBUMS:
     case LS_GENALB:
+    case LS_YEARALB:
         r->a = lib_le32(p + 2);              /* first track row */
         r->b = lib_le16(p + 6);              /* tracks */
         r->year = (uint16_t)lib_le16(p + 8);
@@ -312,6 +313,7 @@ int idx_row(int vol, int sec, uint32_t i, lib_row_t *r, uint8_t *buf, uint32_t c
         r->s1 = cstr(&p, end, &r->l1);
         break;
     case LS_GENRES:
+    case LS_YEARS:
         r->c = lib_le32(p + 2);              /* first GENALB row */
         r->d = lib_le16(p + 6);              /* albums */
         p += 8;

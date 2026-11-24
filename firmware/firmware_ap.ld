@@ -231,6 +231,8 @@ SECTIONS
             *lib_scan.o(.text* .rodata*)
             *lib_dir.o(.text* .rodata*)
             *ap_ovl.o(.text.ap_lib_tags .text.ap_lib_tags_ok)   /* (only the walk calls them) */
+            *lib_io.o(.text.lr_get .text.lw_open_at .text.lw_u8 .text.lw_u16 .text.lw_u32)   /* (the walk's only) */
+            *lib_coll.o(.text.lib_fnv)
             . = ALIGN(4);
         }
         /* the build: the views from the RAW, the external sort (lib_build.c, lib_sort.c) */
@@ -240,6 +242,8 @@ SECTIONS
             *(.ovl.lbuild.*)
             *lib_build.o(.text* .rodata*)
             *lib_sort.o(.text* .rodata*)
+            *lib_io.o(.text.lr_rec16 .text.lr_rec_raw .text.lr_attach)   /* (the build's and its sort's only) */
+            *lib_coll.o(.text.lib_letter)
             . = ALIGN(4);
         }
     }

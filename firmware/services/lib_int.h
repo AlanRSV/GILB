@@ -94,14 +94,16 @@ uint32_t lib_crc(uint32_t crc, const void *p, uint32_t n);   /* the updater's CR
 #define LIB_CKPT_MAGIC  0x504B4352u  /* "RCKP" */
 #define LIB_END_MAGIC   0x4E454352u  /* "RCEN" */
 #define LIB_IDX_MAGIC   0x584C4352u  /* "RCLX" */
-#define LIB_VERSION     2u           /* 2: track rows carry their genre when it is not their album's
+#define LIB_VERSION     3u           /* 3: the YEARALB and YEARS sections (a bigger trailer: older indexes
+                                      * are built again). 2: track rows carry their genre when it is not their album's
                                       * (kind's bits 6, 7: R_NOGENRE, R_GENRE); ties in ALBTRK by folder
-                                      * and slot. Version 1 indexes are read as before (no such rows) */
+                                      * and slot */
 #define R_NOGENRE 0x40u              /* a track row's kind byte: the track has no genre */
 #define R_GENRE   0x80u              /* ... its genre (u8 n + bytes) follows its artist */
 #define R_KIND    0x3Fu
 
-enum { LS_ALBTRK, LS_ARTALB, LS_ARTISTS, LS_ALBUMS, LS_GENALB, LS_GENRES, LS_SONGS, LS_FOLDERS, LS_N };
+enum { LS_ALBTRK, LS_ARTALB, LS_ARTISTS, LS_ALBUMS, LS_GENALB, LS_GENRES, LS_SONGS, LS_FOLDERS, LS_YEARALB, LS_YEARS,
+       LS_N };                      /* (YEARALB, YEARS: version 3) */
 #define LIB_LETTERS 28               /* '#', A..Z, other scripts */
 #define LIB_BLK     16u              /* rows per block index entry */
 

@@ -201,7 +201,7 @@ static struct {
     uint8_t vol, sec, list, from_list, mode;  /* mode: P_RANGE, P_SHUFFLE, P_GENRE */
     uint32_t first, n, start;        /* rows [first, first + n) of sec, from row `start` */
     uint32_t off, stride, total;     /* P_SHUFFLE: row i = (off + i x stride) mod total */
-    uint32_t ga, gn, gk, gj, gfirst, gcount;  /* P_GENRE: albums [ga, ga + gn) of GENALB; the cursor */
+    uint32_t ga, gn, gk, gj, gfirst, gcount;  /* P_GENRE: albums [ga, ga + gn) of sec (GENALB, YEARALB) */
 } P;
 enum { P_RANGE, P_SHUFFLE, P_GENRE };
 static m3u_ent_t s_e;                /* one entry being read (never two at once) */
@@ -219,7 +219,7 @@ static int get_row(int i, fs_ref_t *r, int *kind)
         sec = LS_ALBTRK;
     } else if (P.mode == P_GENRE) {      /* (asked for in order: 0, 1, 2 ...) */
         while (P.gj >= P.gcount) {
-            if (P.gk >= P.gn || rd(P.vol, LS_GENALB, P.ga + P.gk++, &x))
+            if (P.gk >= P.gn || rd(P.vol, sec, P.ga + P.gk++, &x))
                 return -1;
             P.gfirst = x.a;
             P.gcount = x.b;
@@ -339,14 +339,16 @@ static uint32_t gcd(uint32_t a, uint32_t b)
     return a;
 }
 
-/* Q_MAX rows of ALBTRK at most: a genre's albums' tracks, or (genre_n < 0) any, shuffled. */
-static void play_rows(int vol, uint32_t genre_first, int genre_n, const char *name)
+/* Q_MAX rows of ALBTRK at most: a genre's or a year's albums' tracks (rows of gsec: GENALB, YEARALB),
+ * or (genre_n < 0) any, shuffled. */
+static void play_rows(int vol, int gsec, uint32_t genre_first, int genre_n, const char *name)
 {
     uint32_t n = 0, total = idx_rows(vol, LS_ALBTRK);
     lib_row_t r;
 
     memset(&P, 0, sizeof P);
     P.vol = (uint8_t)vol;
+    P.sec = (uint8_t)gsec;
     if (genre_n < 0) {                   /* shuffle all: distinct rows, a random stride */
         if (!total)
             return;
@@ -363,7 +365,7 @@ static void play_rows(int vol, uint32_t genre_first, int genre_n, const char *na
         P.ga = genre_first;
         P.gn = (uint32_t)genre_n;
         for (int a = 0; a < genre_n && n < Q_MAX; a++) {
-            if (rd(vol, LS_GENALB, genre_first + (uint32_t)a, &r))
+            if (rd(vol, gsec, genre_first + (uint32_t)a, &r))
                 break;
             n += r.b;
         }
@@ -454,7 +456,7 @@ int lib_adding(void) { return A.on; }
 
 /* ---- Library ---- */
 
-enum { R_STATUS, R_SONGS, R_ALBUMS, R_ARTISTS, R_GENRES, R_FAVS, R_LISTS, R_SHUFFLE, R_SOURCE, R_REFRESH, R_N };
+enum { R_STATUS, R_SONGS, R_ALBUMS, R_ARTISTS, R_GENRES, R_YEARS, R_FAVS, R_LISTS, R_SHUFFLE, R_SOURCE, R_REFRESH, R_N };
 
 static int root_ids(uint8_t *ids)
 {
@@ -469,6 +471,8 @@ static int root_ids(uint8_t *ids)
         ids[n++] = R_ARTISTS;
         if (g_lib_view[v].tr.ngenres > 1 || (g_lib_view[v].tr.ngenres == 1 && idx_rows(v, LS_GENRES)))
             ids[n++] = R_GENRES;
+        if (idx_rows(v, LS_YEARS))
+            ids[n++] = R_YEARS;
     }
     ids[n++] = R_FAVS;
     ids[n++] = R_LISTS;
@@ -495,9 +499,9 @@ static int root_count(void)
 
 static void root_row(int i, row_t *r)
 {
-    static const char *const names[R_N] = { "Indexing", "All songs", "Albums", "Artists", "Genres", "Favourites",
+    static const char *const names[R_N] = { "Indexing", "All songs", "Albums", "Artists", "Genres", "Years", "Favourites",
                                             "Playlists", "Shuffle all", "Source", "Refresh library" };
-    static const uint8_t icons[R_N] = { ICON_UPDATE, ICON_NOTE, ICON_ALBUM, ICON_ARTIST, ICON_GENRE, ICON_CHECK,
+    static const uint8_t icons[R_N] = { ICON_UPDATE, ICON_NOTE, ICON_ALBUM, ICON_ARTIST, ICON_GENRE, ICON_CLOCK, ICON_CHECK,
                                         ICON_LIBRARY, ICON_SHUFFLE, ICON_SD, ICON_UPDATE };
     uint8_t ids[R_N];
     const lib_trailer_t *t = &g_lib_view[s_vol].tr;
@@ -523,6 +527,7 @@ static void root_row(int i, row_t *r)
     case R_ALBUMS:  snprintf(r->value, sizeof r->value, "%u", (unsigned)t->nalbums); break;
     case R_ARTISTS: snprintf(r->value, sizeof r->value, "%u", (unsigned)t->nartists); break;
     case R_GENRES:  snprintf(r->value, sizeof r->value, "%u", (unsigned)t->ngenres); break;
+    case R_YEARS:   snprintf(r->value, sizeof r->value, "%u", (unsigned)idx_rows(s_vol, LS_YEARS)); break;
     case R_FAVS:
         if (g_nlists)
             snprintf(r->value, sizeof r->value, "%s", g_lists[0].size ? "" : "none yet");
@@ -556,6 +561,7 @@ static void root_act(int a, int i)
     case R_ALBUMS:  push(&pg_lgrid, V_ALBUMS, s_vol, LS_ALBUMS, 0, idx_rows(s_vol, LS_ALBUMS), "Albums"); break;
     case R_ARTISTS: push(&pg_lview, V_ARTISTS, s_vol, LS_ARTISTS, 0, idx_rows(s_vol, LS_ARTISTS), "Artists"); break;
     case R_GENRES:  push(&pg_lview, V_GENRES, s_vol, LS_GENRES, 0, idx_rows(s_vol, LS_GENRES), "Genres"); break;
+    case R_YEARS:   push(&pg_lview, V_GENRES, s_vol, LS_YEARS, 0, idx_rows(s_vol, LS_YEARS), "Years"); break;
     case R_FAVS:
         if (a == A_OPEN_HOLD) {
             play_list(0, 0, "Favourites");
@@ -566,7 +572,7 @@ static void root_act(int a, int i)
         }
         break;
     case R_LISTS:   m3u_lists(); push(&pg_llists, V_LISTS, s_vol, 0, 0, 0, "Playlists"); break;
-    case R_SHUFFLE: play_rows(s_vol, 0, -1, "Shuffle all"); break;
+    case R_SHUFFLE: play_rows(s_vol, 0, 0, -1, "Shuffle all"); break;
     case R_SOURCE:
         s_vol = !s_vol;
         list_reload();
@@ -706,6 +712,7 @@ static void view_row(int i, row_t *r)
     case LS_ALBUMS:
     case LS_ARTALB:
     case LS_GENALB:
+    case LS_YEARALB:
         r->icon = ICON_ALBUM;
         r->flags = R_CHEV;
         put(r->text, sizeof r->text, x.s1, "Unknown album");
@@ -727,7 +734,8 @@ static void view_row(int i, row_t *r)
                  x.b == 1 ? "" : "s");
         break;
     case LS_GENRES:
-        r->icon = ICON_GENRE;
+    case LS_YEARS:
+        r->icon = sec == LS_YEARS ? ICON_CLOCK : ICON_GENRE;
         r->flags = R_CHEV;
         put(r->text, sizeof r->text, x.s1, "Unknown genre");
         snprintf(r->value, sizeof r->value, "%u album%s", (unsigned)x.d, x.d == 1 ? "" : "s");
@@ -771,6 +779,7 @@ static void open_row(ctx_t *c, int i, int hold)
     case LS_ALBUMS:
     case LS_ARTALB:
     case LS_GENALB:
+    case LS_YEARALB:
         if (hold)
             play_range(c->vol, LS_ALBTRK, x.a, x.b, x.a, nm);
         else
@@ -788,10 +797,11 @@ static void open_row(ctx_t *c, int i, int hold)
         }
         break;
     case LS_GENRES:
+    case LS_YEARS:
         if (hold)
-            play_rows(c->vol, x.c, (int)x.d, nm);
+            play_rows(c->vol, sec - 1, x.c, (int)x.d, nm);
         else
-            push(&pg_lview, V_GENRE, c->vol, LS_GENALB, x.c, x.d, nm);
+            push(&pg_lview, V_GENRE, c->vol, sec - 1, x.c, x.d, nm);   /* (GENALB, YEARALB) */
         break;
     }
 }
@@ -995,6 +1005,7 @@ static int subject(void)
     case LS_ALBUMS:
     case LS_ARTALB:
     case LS_GENALB:
+    case LS_YEARALB:
     case LS_ARTISTS:
         B.first = s_orow.a;
         B.n = s_orow.b;
@@ -1111,8 +1122,8 @@ static void opt_act(int a, int i)
         nav_pop();
         if (b->kind == V_LISTS)
             play_list(b->cur, 0, g_lists[b->cur].name);
-        else if (s_osec == LS_GENRES)
-            play_rows(b->vol, s_orow.c, (int)s_orow.d, B.name);
+        else if (s_osec == LS_GENRES || s_osec == LS_YEARS)   /* (the albums: the section before) */
+            play_rows(b->vol, s_osec - 1, s_orow.c, (int)s_orow.d, B.name);
         else if (b->kind == V_LIST)
             play_list(b->list, 0, b->name);
         else

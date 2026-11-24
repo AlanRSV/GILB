@@ -8,6 +8,7 @@
  *                                                              ARTISTS (groups of TA)
  *   S3  the albums by (name, artist)                        -> ALBUMS
  *   S4  the albums by (genre, name, artist)                 -> GENALB, GENRES (groups of S4)
+ *   S6  the albums by (year, newest first, none last; name, artist) -> YEARALB, YEARS (groups of S6)
  *   S2  the tracks by (title, artist), as ALBTRK row numbers -> SONGS
  *   S5  the folders by first cluster, with their paths      -> FOLDERS (playlists' paths, the walk's
  *                                                              lookups)
@@ -60,7 +61,7 @@
 #define B_KEY(i)  (S8 + LIB_JOB_SCRATCH - 512u + 164u * (i))   /* the group's names (3 x 164) */
 
 enum {
-    B_S1, B_ALB, B_TRK, B_S2, B_ARTALB, B_ART, B_S3, B_ALBUMS, B_S4, B_GENALB, B_GENRES, B_SONGS,
+    B_S1, B_ALB, B_TRK, B_S2, B_ARTALB, B_ART, B_S3, B_ALBUMS, B_S4, B_GENALB, B_GENRES, B_S6, B_YEARALB, B_YEARS, B_SONGS,
     B_S5, B_FOLDERS, B_TRAILER, B_DONE, M_S5, M_A1, M_D2, M_A2, M_SONGS
 };
 
@@ -123,6 +124,15 @@ static int cmp_s4(const uint8_t *a, const uint8_t *b)
     int c = coll_s(TA_STR(a, 2), TA_STR(b, 2), 0);
 
     return c ? c : cmp_s3(a, b);
+}
+
+static int cmp_s6(const uint8_t *a, const uint8_t *b)   /* the year: newest first, none last */
+{
+    uint32_t ya = lib_le16(a + 8), yb = lib_le16(b + 8);
+
+    if (ya != yb)
+        return !ya ? 1 : !yb ? -1 : ya > yb ? -1 : 1;
+    return cmp_s3(a, b);
 }
 
 static int cmp_s5(const uint8_t *a, const uint8_t *b)  /* [u16 len][u32 clus][u32 raw] path */
@@ -732,8 +742,11 @@ static void grp_emit(lib_job_t *j, int genres)
     sec_row(j, o, n, lib_letter(B_KEY(0), j->grp_kl[0], genres ? 0 : LC_ARTIST), 1);
 }
 
+/* genres: 0 ARTISTS, 1 GENRES, 2 YEARS (S6: the key is the year as text, GENRES' rows) */
 static int cons_groups(lib_job_t *j, uint64_t t_end, int genres)
 {
+    uint8_t yk[14];
+
     for (int k = 0; ; k++) {
         const uint8_t *p, *key;
 
@@ -745,6 +758,12 @@ static int cons_groups(lib_job_t *j, uint64_t t_end, int genres)
             return 1;
         }
         key = TA_STR(p, genres ? 2 : 1);
+        if (genres == 2) {
+            unsigned y = lib_le16(p + 8);
+
+            yk[0] = (uint8_t)snprintf((char *)yk + 1, sizeof yk - 1, y ? "%u" : "Unknown year", y);
+            key = yk;
+        }
         if (!j->grp_n || !same(j, 0, key, genres ? 0 : LC_ARTIST)) {
             if (j->grp_n)
                 grp_emit(j, genres);
@@ -1126,6 +1145,34 @@ int build_step(lib_job_t *j, uint64_t t_end)
             lr_close(&j->in);
             j->n_gen = j->rows;
             sec_end(j, LS_GENRES);
+            if (start_sort(j, cmp_s6, 2, 0, 1))     /* (the album rows again: S4's files reused) */
+                return -1;
+            j->bph = B_S6;
+            return 0;                    /* (a phase begun: the rest in the next slice) */
+        case B_S6:
+            if ((r = run_sort(j, prod_ta, t_end)) <= 0)
+                return r;
+            j->s1 = j->srt.result;
+            if (start_pass(j, j->s1))
+                return -1;
+            sec_begin(j);
+            j->bph = B_YEARALB;
+            return 0;                    /* (a phase begun: the rest in the next slice) */
+        case B_YEARALB:
+            if ((r = cons_albrows(j, t_end, 0)) <= 0)
+                return r;
+            lr_close(&j->in);
+            sec_end(j, LS_YEARALB);
+            if (start_pass(j, j->s1))
+                return -1;
+            sec_begin(j);
+            j->bph = B_YEARS;
+            return 0;                    /* (a phase begun: the rest in the next slice) */
+        case B_YEARS:
+            if ((r = cons_groups(j, t_end, 2)) <= 0)
+                return r;
+            lr_close(&j->in);
+            sec_end(j, LS_YEARS);
             if (start_pass(j, j->inc ? j->s5 : j->s2))   /* (a merge: SONGS done, the folders sorted) */
                 return -1;
             sec_begin(j);

@@ -5,7 +5,8 @@
  *
  *   test_lib IMG [--vol 0|1] [--fail-after N] [--vclock US] [--io-busy K] CMD...
  *     index [full]       run the job to the end (or to the failed write); one "stats" line
- *     rows SEC           every row of a section (ALBTRK ARTALB ARTISTS ALBUMS GENALB GENRES SONGS FOLDERS)
+ *     rows SEC           every row of a section (ALBTRK ARTALB ARTISTS ALBUMS GENALB GENRES SONGS FOLDERS
+ *                        YEARALB YEARS)
  *     letters SEC        its letter index
  *     view               the committed slot's trailer
  *     coll A B [artist]  lib_coll(A, B)
@@ -118,7 +119,8 @@ uint32_t fwu_crc(uint32_t crc, const uint8_t *p, uint32_t n)
     return crc;
 }
 
-static const char *const k_secs[LS_N] = { "ALBTRK", "ARTALB", "ARTISTS", "ALBUMS", "GENALB", "GENRES", "SONGS", "FOLDERS" };
+static const char *const k_secs[LS_N] = { "ALBTRK", "ARTALB", "ARTISTS", "ALBUMS", "GENALB", "GENRES", "SONGS", "FOLDERS",
+                                          "YEARALB", "YEARS" };
 
 static int sec_of(const char *s)
 {
@@ -146,6 +148,7 @@ static void print_row(int vol, int sec, uint32_t i)
     case LS_ARTALB:
     case LS_ALBUMS:
     case LS_GENALB:
+    case LS_YEARALB:
         printf("%u first=%u n=%u year=%u dur=%u album=%s artist=%s genre=%s\n", (unsigned)i, (unsigned)r.a,
                (unsigned)r.b, r.year, (unsigned)r.c, r.s1, r.s2, r.s3);
         break;
@@ -154,6 +157,7 @@ static void print_row(int vol, int sec, uint32_t i)
                (unsigned)r.c, (unsigned)r.d, r.s1);
         break;
     case LS_GENRES:
+    case LS_YEARS:
         printf("%u alb=%u nalb=%u name=%s\n", (unsigned)i, (unsigned)r.c, (unsigned)r.d, r.s1);
         break;
     case LS_FOLDERS:
