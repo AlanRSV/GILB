@@ -36,6 +36,11 @@ void ui_icon(int id, int x, int y, uint16_t c);
 int ui_text(const font_t *f, int x, int base, int max_w, int align, const char *s, uint16_t c, int y0, int y1);
 void ui_fill(int x, int y, int w, int h, uint16_t c);      /* w x h at (x, y) */
 void ui_frame_rect(int x, int y, int w, int h, uint16_t c); /* 1-px outline */
+/* Look: Retro: the pixel font for s when it holds all of s; otherwise (and in Modern) the given font. */
+const font_t *look_font(const char *s, const font_t *modern);
+/* A question's heading (BODY_Y .. 63) over its answers' list: icon (NO_ICON: none), the question in
+ * colour c (accent: the text colour), a second line. Retro: no icon, the pixel font, a rule. */
+void q_prompt(int icon, uint16_t c, const char *l1, const char *l2);
 uint16_t ui_mix(uint16_t a, uint16_t b, int t256);          /* a..b, t/256 of the way */
 
 /* ---- the keys (not drawn: their labels say which keys have a hold) ---- */

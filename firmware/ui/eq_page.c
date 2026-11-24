@@ -24,6 +24,28 @@ static void draw(void)
 
     ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, t->background);
     snprintf(v, sizeof v, "%s Hz   %s%d dB", hz[s_band], g_cfg.eq_gain[s_band] > 0 ? "+" : "", g_cfg.eq_gain[s_band]);
+    if (g_cfg.look) {
+        /* Retro: the band and its gain, a rule; each band an LCD's segments up or down from 0 dB (one
+         * a 2 dB step, the unlit ones faint), the 0 dB line across; the band edited inverted */
+        ui_text(&font_px, 8, 38, 304, 1, v, t->text, BODY_Y, 41);
+        ui_fill(8, 42, 304, 2, t->text);
+        ui_fill(8, 97, 304, 1, t->text);
+        for (int k = 0; k < 10; k++) {
+            int x = 20 + 29 * k, g = g_cfg.eq_gain[k], on = k == s_band;
+
+            g = g < -12 ? -12 : g > 12 ? 12 : g;
+            for (int s = 1; s <= 6; s++) {             /* segment s: 2s - 1 dB and up, 5 px a step */
+                int lit = g > 0 ? g >= 2 * s - 1 : 0, lo = g < 0 ? -g >= 2 * s - 1 : 0;
+
+                ui_fill(x + 3, 95 - 6 * s + 1, 15, 4, lit ? t->text : t->text_off);
+                ui_fill(x + 3, 99 + 6 * (s - 1), 15, 4, lo ? t->text : t->text_off);
+            }
+            if (on)
+                ui_fill(x - 3, 141, 27, 14, t->sel_bg);
+            ui_text(&font_s8, x - 3, 152, 27, 1, hz[k], on ? t->sel_text : t->text, 141, 154);
+        }
+        return;
+    }
     ui_text(&font_b13, 16, 44, 288, 1, v, t->text, 30, 48);
     for (int k = 0; k < 10; k++) {                 /* 0 dB at y 96, 10 px every 3 dB */
         int x = 20 + 29 * k, g = g_cfg.eq_gain[k], h;

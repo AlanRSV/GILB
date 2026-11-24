@@ -1290,11 +1290,13 @@ static void txt_draw(void)
     const theme_t *t = T;
     char line[40];
 
+    uint16_t dim = g_cfg.look ? t->text : t->text_dim;   /* (Retro: two colours, its pixel font) */
+
     ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, t->background);
-    ui_text(&font_b13, 16, 44, 288, 0, "Name", t->text_dim, 30, 48);
+    ui_text(look_font("Name", &font_b13), 16, 44, 288, 0, "Name", dim, 30, 48);
     snprintf(line, sizeof line, "%s_", X.s);
-    ui_frame_rect(12, 52, 296, 30, t->divider);
-    ui_text(&font_t17, 20, 74, 280, 0, line, t->text, 54, 80);
+    ui_frame_rect(12, 52, 296, 30, g_cfg.look ? t->text : t->divider);
+    ui_text(look_font(line, &font_t17), 20, 74, 280, 0, line, t->text, 54, 80);
     for (int k = -4; k <= 4; k++) {     /* the letters, the chosen one in the middle */
         int i = (X.ch + k + NCHARS) % NCHARS, x = 160 + k * 32 - 14;
         char c[4] = { k_chars[i], 0 };
@@ -1305,10 +1307,10 @@ static void txt_draw(void)
             c[0] = (char)(c[0] + 32);
         if (!k)
             ui_fill(x, 96, 28, 34, t->sel_bg);
-        ui_text(k ? &font_m13 : &font_t17, x, 120, 28, 1, c, k ? t->text_dim : t->sel_text, 96, 129);
+        ui_text(look_font(c, k ? &font_m13 : &font_t17), x, 120, 28, 1, c, k ? dim : t->sel_text, 96, 129);
     }
     ui_text(&font_s8, 0, 150, DISPLAY_W, 1, "VOL MOVE" DOT "PLAY TYPE" DOT "HOLD Aa" DOT "BACK DEL" DOT "MENU DONE",
-            t->text_dim, 140, 152);
+            dim, 140, 152);
 }
 
 static void txt_act(int a, int i)
@@ -1408,11 +1410,7 @@ static void ask_draw(void)
     char l1[64];
 
     snprintf(l1, sizeof l1, "Delete %s?", C()->name);
-    ui_fill(0, BODY_Y, DISPLAY_W, 43, t->background);
-    ui_icon(ICON_WARN, 10, 28, t->warn);
-    ui_text(&font_m13, 28, 38, 272, 0, l1, t->warn, 24, 42);
-    ui_text(&font_b13, 28, 56, 272, 0, "The songs stay; only the list goes", t->text_dim, 42, 61);
-    ui_fill(0, 63, DISPLAY_W, 1, t->divider);
+    q_prompt(ICON_WARN, t->warn, l1, "The songs stay; only the list goes");   /* (ui/screens.c) */
 }
 static void ask_enter(int first)
 {

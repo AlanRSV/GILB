@@ -232,7 +232,7 @@ static void battery(int x, int y, int pct, int charging)
 /* Look: Retro (services/config.h): its pixel font for the header's text, the line's own font when
  * it holds what PX lacks (a "·", accents); on Now Playing the play state and the volume at the left
  * (the position is in Retro's body: ui/retro.c). */
-static const font_t *hf(const char *s, const font_t *modern)
+const font_t *look_font(const char *s, const font_t *modern)
 {
     if (!g_cfg.look)
         return modern;
@@ -251,7 +251,7 @@ static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
     for (int i = 0; i < NFD; i++)
         f[i].x0 = 1, f[i].x1 = 0;          /* (empty) */
     snprintf(pct, sizeof pct, "%u%%", h->batt);
-    fs = hf(pct, &font_s8);
+    fs = look_font(pct, &font_s8);
     w = text_width(fs, pct, -1);
     f[FD_BATT].x0 = (int16_t)(x - w - 3);
     f[FD_BATT].x1 = 312;
@@ -329,7 +329,7 @@ static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
             else
                 *o++ = *s;
         memcpy(o, "dB", 3);
-        ui_text(hf(v, &font_m13), 22, hb, x - 22, 0, v, t->text, HY0, HY1);
+        ui_text(look_font(v, &font_m13), 22, hb, x - 22, 0, v, t->text, HY0, HY1);
         return;
     }
     if (h->np) {
@@ -343,7 +343,7 @@ static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
         ui_icon(h->icon, 5, 4, t->text_dim);
         tx = 22;
     }
-    ui_text(hf(h->title, &font_m13), tx, hb, x - tx, 0, h->title, t->text, HY0, HY1);
+    ui_text(look_font(h->title, &font_m13), tx, hb, x - tx, 0, h->title, t->text, HY0, HY1);
 }
 
 void frame_status(const hdr_t *h)

@@ -958,13 +958,16 @@ static void art(const char *init, int hue, int paused, int cover)
 
     if (cover)
         display_custom(ART_X, ART_Y, ART_X + ART_S - 1, ART_Y + ART_S - 1, cover_band, 0, 1);
+    else if (g_cfg.look)                   /* Retro: a solid box, the letters in the background colour */
+        ui_fill(ART_X, ART_Y, ART_S, ART_S, T->text);
     else
         for (int k = 0; k < 4; k++)
             ui_fill(ART_X, ART_Y + k * (ART_S / 4), ART_S, ART_S / 4, ui_mix(c, dark, k * 85));
     if (init[0] && !cover) {
         int w = text_width(&font_d28, init, -1);
 
-        ui_text(&font_d28, ART_X + (ART_S - w) / 2, ART_Y + ART_S / 2 + 10, w, 0, init, 0xFFFF, ART_Y, ART_Y + ART_S - 1);
+        ui_text(&font_d28, ART_X + (ART_S - w) / 2, ART_Y + ART_S / 2 + 10, w, 0, init,
+                g_cfg.look ? T->background : 0xFFFF, ART_Y, ART_Y + ART_S - 1);
     }
     if (paused) {
         ui_fill(PAUSE_X, PAUSE_Y, 18, 18, ui_mix(T->background, 0, 77));
@@ -976,6 +979,10 @@ static int badge(int x, const char *s, uint16_t bg, uint16_t fg, int outline)
 {
     int w = text_width(&font_s8, s, -1) + 6;
 
+    if (g_cfg.look) {                      /* Retro: two colours, outlined */
+        bg = fg = T->text;
+        outline = 1;
+    }
     if (outline) {
         ui_frame_rect(x, BADGE_Y, w, 11, bg);
     } else {
@@ -992,16 +999,18 @@ static void text_col(const char *title, const char *artist, const char *album)
 {
     const theme_t *t = T;
     text_line_t ln[2];
-    int n = text_wrap(&font_t17, title, -1, TW, 2, ln), yb = n == 2 ? 42 : 48;
+    const font_t *f = look_font(title, &font_t17);
+    int n = text_wrap(f, title, -1, TW, 2, ln), yb = n == 2 ? 42 : 48;
     char b[100];
 
     for (int i = 0; i < n; i++) {
         cpy(b, sizeof b, title + ln[i].off, ln[i].len);
-        ui_text(&font_t17, TX, yb + 20 * i, TW, 0, b, t->text, BODY_Y + 2, BADGE_Y - 1);
+        ui_text(f, TX, yb + 20 * i, TW, 0, b, t->text, BODY_Y + 2, BADGE_Y - 1);
     }
     yb = n == 2 ? 82 : 70;
-    ui_text(&font_b13, TX, yb, TW, 0, artist, t->text, BODY_Y + 2, BADGE_Y - 1);
-    ui_text(&font_b13, TX, yb + 18, TW, 0, album, t->text_dim, BODY_Y + 2, BADGE_Y - 1);
+    ui_text(look_font(artist, &font_b13), TX, yb, TW, 0, artist, t->text, BODY_Y + 2, BADGE_Y - 1);
+    ui_text(look_font(album, &font_b13), TX, yb + 18, TW, 0, album, g_cfg.look ? t->text : t->text_dim,
+            BODY_Y + 2, BADGE_Y - 1);
 }
 
 static void vol_band(int db, int bt)
@@ -1011,9 +1020,15 @@ static void vol_band(int db, int bt)
     int w = (db + 60) * 220 / 60;
 
     w = w < 0 ? 0 : w > 220 ? 220 : w;
-    ui_icon(bt ? ICON_BT : ICON_SPEAKER, 8, BAND_Y + 9, t->accent);
-    ui_fill(26, BAND_Y + 12, 220, 6, t->bar_track);
-    ui_fill(26, BAND_Y + 12, w, 6, t->bar_fill);
+    ui_icon(bt ? ICON_BT : ICON_SPEAKER, 8, BAND_Y + 9, g_cfg.look ? t->text : t->accent);
+    if (g_cfg.look) {                      /* Retro: outlined, as its progress bar */
+        ui_frame_rect(26, BAND_Y + 10, 220, 10, t->text);
+        if (w > 4)
+            ui_fill(28, BAND_Y + 12, w - 4, 6, t->bar_fill);
+    } else {
+        ui_fill(26, BAND_Y + 12, 220, 6, t->bar_track);
+        ui_fill(26, BAND_Y + 12, w, 6, t->bar_fill);
+    }
     if (bt) {
         memcpy(v, "BT ", 3);
         fmt_db(v + 3, sizeof v - 3, db);
@@ -1021,7 +1036,7 @@ static void vol_band(int db, int bt)
         fmt_db(v, sizeof v - 3, db);
         memcpy(v + strlen(v), " dB", 4);
     }
-    ui_text(&font_m13, 250, BAND_Y + 22, 62, 2, v, t->text, BAND_Y, DISPLAY_H - 1);
+    ui_text(look_font(v, &font_m13), 250, BAND_Y + 22, 62, 2, v, t->text, BAND_Y, DISPLAY_H - 1);
 }
 
 static void np_draw(void)
@@ -1504,8 +1519,9 @@ static void view_draw(void)
 
         memset(&r, 0, sizeof r);
         p->row(base + i, &r);
-        ui_text(&font_b13, 10, y, 118, 0, r.text, t->text_dim, y - 15, y + 3);
-        ui_text(&font_b13, 130, y, 182, 0, r.value, r.flags & R_OFF ? t->warn : t->text, y - 15, y + 3);
+        ui_text(look_font(r.text, &font_b13), 10, y, 118, 0, r.text, g_cfg.look ? t->text : t->text_dim, y - 15, y + 3);
+        ui_text(look_font(r.value, &font_b13), 130, y, 182, 0, r.value, r.flags & R_OFF ? t->warn : t->text,
+                y - 15, y + 3);
     }
 }
 
@@ -2007,6 +2023,22 @@ static void sl_draw(void)
     int lo = 1, hi = s_edit->n, x = 16 + 288 * (*s_edit->field - lo) / (hi - lo);
 
     ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, t->background);
+    if (g_cfg.look) {                    /* Retro: the label and a rule, the value, a segment a step */
+        int n = hi - lo + 1, w = 304 / n;
+
+        ui_text(look_font(s_edit->label, &font_b13), 8, 38, 304, 0, s_edit->label, t->text, BODY_Y, 41);
+        ui_fill(8, 42, 304, 2, t->text);
+        snprintf(v, sizeof v, "%u / %u", *s_edit->field, hi);
+        ui_text(&font_px, 0, 78, DISPLAY_W, 1, v, t->text, 58, 82);
+        for (int k = 0; k < n; k++)
+            if (k < *s_edit->field - lo + 1)
+                ui_fill(8 + w * k, 88, w - 4, 20, t->text);
+            else
+                ui_frame_rect(8 + w * k, 88, w - 4, 20, t->text);
+        snprintf(note, sizeof note, "CANCEL restores %u / %u", s_orig, hi);
+        ui_text(look_font(note, &font_b13), 8, 150, 304, 0, note, t->text, 136, 156);
+        return;
+    }
     ui_text(&font_b13, 16, 44, 288, 0, s_edit->label, t->text_dim, 30, 48);
     snprintf(v, sizeof v, "%u / %u", *s_edit->field, hi);
     ui_text(&font_d28, 0, 84, DISPLAY_W, 1, v, t->text, 58, 92);
@@ -2091,12 +2123,20 @@ const page_t pg_eq = {
 
 /* ---- questions (2.2 Q): a prompt, up to four choices; audio keeps playing ---------------------- */
 
-static void q_prompt(int icon, uint16_t c, const char *l1, const char *l2)
+void q_prompt(int icon, uint16_t c, const char *l1, const char *l2)
 {
     const theme_t *t = T;
     int x = 10;
 
     ui_fill(0, BODY_Y, DISPLAY_W, 43, t->background);
+    if (g_cfg.look) {                    /* Retro: two lines in the pixel font (when it fits), a rule */
+        const font_t *f1 = look_font(l1, &font_m13), *f2 = look_font(l2, &font_b13);
+
+        ui_text(text_width(f1, l1, -1) > 304 ? &font_m13 : f1, 8, 38, 304, 0, l1, t->text, 24, 42);
+        ui_text(text_width(f2, l2, -1) > 304 ? &font_b13 : f2, 8, 57, 304, 0, l2, t->text, 42, 60);
+        ui_fill(8, 61, 304, 2, t->text);
+        return;
+    }
     if (icon != NO_ICON) {
         ui_icon(icon, 10, 28, c);
         x = 28;
