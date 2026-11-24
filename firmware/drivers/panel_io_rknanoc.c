@@ -52,6 +52,7 @@
 #include "services/log.h"
 #include "services/bootcrumb.h"
 #include "display.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 /* GPIO port register block (see file header). */
 typedef struct {
@@ -1108,7 +1109,7 @@ void panel_io_poll(void)
 #define TE_MS 100u
 #define GPIO1 ((gpio_regs_t *)0x40170000u)     /* (SDK hw_memap.h) */
 
-static uint32_t te_watch(uint32_t *chg)
+OVL_TEXT(dev) static uint32_t te_watch(uint32_t *chg)
 {
     gpio_regs_t *const port[3] = { GPIO0, GPIO1, GPIO2 };
     uint32_t last[3], n = 0, t0 = time_ms();
@@ -1129,7 +1130,7 @@ static uint32_t te_watch(uint32_t *chg)
     return n;
 }
 
-void panel_te_probe(void)
+OVL_TEXT(dev) void panel_te_probe(void)
 {
     uint32_t c[6] = { 0 }, n0, n1;
 

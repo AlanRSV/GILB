@@ -6,11 +6,12 @@
 #include "wallclock.h"
 #include "config.h"
 #include "drivers/clock.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 static uint32_t s_secs, s_at;
 static uint8_t s_ok;
 
-void wallclock_set(uint32_t secs)
+OVL_TEXT(npx) void wallclock_set(uint32_t secs)
 {
     s_secs = secs;
     s_at = time_ms();

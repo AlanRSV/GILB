@@ -3,6 +3,7 @@
  */
 #include "clock.h"
 #include "services/watchdog.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 #define CRU(off) (*(volatile uint32_t *)(0x40180000u + (off)))
 #define APLL_CON0 0x00u
@@ -163,7 +164,7 @@ uint32_t time_ms(void)
 
 static uint32_t s_last_cyc;
 
-uint32_t time_cycles(void)
+OVL_TEXT(dev) uint32_t time_cycles(void)
 {
     uint32_t el, t = now_parts(&el), r = t * (s_reload + 1u) + el;
 

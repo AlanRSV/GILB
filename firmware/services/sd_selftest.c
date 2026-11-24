@@ -1,5 +1,5 @@
 /*
- * sd_selftest.c -- Settings > System > Developer > SD card test (the dev overlay: startup/ap_ovl.c).
+ * sd_selftest.c -- Settings > System > Developer > SD card test (the viz overlay: startup/ap_ovl.c ap_sd_test).
  *
  * The device's own writes to the card, end to end, timed: what QEMU cannot tell (the real card's
  * write and busy times) is in its log line for the next flash. On the mounted card (volume 1,

@@ -18,6 +18,7 @@
 #include "services/log.h"
 #include "services/config.h"
 #include "services/tags.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 static char s_name[FS_NAME_MAX];
 static tag_info_t s_tags;                    /* of the heard track, when cfg tags=on */
@@ -35,13 +36,13 @@ void player_note_track(uint32_t clus)
 }
 
 /* The saved queue's source (services/queue.c QUEUE.BIN; both in the npx overlay, firmware_ap.ld). */
-int player_src_get(char *out, unsigned long n)
+OVL_TEXT(npx) int player_src_get(char *out, unsigned long n)
 {
     snprintf(out, n, "%s", s_src);
     return s_tree;
 }
 
-void player_src_set(const char *src, int tree)
+OVL_TEXT(npx) void player_src_set(const char *src, int tree)
 {
     snprintf(s_src, sizeof s_src, "%s", src);
     s_tree = tree;
@@ -105,7 +106,7 @@ int player_open_tree(const char *path)
 
 /* A queue from the library (ui/lib_ui.c): n tracks from get(), from start; src is the start
  * track's folder (the resume record keeps it as a folder queue). */
-int player_open_list(int n, int start, int (*get)(int i, fs_ref_t *r, int *kind), const char *src)
+OVL_TEXT(lib) int player_open_list(int n, int start, int (*get)(int i, fs_ref_t *r, int *kind), const char *src)
 {
     s_open = 0;
     if (queue_from_list(n, start, get) != 0)

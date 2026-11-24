@@ -9,7 +9,7 @@
  *   font_m13  Noto Sans SemiBold 13 px (line 22)          headers, prompts
  *   font_t17  Noto Sans SemiBold 17 px (line 20)          Now Playing title
  *   font_d28  Noto Sans SemiBold 28 px (line 32)          big values: digits, A-Z, "dB"
- *   font_px   GILB's own pixel font, 12 px caps (line 20)  Look: Retro (ASCII only: ui/retro.c)
+ *   font_px   GILB's own pixel font, 12 px caps (line 20)  Look: Retro (ASCII, curly quotes, dashes, the ellipsis)
  * B13/M13/T17 hold ASCII, Latin-1, Latin Extended-A, general punctuation, arrows and a
  * few signs, and Devanagari (U+0900..097F plus the half forms, conjuncts and matra
  * variants HarfBuzz produces for Hindi). S8 is compiled in (fonts/fonts_s8.c); the others
@@ -42,7 +42,7 @@ typedef struct font font_t;
 struct font { uint8_t id; };          /* a handle: the data lives in the loaded tables */
 
 extern const font_t font_s8, font_b13, font_m13, font_t17, font_d28;
-extern const font_t font_px;           /* GILB's pixel font (tools/gilb_pixfont.py): ASCII, Look: Retro */
+extern const font_t font_px;           /* GILB's pixel font (tools/gilb_pixfont.py): ASCII and some punctuation, Look: Retro */
 
 #define TEXT_BAND_W 320                /* a band row is 320 RGB565 pixels */
 
@@ -60,6 +60,8 @@ int text_draw_band(const font_t *f, uint16_t *band, int band_y, int band_h,
 
 /* Width in px of the text as drawn (the sum of the advances). */
 int text_width(const font_t *f, const char *utf8, int nbytes);
+/* 1 when f has a glyph for every code point of utf8 (NUL-terminated): nothing would draw as a box. */
+int text_has_all(const font_t *f, const char *utf8);
 
 /*
  * The text cut to max_w px: if it fits it is copied whole; otherwise it is cut at a

@@ -7,6 +7,7 @@
 #include "queue.h"
 #include "dirlist.h"
 #include "drivers/clock.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 typedef struct {
     fs_ref_t ref;
@@ -62,7 +63,7 @@ int queue_from_folder(const char *path, const fs_ref_t *folder, const fs_ref_t *
     return 0;
 }
 
-int queue_from_list(int n, int start, int (*get)(int i, fs_ref_t *r, int *kind))
+OVL_TEXT(lib) int queue_from_list(int n, int start, int (*get)(int i, fs_ref_t *r, int *kind))
 {
     int first = 0;
 
@@ -261,7 +262,7 @@ typedef struct {
 int player_src_get(char *out, unsigned long n);       /* player/player_audio.c (this overlay) */
 void player_src_set(const char *src, int tree);
 
-static int qf_save(void)
+OVL_TEXT(npx) static int qf_save(void)
 {
     qf_hdr_t h;
     fs_file_t *f;
@@ -286,7 +287,7 @@ static int qf_save(void)
     return ok ? 0 : -3;
 }
 
-static long read_all(fs_file_t *f, void *buf, unsigned long n)
+OVL_TEXT(npx) static long read_all(fs_file_t *f, void *buf, unsigned long n)
 {
     unsigned long got = 0;
     long r;
@@ -298,7 +299,7 @@ static long read_all(fs_file_t *f, void *buf, unsigned long n)
 
 /* Drops the tracks whose file is no longer what the reference says; the heard position moves to the
  * next track kept. Returns the number dropped. */
-static int qf_check(void)
+OVL_TEXT(npx) static int qf_check(void)
 {
     int bad = 0, np = 0, newpos = -1, w = 0;
 
@@ -329,7 +330,7 @@ static int qf_check(void)
     return bad;
 }
 
-static long qf_load(void)
+OVL_TEXT(npx) static long qf_load(void)
 {
     qf_hdr_t h;
     fs_file_t *f = fs_open_read(QF_PATH);
@@ -370,7 +371,7 @@ static long qf_load(void)
 
 /* The npx overlay's entry (np_extra.h): 0 save, 1 load (the time to resume at, or < 0), 2 check the
  * queue in memory (after the computer wrote to the disk). */
-long npx_queue(int op)
+OVL_TEXT(npx) long npx_queue(int op)
 {
     if (op == 0) {
         int r = qf_save();

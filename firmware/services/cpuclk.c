@@ -20,6 +20,7 @@
 #include "coreb/eq.h"
 #include "drivers/clock.h"
 #include "drivers/panel_io.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 #define REG(a)       (*(volatile uint32_t *)(a))
 #define SYST_CSR     REG(0xE000E010u)
@@ -476,7 +477,7 @@ static void log_switch(void)
 
 /* The self-test's log lines, once a boot: in the viz overlay (main memory is short), through
  * startup/ap_ovl.c ap_cpuclk_log; cpuclk_poll() asks again until it can be had. */
-__attribute__((noinline)) int cpuclk_log_selftest(void)
+OVL_TEXT(viz) __attribute__((noinline)) int cpuclk_log_selftest(void)
 {
     uint32_t a_hz = clock_point() == CLOCK_POINT_FLAC ? clock_core_hz() : 224000000u;
     uint32_t b_hz = clock_point() == CLOCK_POINT_FLAC ? clock_core_b_hz() : 448000000u;

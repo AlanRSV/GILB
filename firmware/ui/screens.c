@@ -22,6 +22,7 @@
 #include "services/wallclock.h"
 #include "drivers/bt_jieli.h"
 #include "drivers/clock.h"
+#include "drivers/panel_io.h"
 #include "drivers/usb_uac.h"
 #include "services/config.h"
 #include "services/dirlist.h"
@@ -32,6 +33,7 @@
 #include "services/lib.h"
 #include "ui/np_extra.h"
 #include "player.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 /* ap_ui.c */
 void ap_later(void (*fn)(void));
@@ -462,7 +464,7 @@ static void play_later(int kind, const char *path, const char *name)
 
 /* The library's way to play (ui/lib_ui.c): Now Playing named at once, the queue made by fn after
  * the frame, as a folder's is (PLAYER_OK or not). */
-void np_play_fn(const char *name, int (*fn)(void))
+OVL_TEXT(lib) void np_play_fn(const char *name, int (*fn)(void))
 {
     play_later(PEND_FN, "", name);
     s_pend.fn = fn;

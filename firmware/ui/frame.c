@@ -236,10 +236,7 @@ static const font_t *hf(const char *s, const font_t *modern)
 {
     if (!g_cfg.look)
         return modern;
-    for (; *s; s++)
-        if ((unsigned char)*s >= 0x80u)
-            return modern;
-    return &font_px;
+    return text_has_all(&font_px, s) ? &font_px : modern;
 }
 
 /* Lay the header out right to left (and draw it when draw): each field's span and signature. */

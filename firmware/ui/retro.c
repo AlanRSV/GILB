@@ -54,14 +54,11 @@ static void tint_band(const display_band_t *b)
     }
 }
 
-/* GILB's pixel font (tools/gilb_pixfont.py) holds ASCII: a line with anything else (É, ô, a
- * curly quote) is drawn in T17, the size it stands in for, rather than with boxes. */
+/* GILB's pixel font (tools/gilb_pixfont.py) holds ASCII, curly quotes and dashes: a line with
+ * anything else (É, ô) is drawn in T17, the size it stands in for, rather than with boxes. */
 static const font_t *px_or_t17(const char *s)
 {
-    for (; *s; s++)
-        if ((unsigned char)*s >= 0x80u)
-            return &font_t17;
-    return &font_px;
+    return text_has_all(&font_px, s) ? &font_px : &font_t17;
 }
 
 static void fmt_t(char *o, int cap, uint32_t s)

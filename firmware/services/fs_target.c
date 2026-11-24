@@ -34,6 +34,7 @@
 #include "fs_target.h"
 
 #include "fs_target_int.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 vol_t s_vol[FS_VOLUMES];
 /* Open files at once: the audio engine holds two (the track and the next), the library's job up to
@@ -886,7 +887,7 @@ int fs_list_dir(const char *path, uint32_t index, fs_dirent_t *out,
     return 0;
 }
 
-int fs_list_dir_each(const char *path, fs_dirent_cb cb)
+OVL_TEXT(viz) int fs_list_dir_each(const char *path, fs_dirent_cb cb)
 {
     static fs_dirent_t one;
     uint32_t n, total, i = 0;
@@ -1030,7 +1031,7 @@ int fs_ref_name(const fs_ref_t *r, char *out, unsigned long n)
     return FS_ERR_OPEN;
 }
 
-int fs_ref_check(const fs_ref_t *r)
+OVL_TEXT(npx) int fs_ref_check(const fs_ref_t *r)
 {
     const vol_t *v;
     ent_t dir;
@@ -1165,13 +1166,13 @@ long fs_seek(fs_file_t *f, long offset)
 /* A reader's place in the cluster chain, kept by a caller that shares one handle between several
  * streams (the library's merge cursors): fs_read walks on from a place at or before the position
  * instead of from the start (a backward seek on a long chain of small clusters reads its FAT). */
-void fs_place_get(fs_file_t *f, uint32_t pl[2])
+OVL_TEXT(lib) void fs_place_get(fs_file_t *f, uint32_t pl[2])
 {
     pl[0] = f->clus;
     pl[1] = f->cidx;
 }
 
-void fs_place_set(fs_file_t *f, const uint32_t pl[2])
+OVL_TEXT(lib) void fs_place_set(fs_file_t *f, const uint32_t pl[2])
 {
     if (pl[0] >= 2u && pl[1] <= f->pos / (f->v->spc * 512u)) {
         f->clus = pl[0];
@@ -1358,7 +1359,7 @@ fs_file_t *fs_open_append(const char *path)
     return open_write(path, 1, 0);
 }
 
-fs_file_t *fs_open_append_at(const char *path, uint32_t at)
+OVL_TEXT(lwalk) fs_file_t *fs_open_append_at(const char *path, uint32_t at)
 {
     return open_write(path, 2, at);
 }
@@ -1485,7 +1486,7 @@ long fs_write(fs_file_t *f, const void *buf, unsigned long len)
  * or, when that is all of it, the file removed. 1 = gone, 0 = smaller, < 0 = error. Freeing a big
  * chain at once writes a FAT sector (both copies) per 128 clusters: 32 block writes for 1 MB of
  * 512-byte clusters, in one call (the library's job keeps each pass short with this). */
-int fs_remove_part(const char *path, uint32_t max)
+OVL_TEXT(lib) int fs_remove_part(const char *path, uint32_t max)
 {
     const vol_t *cv;
     vol_t *v;

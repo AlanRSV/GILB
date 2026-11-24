@@ -17,6 +17,7 @@
 #include "rknanoc.h"
 #include "usb_msc.h"
 #include "usb_probe.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 #define OTG(off)    (*(volatile uint32_t *)(0x60080000u + (off)))
 #define GPIO_DR(p)  (*(volatile uint32_t *)(k_gpio[p]))
@@ -213,7 +214,7 @@ void usb_probe_abort(void)
     finish();
 }
 
-int usb_probe_run(usb_probe_step_t *out, void (*progress)(int step, const char *name))
+OVL_TEXT(dev) int usb_probe_run(usb_probe_step_t *out, void (*progress)(int step, const char *name))
 {
     uint32_t w;
 

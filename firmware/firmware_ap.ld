@@ -106,10 +106,12 @@ SECTIONS
 {
     /* ---- overlays (services/ovl.h, startup/ap_ovl.c) -------------------
        First in this script, so these input sections are theirs before .text's wildcards take
-       the rest. Each starts with its header (OVL_HEADER). A file partly in an overlay is split by
-       function section (-ffunction-sections): its statics shared with resident code stay in
-       .text (an overlay may call them), and a function inlined into its caller goes with it.
-       NOCROSSREFS: no overlay refers into another. */
+       the rest. Each starts with its header (OVL_HEADER). A file wholly in an overlay is named here
+       by its object (and so stays out of LTO: the Makefile's LTO_OBJS). A file partly in one tags
+       those functions OVL_TEXT(<overlay>) (services/ovl.h), placed here by their section
+       .text.ovl_<overlay> with their strings (.rodata.ovl_<overlay>.str1.1), so the file is still
+       link-time optimised: its other functions stay in .text (an overlay may call them), and a
+       function inlined into its caller goes with it. NOCROSSREFS: no overlay refers into another. */
     OVERLAY ORIGIN(OVL_WIN) : NOCROSSREFS AT (ORIGIN(OVL_STORE))
     {
         /* the USB DAC (UAC2): the driver and the session (startup/ap_ui.c) */
@@ -118,13 +120,9 @@ SECTIONS
             KEEP(*(.ovl_hdr.usbdac))
             *(.ovl.usbdac.*)
             *usb_uac_rknanoc.o(.text* .rodata*)
-            *ap_ui.o(.text.usb_dac_session* .rodata.usb_dac_session.* .text.uac_tick* .rodata.uac_tick.*
-                     .text.uac_status* .text.dac_power_only* .rodata.dac_power_only.*)
-            /* resident files' functions only the USB DAC calls */
-            *audio.o(.text.audio_ext_start .text.audio_ext_rate .text.audio_ext_stop .text.audio_ext_pos .text.ext_prepare
-                     .text.audio_ext_ring)
-            *usb_msc_rknanoc.o(.text.usb_dwc2_init_hs)
-            *ap_bt.o(.text.bt_app_external)
+            /* resident files' functions only the USB DAC calls, by their tag (OVL_TEXT, services/ovl.h):
+               the session (startup/ap_ui.c), audio's external source, the high-speed USB init, BT's */
+            *(.text.ovl_usbdac .ovl_text_usbdac .rodata.ovl_usbdac .rodata.ovl_usbdac.*)
             . = ALIGN(4);
         }
         /* USB-C earphones: the player as USB host; and the Custom EQ editor (startup/ap_ovl.c: it
@@ -159,11 +157,9 @@ SECTIONS
             *tags_rg.o(.text* .rodata*)
             *rtc_pcf8563.o(.text* .rodata*)
             *clock_set.o(.text* .rodata*)
-            *queue.o(.text.qf_* .text.read_all .text.npx_queue .rodata.qf_* .rodata.npx_queue*)
-            *player_audio.o(.text.player_src_get .text.player_src_set)
-            *fs_target.o(.text.fs_ref_check)
-            *str.o(.text.strncasecmp)          /* (only the lyrics file match calls it) */
-            *wallclock.o(.text.wallclock_set)  /* (only clock_set.c sets it) */
+            /* tagged OVL_TEXT(npx): the queue file, the playing source, fs_ref_check, strncasecmp
+               (only the lyrics file match calls it), wallclock_set (only clock_set.c sets it) */
+            *(.text.ovl_npx .ovl_text_npx .rodata.ovl_npx .rodata.ovl_npx.*)
             . = ALIGN(4);
         }
         /* Now Playing's Spectrum view (ui/spectrum.c) and the samples it reads (audio_pcm_window) */
@@ -172,17 +168,17 @@ SECTIONS
             KEEP(*(.ovl_hdr.viz))
             *(.ovl.viz.*)
             *spectrum.o(.text* .rodata*)
-            *audio.o(.text.audio_pcm_window)
-            *nav.o(.text.nav_grid_draw .text.grid_cover .rodata.hues* .text.nav_retro_list .text.nav_retro_row
-                   .text.nav_retro_px)   /* (its strings stay: shared with the list's; Retro's list too) */
             *themes_builtin.o(.text* .rodata*)   /* the themes (theme/theme_store.c): main memory keeps the current one */
             *theme_store.o(.text* .rodata*)
             *theme_file.o(.text* .rodata*)
-            *fs_target.o(.text.fs_list_dir_each)   /* (only the theme scan and the GILB move list a folder) */
             *gilb_move.o(.text* .rodata*)         /* RECHORD/ -> GILB/ (services/gilb_move.c) */
             *retro.o(.text* .rodata*)             /* Look: Retro's Now Playing (ui/retro.c) */
             *retro_tags.o(.text* .rodata*)        /* (its year: tags.c again, TAGS_EXT) */
-            *cpuclk.o(.text.cpuclk_log_selftest .rodata.cpuclk_log_selftest*)   /* (once a boot) */
+            *sd_selftest.o(.text* .rodata*)       /* Developer > SD card test (room the dev overlay lacks) */
+            /* tagged OVL_TEXT(viz): audio_pcm_window, the album grid and Retro's list (ui/nav.c),
+               fs_list_dir_each (only the theme scan and the GILB move list a folder),
+               cpuclk_log_selftest (once a boot) */
+            *(.text.ovl_viz .ovl_text_viz .rodata.ovl_viz .rodata.ovl_viz.*)
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */
@@ -192,29 +188,12 @@ SECTIONS
             *(.ovl.dev.*)
             *usb_cdc_rknanoc.o(.text* .rodata*)
             *hifi_probe.o(.text* .rodata*)
-            /* resident drivers' functions only these tests call: the DAC test, USB detect, BT listen,
-               the HIFI probe */
-            *dac_cs43131.o(.text.dac_output_off .text.dac_i2s_feed .text.dac_scan_result
-                           .text.dac_i2s_fifo_range .text.dac_get_hp_status .text.dac_read_reg)
-            *usb_msc_rknanoc.o(.text.usb_detect_state .text.usb_dwc2_init)
-            *usb_probe_rknanoc.o(.text.usb_probe_run)   /* (the wake steps it itself) */
-            *sdcard.o(.text.sdcard_mounted)
-            *fs_target.o(.text.fs_stat)   /* (fs_rename: resident, the GILB move uses it too) */
-            *audio.o(.text.audio_b_fresh)
-            *clock_rknanoc.o(.text.time_cycles)
-            *sd_selftest.o(.text* .rodata*)
             *services/selftest.o(.text* .rodata*)   /* (Settings > System > Self-test) */
-            *bt_jieli.o(.text.bt_listen .text.bt_version .rodata.bt_listen.*)
-            *panel_io_rknanoc.o(.text.panel_te_probe .text.te_watch .rodata.panel_te_probe.*)
-            /* (.rodata.usb_console_run.str1.1 and .rodata.usb_probe_menu.str1.1 stay resident:
-               strings the compiler shares with resident tables in ap_ui.c) */
-            *ap_ui.o(.text.dac_test_run* .rodata.dac_test_run.* .text.tone_burst* .rodata.sine64*
-                     .text.usb_console_run* .text.cdc_* .rodata.cdc_*
-                     .text.usb_probe_menu* .text.usb_probe_screen*
-                     .rodata.usb_probe_screen.* .text.usb_detect_test* .rodata.usb_detect_test.*
-                     .text.detect_wait* .rodata.detect_wait.* .text.bt_listen_test*
-                     .rodata.bt_listen_test.* .text.listen_save* .rodata.listen_save.*
-                     .text.te_probe_test*)
+            /* tagged OVL_TEXT(dev): the tests themselves (startup/ap_ui.c: the DAC test, the USB console,
+               USB probe and detect, BT listen, panel TE) and the resident drivers' functions only they
+               call (the DAC's, USB detect, the USB probe, BT listen, the TE probe, audio_b_fresh,
+               time_cycles; sdcard_mounted and fs_stat stay resident: the SD card test uses them too) */
+            *(.text.ovl_dev .ovl_text_dev .rodata.ovl_dev .rodata.ovl_dev.*)
             . = ALIGN(4);
         }
     }
@@ -243,7 +222,7 @@ SECTIONS
             *ap_ovl.o(.text.ap_lib_tags .text.ap_lib_tags_ok)   /* (only the walk calls them) */
             *lib_io.o(.text.lr_get .text.lw_open_at .text.lw_u8 .text.lw_u16 .text.lw_u32)   /* (the walk's only) */
             *lib_coll.o(.text.lib_fnv)
-            *fs_target.o(.text.fs_open_append_at)   /* (the walk's only) */
+            *(.text.ovl_lwalk .ovl_text_lwalk .rodata.ovl_lwalk .rodata.ovl_lwalk.*)   /* fs_open_append_at: the walk's only */
             . = ALIGN(4);
         }
         /* the build: the views from the RAW, the external sort (lib_build.c, lib_sort.c) */
@@ -266,11 +245,9 @@ SECTIONS
         KEEP(*(.ovl_hdr.lib))
         *(.ovl.lib.*)
         *lib_*.o(.text* .rodata*)
-        /* resident files' functions only the library calls */
-        *fs_target.o(.text.fs_remove_part .text.fs_place_get .text.fs_place_set)
-        *player_audio.o(.text.player_open_list)
-        *queue.o(.text.queue_from_list)
-        *screens.o(.text.np_play_fn)
+        /* resident files' functions only the library calls, tagged OVL_TEXT(lib): fs_remove_part,
+           fs_place_get/set, player_open_list, queue_from_list, np_play_fn */
+        *(.text.ovl_lib .ovl_text_lib .rodata.ovl_lib .rodata.ovl_lib.*)
         . = ALIGN(4);
     }
 

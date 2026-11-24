@@ -11,7 +11,7 @@ Each glyph: its first row (0 = the capitals' top; 11 the row on the baseline; 12
 and its rows, '#' ink, '.' none. A glyph's advance is its width + 2 (space: 5). The blob's glyph
 records follow firmware/drivers/text.c: 2-bit alpha (ink = 3), four pixels a byte, high bits
 first, trimmed to the ink box; left/top from the pen / the baseline. ASCII (95, in order), then
-U+2026 (the ellipsis), then U+FFFD (the box drawn for what the font lacks).
+the dashes and curly quotes (U+2013..201D), U+2026 (the ellipsis), then U+FFFD (the box drawn for what the font lacks).
 """
 import struct, sys
 
@@ -177,6 +177,13 @@ g('{', 0, '..### .##.. .##.. .##.. .##.. ##... ##... .##.. .##.. .##.. .##.. ..#
 g('|', 0, '## ## ## ## ## ## ## ## ## ## ## ## ## ## ##')
 g('}', 0, '###.. ..##. ..##. ..##. ..##. ...## ...## ..##. ..##. ..##. ..##. ###..')
 g('~', 5, '.###...## ##.#####. ##..###..')
+# typographic punctuation (tags use it: Won’t, 1991–1992), so such a line stays in PX
+g('–', 6, '######## ########')
+g('—', 6, '############ ############')
+g('‘', 0, '.## ##. ##. ##.')
+g('’', 0, '.## .## .## ##.')
+g('“', 0, '.##.## ##.##. ##.##. ##.##.')
+g('”', 0, '.##.## .##.## .##.## ##.##.')
 g('…', 10, '##..##..## ##..##..##')
 g('�', 1, '######### ##.....## ##.....## ##.....## ##.....## ##.....## ##.....## ##.....## '
                 '##.....## ##.....## #########')
@@ -200,7 +207,7 @@ def glyph(ch):
 
 
 def order():
-    return [chr(c) for c in range(0x20, 0x7F)] + ['…', '�']
+    return [chr(c) for c in range(0x20, 0x7F)] + ['–', '—', '‘', '’', '“', '”', '…', '�']   # (code order)
 
 
 def check():

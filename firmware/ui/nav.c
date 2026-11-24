@@ -23,6 +23,7 @@
 #include "services/power.h"
 #include "services/screenshot.h"
 #include "player.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 const input_event_t *g_ev;
 int g_locked;
@@ -329,18 +330,12 @@ static void list_draw(void)
  * the cursor's row inverted, an outlined scrollbar with a solid thumb (as Retro's progress bar).
  * A row's text was fitted for B13 (fill): fitted again for PX here. A text PX lacks (accents, a
  * "·") keeps B13. Same rows and places as Modern's, so its redraw rectangles hold. */
-static int nav_retro_px(const char *s)    /* PX holds it all: ASCII and the ellipsis */
+OVL_TEXT(viz) static int nav_retro_px(const char *s)    /* PX holds it all (drivers/text.h text_has_all) */
 {
-    for (const unsigned char *p = (const unsigned char *)s; *p; p++)
-        if (*p >= 0x80u) {
-            if (p[0] != 0xE2u || p[1] != 0x80u || p[2] != 0xA6u)
-                return 0;
-            p += 2;
-        }
-    return 1;
+    return text_has_all(&font_px, s);
 }
 
-static void nav_retro_row(int s, int y, int sel)
+OVL_TEXT(viz) static void nav_retro_row(int s, int y, int sel)
 {
     const theme_t *t = T;
     const rc_t *c = &L.c[s];
@@ -374,7 +369,7 @@ static void nav_retro_row(int s, int y, int sel)
     ui_text(f, x, f == &font_px ? y + 16 : y + 15, right - vw - x, 0, b, fg, y, y + ROW_H - 1);
 }
 
-int nav_retro_list(void)
+OVL_TEXT(viz) int nav_retro_list(void)
 {
     const theme_t *t = T;
     const ent_t *e = top();
@@ -410,7 +405,7 @@ int nav_retro_list(void)
 static uint8_t s_gtint;                    /* Look: Retro: the covers in the theme's two colours */
 static uint16_t s_gpal[32];                /* (dark: the text .. light: the background, as ui/retro.c) */
 
-static void grid_cover(const display_band_t *b)
+OVL_TEXT(viz) static void grid_cover(const display_band_t *b)
 {
     uint16_t rows[16 * 56];                    /* (a band's rows of one cover: 1.8 KB of stack) */
     int n = b->yb - b->ya + 1;
@@ -435,9 +430,9 @@ static void grid_cover(const display_band_t *b)
     }
 }
 
-void nav_grid_draw(void)
+OVL_TEXT(viz) void nav_grid_draw(void)
 {
-    static const uint16_t hues[8] = { 0x7A7A, 0x2C70, 0xC287, 0x3B78, 0xAA2B, 0x5C65, 0xB3C3, 0x4AF5 };
+    static const uint16_t hues[8] OVL_RODATA(viz) = { 0x7A7A, 0x2C70, 0xC287, 0x3B78, 0xAA2B, 0x5C65, 0xB3C3, 0x4AF5 };
     const theme_t *t = T;
     const ent_t *e = top();
     int h = L.nr ? 7 * ROW_H : 0, r = g_cfg.look;   /* r: Look: Retro (PX, tinted covers, its scrollbar) */

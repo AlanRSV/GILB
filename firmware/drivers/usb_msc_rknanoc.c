@@ -19,6 +19,7 @@
 #include "rknanoc.h"
 #include "usb_msc.h"
 #include "services/log.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 #define OTG(off)    (*(volatile uint32_t *)(0x60080000u + (off)))
 #define DIEPCTL(n)  OTG(0x900u + (n) * 0x20u)
@@ -748,14 +749,14 @@ static void core_init(void)
 
 /* Shared DWC2 bring-up (PHY + core + FIFOs + EP0), reused by the CDC-ACM
  * console driver so both devices use the exact init that enumerates. */
-void usb_dwc2_init(void)
+OVL_TEXT(dev) void usb_dwc2_init(void)
 {
     s_want_hs = 0;
     hw_on();
     core_init();
 }
 
-void usb_dwc2_init_hs(void)
+OVL_TEXT(usbdac) void usb_dwc2_init_hs(void)
 {
     s_want_hs = 1;
     s_keep_audio = 1;
@@ -884,7 +885,7 @@ const char *const usb_detect_names[USB_DETECT_STATES] = {
     "as booted (woken)", "quick re-park (old)", "run 300 ms, hold", "run 1 s, hold",
 };
 
-void usb_detect_state(int n)
+OVL_TEXT(dev) void usb_detect_state(int n)
 {
     switch (n) {
     case 0:                                          /* leave the idle usb_dwc2_park() left */

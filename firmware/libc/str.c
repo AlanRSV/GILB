@@ -1,5 +1,6 @@
 /* str.c — string primitives for the freestanding libc (see libc.h). */
 #include "libc.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 size_t strlen(const char *s)
 {
@@ -90,7 +91,7 @@ unsigned int Unicode2Ascii(unsigned char *pbAscii, unsigned short *pwUnicode, un
 
 
 /* Case-insensitive bounded compare (POSIX; used by the ID3 parser). */
-int strncasecmp(const char *a, const char *b, unsigned int n)
+OVL_TEXT(npx) int strncasecmp(const char *a, const char *b, unsigned int n)
 {
     unsigned int i;
     for (i = 0; i < n; i++) {

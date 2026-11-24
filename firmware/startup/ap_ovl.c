@@ -243,18 +243,18 @@ void ap_eq(int a, int i)             /* the page's act; its draw with a = -1 */
 /* ---- dev: the Developer tests (Settings > Developer, ui/screens.c) ------------------------------ */
 
 enum { DEV_DAC_TEST, DEV_USB_CONSOLE, DEV_USB_PROBE, DEV_USB_DETECT, DEV_BT_LISTEN, DEV_TE_PROBE, DEV_HIFI_PROBE,
-       DEV_SD_TEST, DEV_SELFTEST };
+       DEV_SELFTEST };
 
 void dac_test_run(void), usb_console_run(void), usb_probe_menu(void), usb_detect_test(void),
      bt_listen_test(void), te_probe_test(void);   /* startup/ap_ui.c */
 void hifi_probe_test(void);                       /* audio/hifi_probe.c */
-void sd_selftest(void);                           /* services/sd_selftest.c */
 void selftest_run(void);                          /* services/selftest.c */
 
+/* (the SD card test is the viz overlay's: ap_sd_test below, room this window no longer has) */
 static void (*const k_dev[])(void) OVL_API(dev) = {
     [DEV_DAC_TEST] = dac_test_run, [DEV_USB_CONSOLE] = usb_console_run, [DEV_USB_PROBE] = usb_probe_menu,
     [DEV_USB_DETECT] = usb_detect_test, [DEV_BT_LISTEN] = bt_listen_test, [DEV_TE_PROBE] = te_probe_test,
-    [DEV_HIFI_PROBE] = hifi_probe_test, [DEV_SD_TEST] = sd_selftest, [DEV_SELFTEST] = selftest_run,
+    [DEV_HIFI_PROBE] = hifi_probe_test, [DEV_SELFTEST] = selftest_run,
 };
 OVL_HEADER(dev, OVL_DEV, k_dev);
 
@@ -274,7 +274,6 @@ void ap_usb_detect(void) { dev_run(DEV_USB_DETECT); }
 void ap_bt_listen(void) { dev_run(DEV_BT_LISTEN); }
 void ap_te_probe(void) { dev_run(DEV_TE_PROBE); }
 void ap_hifi_probe(void) { dev_run(DEV_HIFI_PROBE); }
-void ap_sd_test(void) { dev_run(DEV_SD_TEST); }
 void ap_self_test(void) { dev_run(DEV_SELFTEST); }
 
 /* ---- fsw: the file-system writer's cold half (services/fs_write_ext.c), its own window ------ */
@@ -442,10 +441,24 @@ typedef struct {
     int (*retro_np)(int part);                                    /* ui/retro.c: Look: Retro's Now Playing */
     int (*cpuclk_log)(void);                                      /* services/cpuclk.c: the self-test's log */
     int (*retro_list)(void);                                      /* ui/nav.c: Look: Retro's lists */
+    void (*sd_test)(void);                                        /* services/sd_selftest.c */
 } viz_api_t;
 int gilb_move(int vol), retro_np(int part), cpuclk_log_selftest(void), nav_retro_list(void);
+void sd_selftest(void);
 static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw, theme_store_scan, theme_store_load,
-                                              gilb_move, retro_np, cpuclk_log_selftest, nav_retro_list };
+                                              gilb_move, retro_np, cpuclk_log_selftest, nav_retro_list,
+                                              sd_selftest };
+
+/* Settings > Developer > SD card test: here rather than with the other tests (the dev overlay is full);
+ * it runs to its end inside the call, as they do. */
+void ap_sd_test(void)
+{
+    if (!ovl_get(OVL_VIZ)) {
+        refused(OVL_VIZ);
+        return;
+    }
+    GATE_V(ovl_get, OVL_VIZ, viz_api_t, sd_test());
+}
 
 static int npx_ok(void);
 

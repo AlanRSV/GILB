@@ -52,6 +52,7 @@
 #include "dac_cs43131.h"
 #include "clock.h"
 #include "services/watchdog.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 /* ---- MMIO primitives ----------------------------------------------------- */
 
@@ -457,7 +458,7 @@ static void dac_pdn_up(uint8_t mask)
  * ASSERT the I2S1 soft reset and Hi-Z the I2S1 pads. Without the close
  * half, the next run inherits stale serializer state and plays tone with
  * noise on top (DFIU 60609d7f). */
-void dac_output_off(void)
+OVL_TEXT(dev) void dac_output_off(void)
 {
     dac_gpio_out(2, 0, 1);              /* hardware mute ON                */
     dac_gpio_out(2, 14, 1);
@@ -627,13 +628,13 @@ int dac_last_step(void)
     return s_step;
 }
 
-void dac_get_hp_status(uint8_t out[2])
+OVL_TEXT(dev) void dac_get_hp_status(uint8_t out[2])
 {
     out[0] = s_hp_status[0];
     out[1] = s_hp_status[1];
 }
 
-int dac_read_reg(int chan, uint32_t map24, uint8_t *out)
+OVL_TEXT(dev) int dac_read_reg(int chan, uint32_t map24, uint8_t *out)
 {
     return dac_map_read(chan, map24, out);
 }
@@ -643,7 +644,7 @@ int dac_write_reg(int chan, uint32_t map24, uint8_t val)
     return dac_map_write_chan(chan, map24, val);
 }
 
-int dac_scan_result(int cand, int chip)
+OVL_TEXT(dev) int dac_scan_result(int cand, int chip)
 {
     if (cand < 0 || cand > 2 || chip < 0 || chip > 1)
         return -1;
@@ -926,13 +927,13 @@ int dac_set_rate(uint32_t rate_hz)
  * void); with a live serializer it oscillates 00..1d. */
 static unsigned s_fifo_lo = 0x3Fu, s_fifo_hi = 0;
 
-void dac_i2s_fifo_range(unsigned *lo, unsigned *hi)
+OVL_TEXT(dev) void dac_i2s_fifo_range(unsigned *lo, unsigned *hi)
 {
     *lo = s_fifo_lo;
     *hi = s_fifo_hi;
 }
 
-int dac_i2s_feed(const int16_t *pcm, int frames)
+OVL_TEXT(dev) int dac_i2s_feed(const int16_t *pcm, int frames)
 {
     int i;
     unsigned stall;

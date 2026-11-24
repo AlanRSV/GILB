@@ -31,6 +31,7 @@
 #include "player.h"
 #include "ui/ui.h"
 #include "ui/nav.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 enum { ROW_POWER, ROW_PAIRED, ROW_SCAN, ROW_DEV, ROW_DISCONNECT, ROW_FORGET };
 
@@ -285,7 +286,7 @@ void bt_event(int ev, const bt_dev_t *dev)
  * to the host. */
 static int s_ext = -1;
 
-void bt_app_external(int streaming)
+OVL_TEXT(usbdac) void bt_app_external(int streaming)
 {
     s_ext = streaming;
 }

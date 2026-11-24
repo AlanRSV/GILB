@@ -35,6 +35,7 @@
 #include "services/bootcrumb.h"
 #include "services/config.h"
 #include "services/cpuclk.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 
 #define REG(a)      (*(volatile uint32_t *)(a))
@@ -1361,7 +1362,7 @@ int audio_get_volume_db(void)
  * AUDIO_EXT_BLOCKS blocks of AUDIO_EXT_FRAMES frames at AS_PCM_RING. The player
  * stops and core B is held in reset: nothing decodes. */
 
-static void ext_prepare(void)
+OVL_TEXT(usbdac) static void ext_prepare(void)
 {
     volatile uint32_t *lli = (volatile uint32_t *)AS_LLI;
 
@@ -1379,12 +1380,12 @@ static void ext_prepare(void)
     memset((void *)AS_PCM_RING, 0, AUDIO_EXT_BLOCKS * AUDIO_EXT_FRAMES * 8u);
 }
 
-int32_t *audio_ext_ring(void)
+OVL_TEXT(usbdac) int32_t *audio_ext_ring(void)
 {
     return (int32_t *)AS_PCM_RING;
 }
 
-int audio_ext_start(uint32_t rate)
+OVL_TEXT(usbdac) int audio_ext_start(uint32_t rate)
 {
     if (s_playing || s_b_up)
         halt();
@@ -1421,7 +1422,7 @@ int audio_ext_start(uint32_t rate)
     return 0;
 }
 
-int audio_ext_rate(uint32_t rate)
+OVL_TEXT(usbdac) int audio_ext_rate(uint32_t rate)
 {
     if (!s_ext)
         return -1;
@@ -1437,14 +1438,14 @@ int audio_ext_rate(uint32_t rate)
     return 0;
 }
 
-uint32_t audio_ext_pos(void)
+OVL_TEXT(usbdac) uint32_t audio_ext_pos(void)
 {
     uint32_t off = DMA_CHR(0x00) - AS_PCM_RING;
 
     return off / 8u % (AUDIO_EXT_BLOCKS * AUDIO_EXT_FRAMES);
 }
 
-void audio_ext_stop(void)
+OVL_TEXT(usbdac) void audio_ext_stop(void)
 {
     if (!s_ext)
         return;
@@ -1505,7 +1506,7 @@ void audio_eq(void)                          /* g_cfg's EQ changed: core B takes
 
 /* Developer > HIFI probe (audio/hifi_probe.c, in the dev overlay): the player stopped and a fresh
  * core B (the main image: coreb/b_hifi_probe.c) running at PLL / div, its SysTick on that clock. */
-int audio_b_fresh(unsigned div)
+OVL_TEXT(dev) int audio_b_fresh(unsigned div)
 {
     uint32_t t0;
 
@@ -1595,7 +1596,7 @@ int audio_skip(int dir)
     return pos < 0 ? -3 : audio_play(pos);
 }
 
-int audio_pcm_window(int16_t *out, int n)   /* (in the viz overlay: firmware_ap.ld) */
+OVL_TEXT(viz) int audio_pcm_window(int16_t *out, int n)   /* (in the viz overlay: firmware_ap.ld) */
 {
     const int32_t *p;
 

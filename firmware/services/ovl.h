@@ -35,6 +35,21 @@ enum { OVL_NONE = 0, OVL_USBDAC, OVL_USBOUT, OVL_DEV, OVL_FSW, OVL_LIB, OVL_LIBT
 
 #define OVL_MAGIC 0x314C564Fu        /* "OVL1" */
 
+/* A function of a mostly resident file that belongs in overlay <name> (usbdac, npx, viz, dev, lwalk,
+ * lib): firmware_ap.ld places it by this section, not by its object's name, so the file can still be
+ * link-time optimised (an LTO build's code comes out of new objects). Its string literals follow it
+ * (GCC puts them in .rodata.ovl_<name>.str1.1); a static const table it uses does not, and takes
+ * OVL_RODATA(<name>). Resident code still never calls it (NOCROSSREFS_TO in firmware_ap.ld).
+ * A string it shares with resident code is emitted once per compiled unit: the LTO link compiles each
+ * function apart (-flto-partition=max, the Makefile), so each keeps its own copy. LTO=0 compiles a
+ * file as one unit, so there its strings stay resident (a section name GCC derives no .rodata from). */
+#ifdef OVL_STR_RESIDENT
+#define OVL_TEXT(name)   __attribute__((section(".ovl_text_" #name)))
+#else
+#define OVL_TEXT(name)   __attribute__((section(".text.ovl_" #name)))
+#endif
+#define OVL_RODATA(name) __attribute__((section(".rodata.ovl_" #name)))
+
 /* The first bytes of every overlay (startup/ap_ovl.c, placed first by firmware_ap.ld). */
 typedef struct {
     uint32_t magic;                  /* OVL_MAGIC */

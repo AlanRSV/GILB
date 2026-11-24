@@ -47,6 +47,7 @@ void bt_app_tick(void);
 void bt_app_external(int streaming);
 void ap_usb_dac(void);                /* ap_ovl.c: the USB DAC overlay's gate */
 #include "services/lib.h"              /* the library's gates (ap_ovl.c) */
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 /* the card's block writer: drivers' sd_write when there is one (else the card stays read-only) */
 extern int sd_write(uint32_t lba, uint32_t count, const void *buf) __attribute__((weak));
 
@@ -300,7 +301,7 @@ static void usb_out_off(void);
 
 static unsigned s_det_lines;
 
-static int detect_wait(int want, uint32_t ms, uint32_t *took)
+OVL_TEXT(dev) static int detect_wait(int want, uint32_t ms, uint32_t *took)
 {
     uint32_t t0 = time_ms();
     input_event_t ev;
@@ -329,7 +330,7 @@ static int detect_wait(int want, uint32_t ms, uint32_t *took)
     return 0;
 }
 
-void usb_detect_test(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
+OVL_TEXT(dev) void usb_detect_test(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
 {
     uint32_t result = 0, took;
     char buf[48];
@@ -387,7 +388,7 @@ void usb_detect_test(void)   /* in the Developer tests overlay (startup/ap_ovl.c
 #define LISTEN_MS   4000u
 #define LISTEN_PATH "/Internal/BTLISTEN.TXT"
 
-static int listen_save(const bt_listen_t *r)
+OVL_TEXT(dev) static int listen_save(const bt_listen_t *r)
 {
     fs_file_t *f = fs_open_write(LISTEN_PATH);
     char b[100];
@@ -417,7 +418,7 @@ static int listen_save(const bt_listen_t *r)
     return fs_close(f) || !ok ? -1 : 0;
 }
 
-void bt_listen_test(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
+OVL_TEXT(dev) void bt_listen_test(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
 {
     bt_listen_t r;
     char txt[48], buf[48];
@@ -559,7 +560,7 @@ static const char *keys_text(void)
 /* Feed `seconds` of the 64-sample sine at 44.1 kHz through the polled I2S
  * FIFO. Returns dac_i2s_feed's rc (DAC_ERR_TIMEOUT = FIFO stopped
  * draining = no I2S clock); *frames_out = frames actually queued. */
-static int tone_burst(const int16_t *sine64, int seconds, int16_t *chunk,
+OVL_TEXT(dev) static int tone_burst(const int16_t *sine64, int seconds, int16_t *chunk,
                       int *frames_out)
 {
     int i, n = 0, rc = DAC_OK;
@@ -588,10 +589,10 @@ static int tone_burst(const int16_t *sine64, int seconds, int16_t *chunk,
 /* DAC bring-up test (Exp 1/2 of docs/rewrite/dac.md §7): run the CS43131
  * init (recovered from the reference fw1), show the breadcrumb + I2C scan
  * + HP status, then feed a 1 kHz tone over I2S1 until POWER (or 3 s). */
-void dac_test_run(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
+OVL_TEXT(dev) void dac_test_run(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
 {
     /* sin(2*pi*i/64) * 9000, i = 0..63 */
-    static const int16_t sine64[64] = {
+    static const int16_t sine64[64] OVL_RODATA(dev) = {
            0,  785, 1567, 2340, 3096, 3827, 4530, 5200,
         5831, 6417, 6954, 7439, 7865, 8226, 8520, 8742,
         8889, 8960, 8952, 8867, 8703, 8462, 8148, 7762,
@@ -690,7 +691,7 @@ void dac_test_run(void)   /* in the Developer tests overlay (startup/ap_ovl.c) *
 }
 
 /* ---- USB CDC-ACM debug console ----------------------------------------- */
-static int cdc_hex(const char *p, uint32_t *out)
+OVL_TEXT(dev) static int cdc_hex(const char *p, uint32_t *out)
 {
     uint32_t v = 0; int n = 0;
     for (; *p == ' '; p++)
@@ -710,14 +711,14 @@ static int cdc_hex(const char *p, uint32_t *out)
     return n;
 }
 
-static void cdc_reply(const char *fmt, uint32_t a, uint32_t b, uint32_t c)
+OVL_TEXT(dev) static void cdc_reply(const char *fmt, uint32_t a, uint32_t b, uint32_t c)
 {
     char out[64];
     snprintf(out, sizeof out, fmt, a, b, c);
     usb_cdc_puts(out);
 }
 
-static void cdc_exec(char *ln)
+OVL_TEXT(dev) static void cdc_exec(char *ln)
 {
     while (*ln == ' ')
         ln++;
@@ -751,7 +752,7 @@ static void cdc_exec(char *ln)
  * storage" menu entry runs MSC on demand). Returns on POWER or unplug,
  * then tears the core down so the next mode starts from a host-visible
  * disconnect instead of stale endpoint state. */
-void usb_console_run(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
+OVL_TEXT(dev) void usb_console_run(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
 {
     char ln[64];
     unsigned len = 0, frames = 0;
@@ -815,7 +816,7 @@ static void usb_storage_run(void)
  * whether a USB-C earphone plugged in then connects. A row per step: the comparators'
  * trip masks over their eight reference codes (v VBUS valid, b B-session, a A-session,
  * e session end); "dev" = a device pulled D+ up while the player was host. */
-static void usb_probe_screen(int step, const char *name)
+OVL_TEXT(dev) static void usb_probe_screen(int step, const char *name)
 {
     char buf[40];
 
@@ -824,7 +825,7 @@ static void usb_probe_screen(int step, const char *name)
     display_flush_rows(0, DISPLAY_H - 1);
 }
 
-void usb_probe_menu(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
+OVL_TEXT(dev) void usb_probe_menu(void)   /* in the Developer tests overlay (startup/ap_ovl.c) */
 {
     static usb_probe_step_t st[USB_PROBE_STEPS];
     char buf[64], up[40] = "", dev[40] = "";
@@ -890,7 +891,7 @@ void usb_probe_menu(void)   /* in the Developer tests overlay (startup/ap_ovl.c)
 extern usb_uac_status_t g_uac;
 extern int g_uac_leave;
 
-static void uac_status(const usb_uac_status_t *st)
+OVL_TEXT(usbdac) static void uac_status(const usb_uac_status_t *st)
 {
     g_uac = *st;
 }
@@ -901,7 +902,7 @@ static int s_dac_sw, s_dac_vbus;
 
 /* Power only (stock's "Power only, no charging"): from VBUS while the battery is below
  * 3.95 V, from the battery again above 4.05 V (stock: 4.0 V both ways, no hysteresis). */
-static void dac_power_only(void)
+OVL_TEXT(usbdac) static void dac_power_only(void)
 {
     unsigned mv = power_battery()->mv;
 
@@ -919,7 +920,7 @@ static void dac_power_only(void)
 /* Every tick of the DAC session: the keys through the UI (VOL the player's volume on top of the
  * host's, PLAY taps the host's transport, BACK ends it; the screen off: VOL and PLAY blind), the
  * screen, the power, the BT module. Nonzero = leave. */
-static int uac_tick(void)
+OVL_TEXT(usbdac) static int uac_tick(void)
 {
     input_event_t ev;
 
@@ -939,7 +940,7 @@ static int uac_tick(void)
     return g_uac_leave;
 }
 
-void usb_dac_session(void)   /* in the USB DAC overlay (startup/ap_ovl.c) */
+OVL_TEXT(usbdac) void usb_dac_session(void)   /* in the USB DAC overlay (startup/ap_ovl.c) */
 {
     int r;
 
@@ -1294,7 +1295,7 @@ int ap_power_ok(void) { return s_power_press_ok; }
 void ap_usb_disk(void) { usb_storage_run(); }
 /* ap_usb_dac, ap_dac_test, ap_usb_console, ap_usb_probe, ap_usb_detect, ap_bt_listen, ap_te_probe:
  * the gates of the overlays that hold them (startup/ap_ovl.c) */
-void te_probe_test(void) { panel_te_probe(); log_flush("te"); }   /* Developer > Panel TE (test): the log */
+OVL_TEXT(dev) void te_probe_test(void) { panel_te_probe(); log_flush("te"); }   /* Developer > Panel TE (test): the log */
 void ap_power_off(void) { power_off(NULL); }
 
 void ap_update(void)

@@ -11,6 +11,7 @@
 #include "services/bt_keys.h"
 #include "services/log.h"
 #include "services/watchdog.h"
+#include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
 #define REG32(a) (*(volatile uint32_t *)(a))
 
@@ -846,7 +847,7 @@ void bt_ui_active(int on)
 }
 
 bt_state_t bt_state(void) { return s_state; }
-int bt_version(void) { return s_ver; }
+OVL_TEXT(dev) int bt_version(void) { return s_ver; }
 int bt_scan_count(void) { return s_n; }
 const bt_dev_t *bt_scan_dev(int i) { return i >= 0 && i < s_n ? &s_list[i] : 0; }
 const bt_dev_t *bt_peer(void) { return &s_peer; }
@@ -902,7 +903,7 @@ static int listen_over(uint32_t t0, uint32_t ms, uint32_t *fed)
     return now - t0 >= ms;
 }
 
-int bt_listen(bt_listen_t *r, uint32_t *buf, unsigned words, uint32_t ms)
+OVL_TEXT(dev) int bt_listen(bt_listen_t *r, uint32_t *buf, unsigned words, uint32_t ms)
 {
     unsigned nb = words / 4u, ne = words - 2u * nb, n = 0, spin = 0;
     uint32_t t0, fed, c0, last;

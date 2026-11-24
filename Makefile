@@ -52,10 +52,17 @@ include firmware/ap.mk
 CFW_BUILD_DIR := build/cfw
 CFW_OBJS := $(patsubst %.c,$(CFW_BUILD_DIR)/objs/%.o,$(AP_SRCS))
 # LTO (on by default since 2026-11-24, +768 B of resident code room; LTO=0 turns it off):
-# link-time optimisation for the objects firmware_ap.ld never names (all of them resident). The
-# ones it places by name into the overlays (*nav.o(...), *lib_*.o) stay as they are: an LTO
-# build's code comes out of new objects, which those patterns would not match. Make does not see
-# a flag change: switching LTO on or off needs a clean build (rm -rf build/cfw).
+# link-time optimisation for the objects firmware_ap.ld never names. Those it places by name, the
+# files wholly in an overlay (*spectrum.o, *lib_*.o, ...) and ap_startup.o (its naked functions'
+# literal pools must stay in reach), stay as they are: an LTO build's code comes out of new objects,
+# which those patterns would not match. Mostly resident files put their overlay functions in by a
+# section tag instead (OVL_TEXT, services/ovl.h), so they are optimised too (2026-11-24: +1.7 KB
+# more). The link compiles each function as its own unit (-flto-partition=max): a string literal is
+# emitted once per unit, in the section of the first function there to use it, so one shared by a
+# resident and an overlay function would otherwise land in the overlay (the link fails: NOCROSSREFS);
+# the linker still merges the resident copies. Make does not see a flag change: switching LTO on or
+# off needs a clean build (rm -rf build/cfw). LTO=0 is for ruling LTO out of a fault: its code leaves
+# under AP_MIN_FREE (1948 B free, 2026-11-24), so build it with AP_MIN_FREE=0.
 LTO ?= 1
 ifeq ($(LTO),1)
 LD_NAMED := $(shell grep -oE '\*[a-z_0-9/]+\.o' $(AP_LDSCRIPT) | sed 's|.*[*/]||' | sort -u)
@@ -63,7 +70,9 @@ LD_NAMED := $(shell grep -oE '\*[a-z_0-9/]+\.o' $(AP_LDSCRIPT) | sed 's|.*[*/]||
 # bootguard.o, so the .noinit crash record keeps its place across an update)
 LTO_OBJS := $(foreach o,$(filter-out $(addprefix %/,$(LD_NAMED) watchdog.o bootguard.o),$(CFW_OBJS)),$(if $(findstring /lib_,$(o)),,$(o)))
 $(LTO_OBJS): AP_CFLAGS += -flto
-AP_LDFLAGS += -flto -Os
+AP_LDFLAGS += -flto -flto-partition=max -Os -ffunction-sections -fdata-sections
+else
+$(CFW_OBJS): AP_CFLAGS += -DOVL_STR_RESIDENT
 endif
 CFW_ELF := $(CFW_BUILD_DIR)/rechord_ap.elf
 

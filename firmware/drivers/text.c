@@ -638,6 +638,17 @@ static int cluster_w(const fdata_t *d, const sg_t *g, int n)
     return w;
 }
 
+int text_has_all(const font_t *f, const char *utf8)
+{
+    const fdata_t *d = fd(f);
+    const char *p = utf8, *end = utf8 + strlen(utf8);
+
+    while (p < end)
+        if (g_index(d, text_utf8_next(&p, end)) < 0)
+            return 0;
+    return 1;
+}
+
 int text_width(const font_t *f, const char *utf8, int nbytes)
 {
     const fdata_t *d = fd(f);
