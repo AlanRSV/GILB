@@ -1701,6 +1701,7 @@ static const char *const n_vbus[] = { "Port", "GPIO2.1" };
 static const char *const n_dacp[] = { "Battery", "Charge", "Power only" };
 static const char *const n_rg[] = { "Off", "Track", "Album" };
 static const char *const n_clock[] = { "12-hour", "24-hour", "Off" };
+static const char *const n_grid[] = { "Cover & year", "Cover, name & year" };
 /* -- library (one block: docs/MERGE_NOTES_library.md) -- */
 static const char *const n_libdata[] = { "SD card", "Internal" };
 static void apply_libdata(void) { g_lib.data = g_cfg.libdata; ap_lib_data_changed(); }
@@ -1731,6 +1732,7 @@ static const set_t g_display[] = {
     { ICON_MOON, S_CHOICE, 5, 1, "Screen off after", &g_cfg.screen_off, n_screen },
     /* the time in the header; set from Echo Library (services/clock_set.c) */
     { ICON_INFO, S_CYCLE, 3, CFG_CLOCK_12, "Clock", &g_cfg.clock, n_clock },
+    { ICON_ALBUM, S_CYCLE, 2, 0, "Album grid", &g_cfg.grid, n_grid },   /* (Library > Albums: ui/nav.c) */
 };
 extern const page_t pg_batt, pg_about, pg_diag, pg_dev;
 static const set_t g_power[] = {

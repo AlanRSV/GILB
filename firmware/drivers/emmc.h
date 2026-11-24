@@ -57,7 +57,6 @@ uint32_t emmc_fw_sectors(void);
  * wide bus failed a read), [1] the word at 0x40, [2] the word at the firmware area's +0x1F8.
  * 0xFFFF / 0xEEEEEEEE: not read. */
 extern uint32_t g_emmc_diag[3];
-extern uint32_t g_emmc_wd[8];       /* 8 GB: each bus width try (drivers/emmc_rknanoc.c), for the log */
 int emmc_fw_write(uint32_t rel, uint32_t count, const void *buf);
 
 /* microSD slot (second DW-MMC instance). sd_init(): 0 = ready, -1 = no card, other negative =

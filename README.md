@@ -39,7 +39,8 @@ the panel is 320×170).*
   (it re-reads only what changed, and refreshes by itself when a card goes in or the PC wrote).
   Playlists are made and edited on the player and kept as M3U8 files on the microSD card
   (`/SD/RECHORD`, or Internal: Settings > Playback > Library data). Albums is a 2 x 2 grid of
-  covers (each album folder's `cover56.rgb`, made by Echo Library; a letter tile without one).
+  covers (each album folder's `cover56.rgb`, made by Echo Library; a letter tile without one),
+  each with its release year, or its name and year (Settings > Display > Album grid).
 - **EQ** on core B: stock's six presets (Retro, Bass, Heavy, Pop, Jazz, Unique) and a 10-band
   Custom; Off is bit-exact.
 - **ReplayGain** on core B (Settings > Playback > ReplayGain: Off, Track, Album): the

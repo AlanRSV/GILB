@@ -52,20 +52,10 @@ static uint32_t s_shift;             /* card address = LBA << s_shift: 9 = byte 
 uint32_t g_emmc_diag[3] = { 0xFFFFu, 0xEEEEEEEEu, 0xEEEEEEEEu };   /* (drivers/emmc.h) */
 static uint8_t s_narrow;             /* init redone on a 1-bit bus (a wide one failed: emmc_init) */
 static uint8_t s_slow;               /* init redone with the wide bus tried at 12 MHz */
-static uint32_t s_ints, s_bt;        /* RINTSTS at the last data error; the bus test's bytes back */
-/* Each width try (emmc.h): [0] 8-bit, [2] 4-bit at 24 MHz, [4], [6] the same at 12 MHz; even: stage << 28
- * | (rc & 0xFF) << 20 | RINTSTS at the error; odd: the bus test's two bytes | R1 after SWITCH << 16. */
-uint32_t g_emmc_wd[8];
-static void __attribute__((noinline)) wd_put(int width, int odd, uint32_t v)
-{
-    g_emmc_wd[(s_slow ? 4 : 0) + (width == 4 ? 2 : 0) + odd] = v;
-}
-#define WD(st, rc) wd_put(width, 0, (uint32_t)(st) << 28 | ((uint32_t)(rc) & 0xFFu) << 20 | (s_ints & 0xFFFFu))
-#define WB(r1) wd_put(width, 1, (s_bt & 0xFFFFu) | (uint32_t)(r1) << 16)
-#else
-#define WD(st, rc) ((void)0)
-#define WB(r1) ((void)0)
 #endif
+#define WD(st, rc) ((void)0)   /* (each width try was logged for the 2026-11-23 investigation: git history) */
+#define WB(r1) ((void)0)
+
 static uint32_t s_blksz = 512u;      /* data block size (the bus test uses 4 or 8) */
 static int s_width = 1;              /* data lines in use */
 static const char *s_kind = "none";
@@ -182,9 +172,6 @@ static int xfer_start(uint32_t idx, uint32_t arg, uint32_t *buf, uint32_t len, i
         uint32_t n;
 
         if (MMC[RINTSTS] & 0xAF82u) {
-#if BOARD == BOARD_8G
-            s_ints = MMC[RINTSTS];
-#endif
             return -12;
         }
         n = (MMC[STATUS] & 0x3FFFFFFFu) >> 17;  /* words in FIFO */
@@ -223,10 +210,6 @@ static int xfer_finish(void)
     }
     if (!ret && (MMC[RINTSTS] & 0xAE80u))
         ret = -11;
-#if BOARD == BOARD_8G
-    if (ret)
-        s_ints = MMC[RINTSTS];
-#endif
     MMC[RINTSTS] = 0xFFFFFFFFu;
     return ret;
 }
@@ -305,9 +288,6 @@ static int bus_test(int width)
     r = xfer_data(14, 0, in, n, 0);
     s_blksz = 512u;
     MMC[CTYPE] = 0;
-#if BOARD == BOARD_8G
-    s_bt = in[0];
-#endif
     if (r)
         return -1;
     return (uint8_t)(q[0] ^ o[0]) == 0xFFu && (width != 8 || (uint8_t)(q[1] ^ o[1]) == 0xFFu) ? 0 : -1;
@@ -319,9 +299,6 @@ static int set_width(int width)
 {
     int r;
 
-#if BOARD == BOARD_8G
-    s_ints = s_bt = 0;
-#endif
     if ((r = read_idb(s_idb1)) != 0)
         return WD(1, r), -1;
     if ((r = bus_test(width)) != 0)
@@ -502,7 +479,7 @@ int emmc_init(void)
      * factory 8 GB unit, 2026-11-23: no read at 0x40 or 0x2000). So a read of sector 0x40 now; if
      * it fails, init again from CMD0 (the card back on 1 bit) and stay on 1 bit. */
     /* (2026-11-23 the factory unit: the wide bus failed at 24 MHz. A second try at 12 MHz -- 4 bits
-     * there are still twice 1 bit at 24 -- before the 1-bit bus; each try logged, g_emmc_wd.) */
+     * there are still twice 1 bit at 24 -- before the 1-bit bus.) */
     if (!s_narrow) {
         if (s_slow && set_clock(12000))
             return -8;

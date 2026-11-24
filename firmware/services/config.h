@@ -53,6 +53,8 @@ typedef struct {
                                   * (services/lib.h LIB_DATA_*); written when not sd */
     uint8_t rg;                  /* replaygain=off|track|album (core B reads it: audio_shared.h rg_src) */
     uint8_t clock;               /* clock=12|24|off: the time in the header (services/wallclock.h) */
+    uint8_t grid;                /* album_grid=year|name: Library > Albums' cells, the cover and the year
+                                  * (0), or its name too (1) (ui/nav.c nav_grid_draw) */
 } config_t;
 enum { CFG_CLOCK_12 = 0, CFG_CLOCK_24 = 1, CFG_CLOCK_OFF = 2 };
 enum { CFG_CPU_B_96 = 0, CFG_CPU_B_AUTO = 1, CFG_CPU_B_STOCK = 2 };

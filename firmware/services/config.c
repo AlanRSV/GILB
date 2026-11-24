@@ -33,6 +33,7 @@ const char *const g_eq_names[8] = { "Off", "Retro", "Bass", "Heavy", "Pop", "Jaz
 static const char *const k_libdata[] = { "sd", "internal" };          /* LIB_DATA_* (library) */
 static const char *const k_rg[] = { "off", "track", "album" };        /* replaygain= */
 static const char *const k_clock[] = { "12", "24", "off" };           /* clock= (CFG_CLOCK_*) */
+static const char *const k_grid[] = { "year", "name" };               /* album_grid= */
 
 static uint32_t s_hash, s_save_at;
 static int s_idle_only;              /* the save waiting is the volume's alone: not while playing */
@@ -145,6 +146,8 @@ static void set(const char *k, const char *v)
         g_cfg.rg = (uint8_t)i;
     else if (!strcmp(k, "clock") && (i = pick(v, k_clock, 3)) >= 0)
         g_cfg.clock = (uint8_t)i;
+    else if (!strcmp(k, "album_grid") && (i = pick(v, k_grid, 2)) >= 0)
+        g_cfg.grid = (uint8_t)i;
     else if (!strcmp(k, "usb_out") && (i = pick(v, k_off_on, 2)) >= 0)
         g_cfg.usb_out = (uint8_t)i;
     else if (!strcmp(k, "usb_out_ma") && (i = atoi(v)) >= 100 && i <= 500)
@@ -315,8 +318,8 @@ static int text_of(char *t, unsigned long cap)
             return n + d;
         n += d;
     }
-    n += snprintf(t + n, cap - (unsigned long)n, "replaygain=%s\nclock=%s\neq=%s\neq_gains=", k_rg[g_cfg.rg % 3u],
-                  k_clock[g_cfg.clock % 3u], g_eq_names[g_cfg.eq & 7u]);
+    n += snprintf(t + n, cap - (unsigned long)n, "replaygain=%s\nclock=%s\nalbum_grid=%s\neq=%s\neq_gains=",
+                  k_rg[g_cfg.rg % 3u], k_clock[g_cfg.clock % 3u], k_grid[g_cfg.grid & 1u], g_eq_names[g_cfg.eq & 7u]);
     for (int k = 0; k < 10; k++)                    /* (40 B at most: the text stays far below cap) */
         n += snprintf(t + n, cap - (unsigned long)n, "%d,", g_cfg.eq_gain[k]);
     t[n - 1] = '\n';                                /* (the last comma) */

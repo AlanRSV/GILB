@@ -382,15 +382,16 @@ void nav_grid_draw(void)
             b[c->t[0] ? len : 0] = 0;
             ui_text(&font_t17, x + 8, y + 42, 56, 1, b, 0xFFFF, cy0, cy1);
         }
-        ty = y + 22;
-        for (int i = 0; i < nl; i++, ty += 16) {
+        ty = g_cfg.grid ? y + 22 : y + 42;     /* (album_grid: year only, beside the cover's middle) */
+        for (int i = 0; g_cfg.grid && i < nl; i++, ty += 16) {
             int len = ln[i].len < (int)sizeof b - 1 ? ln[i].len : (int)sizeof b - 1;
 
             memcpy(b, c->t + ln[i].off, (size_t)len);
             b[len] = 0;
             ui_text(&font_b13, x + 70, ty, 84, 0, b, sel ? t->sel_text : t->text, cy0, cy1);
         }
-        ui_text(&font_b13, x + 70, ty + 2, 84, 0, c->v, sel ? t->sel_text : t->text_dim, cy0, cy1);
+        ui_text(&font_b13, x + 70, ty + (g_cfg.grid ? 2 : 0), 84, 0, c->v, sel ? t->sel_text : g_cfg.grid ?
+                t->text_dim : t->text, cy0, cy1);
     }
     if (L.n > 4) {                             /* the scrollbar, by rows of two */
         int rows = (L.n + 1) / 2, th = (h - 4) * 2 / rows, y;

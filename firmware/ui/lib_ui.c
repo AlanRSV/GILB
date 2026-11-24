@@ -709,8 +709,11 @@ static void view_row(int i, row_t *r)
         r->icon = ICON_ALBUM;
         r->flags = R_CHEV;
         put(r->text, sizeof r->text, x.s1, "Unknown album");
-        if (nav_top() == &pg_lgrid)
+        if (nav_top() == &pg_lgrid) {        /* (the grid: the cover, and the year) */
             grid_cover(c->vol, i, &x);
+            snprintf(r->value, sizeof r->value, x.year ? "%u" : "", x.year);
+            break;
+        }
         if (c->kind == V_ARTIST && x.year)
             snprintf(r->value, sizeof r->value, "%u", x.year);
         else
