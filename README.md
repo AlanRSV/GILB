@@ -236,7 +236,7 @@ That machine and the suite live in a separate repository, not published yet.
     512 MB line (from 2026-10-14): all of core B (the decoders, the EQ, the HIFI work), and most of
     core A -- the UI, the library, storage, USB, Bluetooth, power and the board port. Where this
     README says "we", it is mostly dragarok's work, on Bruno's ground.
-  - **This fork** ([AlanRSV/ReChord](https://github.com/AlanRSV/ReChord), from 2026-11) brings it to
+  - **This fork** ([AlanRSV/GILB](https://github.com/AlanRSV/GILB), from 2026-11) brings it to
     the 8 GB board (the storage layout, the 8-bit eMMC bus), and adds ReplayGain, the clock, the
     queue kept across power-off, Now Playing's Lyrics, Up Next and Spectrum views, the album
     cover grid, Library > Years, the boot splash, hold-to-boot, the Self-test, the Pink theme and theme files, high-speed USB disk,
