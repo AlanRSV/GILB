@@ -167,7 +167,7 @@ int keys_adc(void) { return s_keys_isr ? s_key_now : g_sim_adc; }
 int keys_power(void) { return g_sim_power; }
 uint32_t keys_release_stats(void) { return 0; }
 uint32_t keys_blip_stats(void) { return 0; }
-uint32_t g_msc_wstat[6];
+uint32_t g_msc_wstat[3];
 int adc_value(unsigned ch) { return ch == 1 ? keys_adc() : SIM_ADC_IDLE; }
 const uint32_t *adc_diag(void) { static uint32_t d[ADC_DIAG_N]; return d; }
 int board_adc_ch2(void) { return SIM_ADC_IDLE; }
@@ -349,6 +349,11 @@ void usb_cdc_poll(void) { }
 int usb_cdc_puts(const char *str) { return 0; }
 void usb_cdc_request_exit(void) { }
 int usb_probe_run(usb_probe_step_t *out, void (*progress)(int step, const char *name)) { return -1; }
+/* the wake's steps (usb_probe.h): 8 of them ~110 ms apart, as the device's take */
+static int s_probe_n;
+int usb_probe_start(usb_probe_step_t *out, void (*progress)(int step, const char *name)) { s_probe_n = 0; return 0; }
+int usb_probe_step(uint32_t *wait_ms) { *wait_ms = 110; return ++s_probe_n >= 8 ? (s_probe_n = 0, 1) : 0; }
+void usb_probe_abort(void) { s_probe_n = 0; }
 int usb_uac_run(int (*tick)(void), void (*status)(const usb_uac_status_t *)) { return -1; }
 void usb_uac_key(int key) { }
 void usb_uac_self_powered(int on) { }

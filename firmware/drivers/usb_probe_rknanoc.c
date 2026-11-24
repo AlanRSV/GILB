@@ -43,34 +43,6 @@ static uint8_t sweep(unsigned reg, unsigned shift, unsigned bit)
     return m;
 }
 
-static void measure(usb_probe_step_t *s, const char *name, int host)
-{
-    uint32_t con6 = RK_GRF[CON6] & 0xFFFFu, con7 = RK_GRF[CON7] & 0xFFFFu;
-
-    s->name = name;
-    delay_ms(50);                                   /* let VBUS settle (and a device boot) */
-    s->vbus = sweep(CON7, 0, 0);
-    s->bsess = sweep(CON6, 10, 1);
-    s->asess = sweep(CON6, 7, 2);
-    s->sessend = sweep(CON6, 13, 3);
-    RK_GRF[CON6] = 0xFFFF0000u | con6;               /* the references back */
-    RK_GRF[CON7] = 0xFFFF0000u | con7;
-    for (unsigned ch = 0; ch < 4u; ch++)
-        s->adc[ch] = (int16_t)adc_value(ch);
-    s->host = -1;
-    s->linestate = 0;
-    if (host) {
-        uint32_t p = 0;
-
-        for (int i = 0; i < 20 && !(p & 1u); i++) {  /* up to 200 ms for a device to pull D+ up */
-            p = OTG(HPRT);
-            delay_ms(10);
-        }
-        s->host = (int8_t)(p & 1u);
-        s->linestate = (uint8_t)((p >> 10) & 3u);
-    }
-}
-
 static void gpio_set(unsigned port, unsigned pin, int level)
 {
     if (port == 0) {
@@ -108,51 +80,147 @@ static void host_off(void)
     RK_GRF[UOC2] = 0x00060000u;
 }
 
-int usb_probe_run(usb_probe_step_t *out, void (*progress)(int step, const char *name))
-{
-    uint32_t dr1 = GPIO_DR(1), dr2 = GPIO_DR(2), ddr1 = GPIO_DDR(1), ddr2 = GPIO_DDR(2);
-    int g21, g20, g014 = gpio_get(0, 14), n = 0;
+/* The sequence a piece at a time (usb_probe.h): each step's pin state, 50 ms for VBUS to settle,
+ * the comparator sweeps (~7 ms, at once), on a host step up to 200 ms for a device's D+, the pin
+ * state back. The waits are the caller's: usb_probe_run() sleeps them, the boot's wake (startup/
+ * ap_ui.c) runs its main loop meanwhile, so the screen and keys never stop for the ~0.9 s. */
+static struct {
+    usb_probe_step_t *out, one;
+    void (*progress)(int step, const char *name);
+    uint32_t dr1, dr2, ddr1, ddr2;
+    uint8_t g21, g20, g014, k, phase, polls;
+} W;
 
+static const char *const k_name[USB_PROBE_STEPS][2] = {   /* [step][the pin's level as found] */
+    { "baseline", "baseline" }, { "GPIO2.1 1", "GPIO2.1 0" }, { "GPIO2.0 1", "GPIO2.0 0" },
+    { "GPIO0.14 1", "GPIO0.14 0" }, { "DRVVBUS", "DRVVBUS" }, { "host+port power", "host+port power" },
+    { "all", "all" }, { "CHRGBUS (ref)", "CHRGBUS (ref)" },
+};
+
+/* Step k's pin state (on) or the state before it (off). */
+static void act(unsigned k, int on)
+{
+    switch (k) {
+    case 1: gpio_set(2, 1, on ? !W.g21 : W.g21); break;
+    case 2: gpio_set(2, 0, on ? !W.g20 : W.g20); break;
+    case 3: gpio_set(0, 14, on ? !W.g014 : W.g014); break;
+    case 4: RK_GRF[UOC2] = on ? 0x00100010u : 0x00100000u; break;
+    case 5: if (on) host_on(); break;
+    case 6:
+        if (on) {
+            gpio_set(2, 1, 1);
+            gpio_set(2, 0, 1);
+            RK_GRF[UOC2] = 0x00100010u;
+        } else {
+            RK_GRF[UOC2] = 0x00100000u;
+            host_off();
+            gpio_set(2, 1, W.g21);
+            gpio_set(2, 0, W.g20);
+        }
+        break;
+    case 7: RK_GRF[UOC2] = on ? 0x00200020u : 0x00200000u; break;
+    default: break;
+    }
+}
+
+int usb_probe_start(usb_probe_step_t *out, void (*progress)(int step, const char *name))
+{
     if (usb_cable())
         return -1;
+    W.out = out;
+    W.progress = progress;
+    W.dr1 = GPIO_DR(1);
+    W.dr2 = GPIO_DR(2);
+    W.ddr1 = GPIO_DDR(1);
+    W.ddr2 = GPIO_DDR(2);
+    W.g014 = (uint8_t)gpio_get(0, 14);
     usb_dwc2_phy_on();                               /* (the comparators need the PHY up) */
     OTG(DCTL) |= 2u;                                 /* no D+ pull-up of our own */
     for (unsigned i = 0; i < 15u; i++)
         usb_probe_phy[i] = RK_GRF[(0x80u + 4u * i) / 4u] & 0xFFFFu;
-    g21 = gpio_get(2, 1);
-    g20 = gpio_get(2, 0);
-#define STEP(name, host) do { if (progress) progress(n, name); measure(&out[n++], name, host); } while (0)
-    STEP("baseline", 0);
-    gpio_set(2, 1, !g21);
-    STEP(g21 ? "GPIO2.1 0" : "GPIO2.1 1", 0);
-    gpio_set(2, 1, g21);
-    gpio_set(2, 0, !g20);
-    STEP(g20 ? "GPIO2.0 0" : "GPIO2.0 1", 0);
-    gpio_set(2, 0, g20);
-    gpio_set(0, 14, !g014);
-    STEP(g014 ? "GPIO0.14 0" : "GPIO0.14 1", 0);
-    gpio_set(0, 14, g014);
-    RK_GRF[UOC2] = 0x00100010u;
-    STEP("DRVVBUS", 0);
-    RK_GRF[UOC2] = 0x00100000u;
-    host_on();
-    STEP("host+port power", 1);
-    gpio_set(2, 1, 1);
-    gpio_set(2, 0, 1);
-    RK_GRF[UOC2] = 0x00100010u;
-    STEP("all", 1);
-    RK_GRF[UOC2] = 0x00100000u;
-    host_off();
-    gpio_set(2, 1, g21);
-    gpio_set(2, 0, g20);
-    RK_GRF[UOC2] = 0x00200020u;
-    STEP("CHRGBUS (ref)", 0);
-    RK_GRF[UOC2] = 0x00200000u;
-#undef STEP
+    W.g21 = (uint8_t)gpio_get(2, 1);
+    W.g20 = (uint8_t)gpio_get(2, 0);
+    W.k = W.phase = 0;
+    return 0;
+}
+
+static void finish(void)
+{
     usb_dwc2_phy_off();
-    GPIO_DR(1) = dr1;                                /* (the PHY bring-up drives GPIO1.4, 2.0, 2.2) */
-    GPIO_DDR(1) = ddr1;
-    GPIO_DR(2) = dr2;
-    GPIO_DDR(2) = ddr2;
-    return n;
+    GPIO_DR(1) = W.dr1;                              /* (the PHY bring-up drives GPIO1.4, 2.0, 2.2) */
+    GPIO_DDR(1) = W.ddr1;
+    GPIO_DR(2) = W.dr2;
+    GPIO_DDR(2) = W.ddr2;
+}
+
+int usb_probe_step(uint32_t *wait_ms)
+{
+    unsigned k = W.k;
+    usb_probe_step_t *s = W.out ? &W.out[k] : &W.one;
+    const char *name = k_name[k][k == 1 ? W.g21 : k == 2 ? W.g20 : k == 3 ? W.g014 : 0];
+
+    *wait_ms = 0;
+    if (W.phase == 0) {                              /* the step's pin state, then VBUS settles */
+        if (W.progress)
+            W.progress((int)k, name);
+        act(k, 1);
+        W.phase = 1;
+        *wait_ms = 50;
+        return 0;
+    }
+    if (W.phase == 1) {
+        uint32_t con6 = RK_GRF[CON6] & 0xFFFFu, con7 = RK_GRF[CON7] & 0xFFFFu;
+
+        s->name = name;
+        s->vbus = sweep(CON7, 0, 0);
+        s->bsess = sweep(CON6, 10, 1);
+        s->asess = sweep(CON6, 7, 2);
+        s->sessend = sweep(CON6, 13, 3);
+        RK_GRF[CON6] = 0xFFFF0000u | con6;           /* the references back */
+        RK_GRF[CON7] = 0xFFFF0000u | con7;
+        for (unsigned ch = 0; ch < 4u; ch++)
+            s->adc[ch] = (int16_t)adc_value(ch);
+        s->host = -1;
+        s->linestate = 0;
+        W.polls = 0;
+        if (k == 5 || k == 6) {                      /* a host step: a device's D+, up to 200 ms */
+            W.phase = 2;
+            return 0;
+        }
+    } else {
+        uint32_t p = OTG(HPRT);
+
+        if (!(p & 1u) && ++W.polls < 20u) {
+            *wait_ms = 10;
+            return 0;
+        }
+        s->host = (int8_t)(p & 1u);
+        s->linestate = (uint8_t)((p >> 10) & 3u);
+    }
+    act(k, 0);
+    W.phase = 0;
+    if (++W.k < USB_PROBE_STEPS)
+        return 0;
+    finish();
+    return 1;
+}
+
+void usb_probe_abort(void)
+{
+    host_off();
+    RK_GRF[UOC2] = 0x00300000u;                      /* DRVVBUS and CHRGBUS off */
+    gpio_set(0, 14, W.g014);
+    finish();
+}
+
+int usb_probe_run(usb_probe_step_t *out, void (*progress)(int step, const char *name))
+{
+    uint32_t w;
+
+    if (usb_probe_start(out, progress))
+        return -1;
+    while (!usb_probe_step(&w))
+        if (w)
+            delay_ms(w);
+    return USB_PROBE_STEPS;
 }

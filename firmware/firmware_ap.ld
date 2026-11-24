@@ -163,6 +163,7 @@ SECTIONS
             *player_audio.o(.text.player_src_get .text.player_src_set)
             *fs_target.o(.text.fs_ref_check)
             *str.o(.text.strncasecmp)          /* (only the lyrics file match calls it) */
+            *wallclock.o(.text.wallclock_set)  /* (only clock_set.c sets it) */
             . = ALIGN(4);
         }
         /* Now Playing's Spectrum view (ui/spectrum.c) and the samples it reads (audio_pcm_window) */
@@ -187,6 +188,7 @@ SECTIONS
             *dac_cs43131.o(.text.dac_output_off .text.dac_i2s_feed .text.dac_scan_result
                            .text.dac_i2s_fifo_range .text.dac_get_hp_status .text.dac_read_reg)
             *usb_msc_rknanoc.o(.text.usb_detect_state .text.usb_dwc2_init)
+            *usb_probe_rknanoc.o(.text.usb_probe_run)   /* (the wake steps it itself) */
             *sdcard.o(.text.sdcard_mounted)
             *fs_target.o(.text.fs_stat .text.fs_rename)
             *audio.o(.text.audio_b_fresh)

@@ -47,9 +47,8 @@ enum {
 #define INT_ENUM    0x00002000u
 
 #define CHUNK_SECTORS 64u            /* 32 KiB staging buffer */
-/* A disk session's writes, for its log line (usb_msc.h): ms receiving, ms storing, WRITE(10)s, and
- * how many of them were <= 8, <= 64 and more sectors. */
-uint32_t g_msc_wstat[6];
+/* A disk session's writes, for its log line (usb_msc.h): us receiving, us storing, WRITE(10)s. */
+uint32_t g_msc_wstat[3];
 
 static struct {
     uint32_t setup[2];
@@ -560,7 +559,7 @@ static void scsi(const uint32_t *cbw, const usb_lun_t *u, uint32_t *rd, uint32_t
             return;
         }
         if (write)
-            g_msc_wstat[2]++, g_msc_wstat[cnt <= 8u ? 3 : cnt <= 64u ? 4 : 5]++;
+            g_msc_wstat[2]++;
         while (cnt) {
             uint32_t k = cnt < CHUNK_SECTORS ? cnt : CHUNK_SECTORS, bytes = k << 9;
             uint8_t *p = (uint8_t *)buf;

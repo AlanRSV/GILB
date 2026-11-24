@@ -32,8 +32,14 @@ typedef struct {
  * fields no firmware writes (ODT compensation, driver strength, HS eye height). */
 extern uint32_t usb_probe_phy[15];
 
-/* Runs every step (about 1.5 s). Returns the number of steps, or -1 if VBUS is already
+/* Runs every step (about 0.9 s). Returns the number of steps, or -1 if VBUS is already
  * present (a cable: the probe needs the port free; an earphone is fine). */
 int usb_probe_run(usb_probe_step_t *out, void (*progress)(int step, const char *name));
+/* The same, a piece at a time: start (0, or -1 as above; out may be NULL: nothing kept), then step
+ * until it returns 1, each next call wait_ms after the last (usb_probe_run sleeps them). abort puts
+ * every pin and the PHY back at once (playback asked for the DAC meanwhile). */
+int usb_probe_start(usb_probe_step_t *out, void (*progress)(int step, const char *name));
+int usb_probe_step(uint32_t *wait_ms);
+void usb_probe_abort(void);
 
 #endif

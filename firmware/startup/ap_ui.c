@@ -75,9 +75,8 @@ static void emmc_probe(void)
     }
     log_printf("emmc: %s, %d-bit, %u sectors", emmc_kind(), emmc_width(), (unsigned)emmc_sectors());
 #if BOARD == BOARD_8G
-    log_printf("emmc: widths %x, 24 MHz %08x %08x %08x %08x, 12 MHz %08x %08x %08x %08x", (unsigned)g_emmc_diag[0],
-               (unsigned)g_emmc_wd[0], (unsigned)g_emmc_wd[1], (unsigned)g_emmc_wd[2], (unsigned)g_emmc_wd[3],
-               (unsigned)g_emmc_wd[4], (unsigned)g_emmc_wd[5], (unsigned)g_emmc_wd[6], (unsigned)g_emmc_wd[7]);
+    log_printf("emmc: widths %x, %08x %08x %08x %08x", (unsigned)g_emmc_diag[0], (unsigned)g_emmc_wd[0],
+               (unsigned)g_emmc_wd[1], (unsigned)g_emmc_wd[2], (unsigned)g_emmc_wd[3]);   /* (12 MHz's: [4..7]) */
 #endif
     if (!board_check(emmc_sectors())) {          /* this build is for the other board */
         snprintf(s_emmc, sizeof s_emmc, "%uM: not a %s unit", (unsigned)(emmc_sectors() >> 11),
@@ -513,8 +512,7 @@ static void usb_session(void)
     sdcard_usb_end();
     ap_lib_volume(0, wr ? LIB_EV_WROTE : LIB_EV_RESUME);
     snprintf(s_usb, sizeof s_usb, "x%d r%uM w%uM", r, (unsigned)(rd >> 11), (unsigned)(wr >> 11));
-    log_printf("usb: writes %u (<=4K %u, <=32K %u, more %u), receiving %u ms, storing %u ms",
-               (unsigned)g_msc_wstat[2], (unsigned)g_msc_wstat[3], (unsigned)g_msc_wstat[4], (unsigned)g_msc_wstat[5],
+    log_printf("usb: writes %u, receiving %u ms, storing %u ms", (unsigned)g_msc_wstat[2],
                (unsigned)(g_msc_wstat[0] / 1000u), (unsigned)(g_msc_wstat[1] / 1000u));
     memset(g_msc_wstat, 0, sizeof g_msc_wstat);
     log_printf("usb: disk session ended: exit %d, read %u MB, written %u MB, cable %d", r,
@@ -1013,19 +1011,29 @@ void usb_dac_session(void)   /* in the USB DAC overlay (startup/ap_ovl.c) */
 static uint32_t s_wake_due;              /* time_ms() from which usb_wake() runs (0: not due) */
 static int s_cable_seen;                 /* a cable was in since boot (before: the boot's own wake) */
 
-static void usb_wake(const char *why)
-{
-    static usb_probe_step_t st[USB_PROBE_STEPS];
-    uint32_t t0 = time_ms(), w[3];
-    int n;
+/* Run a piece each pass (usb_probe_step), the loop going on between them: no ~0.9 s freeze. */
+static uint8_t s_waking;                 /* the sequence under way */
+static uint32_t s_wake_at, s_wake_t0;    /* its next piece is due; it started */
 
-    s_wake_due = 0;
-    if (usb_out_active())
+static void usb_wake(void)
+{
+    uint32_t w;
+
+    if (time_ms() - s_wake_at >= 0x80000000u)
+        return;                          /* (not due yet) */
+    if (player_get_state() != PLAYER_STOPPED || usb_out_active()) {
+        usb_probe_abort();               /* the DAC asked for meanwhile: all back, again later */
+        s_waking = 0;
+        s_wake_due = time_stamp(time_ms() + 1000u);
+        log_printf("usb: comparators' wake stopped (playback): again later");
         return;
-    n = usb_probe_run(st, 0);
-    usb_cable_state(w);
-    log_printf("usb: comparators woken (%s): the probe's sequence, %d steps, %u ms, e8 %x", why, n,
-               (unsigned)(time_ms() - t0), (unsigned)(w[0] & 0xFu));
+    }
+    if (!usb_probe_step(&w)) {
+        s_wake_at = time_ms() + w;
+        return;
+    }
+    s_waking = 0;
+    log_printf("usb: comparators woken, in steps over %u ms", (unsigned)(time_ms() - s_wake_t0));
 }
 
 static int s_cable_q;                    /* the cable question is up: the answer comes from the UI */
@@ -1469,8 +1477,8 @@ void ap_ui_loop(void)
             s_st[1] = st[1];
             s_st[2] = st[2];
         }
-        if (usb_out_active())
-            cable = 0;                   /* (VBUS is the player's own while host) */
+        if (usb_out_active() || s_waking)
+            cable = 0;                   /* (VBUS is the player's own while host, or in the wake's host steps) */
         if (cable && !s_cable) {         /* the cable in (also at boot) */
             s_wake_due = 0;
             if (!cable_connected() && !usb_out_active())
@@ -1483,9 +1491,17 @@ void ap_ui_loop(void)
         } else if (!cable && s_cable) {
             s_wake_due = time_stamp(time_ms() + 1500u);   /* the cable out: again, once it is gone */
         }
-        if (s_wake_due && !cable && time_ms() - s_wake_due < 0x80000000u &&
-            player_get_state() == PLAYER_STOPPED && power_key_idle_ms() >= (s_cable_seen ? 5000u : 1000u))
-            usb_wake(s_cable_seen ? "unplug" : "boot");   /* (paused: a resume would find the DAC unpowered) */
+        if (s_waking) {
+            usb_wake();
+        } else if (s_wake_due && !cable && time_ms() - s_wake_due < 0x80000000u &&
+                   player_get_state() == PLAYER_STOPPED && power_key_idle_ms() >= (s_cable_seen ? 5000u : 1000u) &&
+                   !usb_out_active()) {      /* (paused: a resume would find the DAC unpowered) */
+            s_wake_due = 0;
+            if (usb_probe_start(NULL, 0) == 0) {
+                s_waking = 1;
+                s_wake_at = s_wake_t0 = time_ms();
+            }
+        }
         s_phy_parked = 1;
         s_cable_seen |= cable;
         s_cable = cable;

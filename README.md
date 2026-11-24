@@ -123,6 +123,7 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | USB-C earphones | QEMU |
 | 8 GB board: boot, eMMC on the 8-bit bus, playback, ReChord's own updater; USB disk at high speed (writes 5.7-5.9 MB/s, reads 8 MB/s) | device, 8 GB (2026-11-23) |
 | Lyrics, Up Next and Spectrum views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
+| Boot: first screen at 0.48 s, a resumed track playing at 0.6 s; the USB wake in steps (no freeze); the microSD card (exFAT, 4-bit) | device, 8 GB (2026-11-23) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
@@ -134,7 +135,6 @@ that document). Keep maskrom recovery at hand.
 - a key's way to the screen, measured in parts on the device (key->px: in, loop, wait, render,
   push): a full screen is 13 ms on DMA; most of the ~70 ms after a tap is the release's
   confirmation (~50 ms), not the display
-- boot: the first folder listing (~0.5 s) and the USB wake (~0.9 s)
 - an on-device self-test mode
 - hardware decoding
 
