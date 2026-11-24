@@ -47,7 +47,7 @@ FW_SRCS := \
   drivers/text.c drivers/icons.c drivers/fonts/fonts_s8.c drivers/fonts/icons_data.c \
   drivers/fonts/fonts_blob.c \
   services/log.c services/input.c services/scratch.c services/fs_target.c services/fs_write_ext.c \
-  services/sdcard.c services/screenshot.c services/tags.c services/dirlist.c services/queue.c \
+  services/sdcard.c services/cjk_font.c services/screenshot.c services/tags.c services/dirlist.c services/queue.c \
   services/config.c services/keyseq.c \
   services/lib_coll.c services/lib_io.c services/lib_sort.c services/lib_scan.c services/lib_dir.c \
   services/lib_build.c services/lib_idx.c services/lib_fsx.c services/lib_job.c services/lib_m3u.c \

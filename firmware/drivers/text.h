@@ -109,6 +109,20 @@ uint32_t text_utf8_next(const char **p, const char *end);
  * firmware slot to the fonts window (firmware_ap.ld) and calls text_fonts_init.
  * text_font_loaded(f): 1 when f has its own data, 0 when it falls back to S8.
  */
+/*
+ * Glyphs from outside the fonts (services/cjk_font.c: Japanese, Chinese, Korean, Greek, Cyrillic
+ * from GILB/CJK.BIN). A code point from U+0370 on that the font lacks is asked of get() once:
+ * 0 and *out filled, or < 0 for none (drawn as the box). The answers are kept in cache (36 B each,
+ * up to 128), whatever font asked: one 12 px pixel font beside all of them.
+ */
+typedef struct {
+    uint8_t adv, w, h;                /* advance; ink box: w <= 16, h <= 12 */
+    int8_t left, top;                 /* from the pen; from the baseline, y down */
+    uint8_t pad[3];
+    uint16_t rows[12];                /* bit 15 = the left column */
+} text_xglyph_t;
+void text_ext_set(int (*get)(uint32_t code, text_xglyph_t *out), void *cache, uint32_t len);
+
 int text_fonts_init(const void *blob, uint32_t len);
 int text_fonts_load(void);
 int text_font_loaded(const font_t *f);

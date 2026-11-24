@@ -10,6 +10,7 @@
 #include "text.h"
 #include "services/modules.h"
 #include "services/log.h"
+#include "services/cjk_font.h"
 
 extern uint8_t __fonts_ram_start[], __fonts_ram_end[];
 
@@ -24,5 +25,12 @@ int text_fonts_load(void)
     }
     k = text_fonts_init(__fonts_ram_start, (uint32_t)n);
     log_printf("text: %d fonts, %d B", k, n);
+    {   /* the window's rest (past the module's last sector, which the load may fill): the cache of
+           glyphs from GILB/CJK.BIN (services/cjk_font.c) */
+        uint8_t *c = __fonts_ram_start + (((uint32_t)n + 511u) & ~511u);
+
+        if (c < __fonts_ram_end)
+            cjk_font_init(c, (uint32_t)(__fonts_ram_end - c));
+    }
     return k;
 }

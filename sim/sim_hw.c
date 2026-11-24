@@ -41,6 +41,7 @@
 #include "services/cpuclk.h"
 #include "services/fw_update.h"
 #include "services/log.h"
+#include "services/cjk_font.h"
 #include "ui/nav.h"
 
 volatile int g_sim_adc = SIM_ADC_IDLE;
@@ -283,7 +284,14 @@ uint32_t fwu_crc(uint32_t crc, const uint8_t *p, uint32_t n)
 extern const uint32_t rechord_fonts_blob[];
 extern const uint32_t rechord_fonts_len;
 
-int text_fonts_load(void) { return text_fonts_init(rechord_fonts_blob, rechord_fonts_len); }
+int text_fonts_load(void)
+{
+    static uint8_t cjk_cache[3584];          /* (the device: what the fonts window has left) */
+    int k = text_fonts_init(rechord_fonts_blob, rechord_fonts_len);
+
+    cjk_font_init(cjk_cache, sizeof cjk_cache);
+    return k;
+}
 
 /* ---- the DAC: playback goes through sim_audio.c; the register tools see a quiet chip --------- */
 

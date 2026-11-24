@@ -509,10 +509,77 @@ static int deva_shape(const fdata_t *d, const uint32_t *cps, int n, sg_t *g)
     return no;
 }
 
+/* ---- glyphs from outside the fonts (text_ext_set: services/cjk_font.c, GILB/CJK.BIN) ------------
+ * A code point a font lacks, from U+0370 on, is asked of the hook once; its 1-bit glyph (or that
+ * there is none) is kept in a slot of the cache, found again by its code. A glyph index XG + k is
+ * slot k. Replacement: a clock over the slots (a slot used since the hand last passed stays). */
+#define XG 0xF000u
+
+typedef struct {
+    uint32_t code;                    /* (0: empty) */
+    grec_t r;                         /* adv 0: the hook has no glyph for it */
+    uint16_t rows[12];                /* bit 15 = the left column */
+} xslot_t;
+
+static int (*s_xget)(uint32_t code, text_xglyph_t *out);
+static xslot_t *s_xs;
+static uint16_t s_xn, s_xhand;
+static uint8_t s_xused[128];
+
+void text_ext_set(int (*get)(uint32_t code, text_xglyph_t *out), void *cache, uint32_t len)
+{
+    s_xget = get;
+    s_xs = cache;
+    s_xn = (uint16_t)(len / sizeof(xslot_t) < sizeof s_xused ? len / sizeof(xslot_t) : sizeof s_xused);
+    s_xhand = 0;
+    if (s_xs)
+        memset(s_xs, 0, (size_t)s_xn * sizeof(xslot_t));
+}
+
+/* The slot index of code c (asking the hook on a miss), -1: none to draw. */
+static int x_index(uint32_t c)
+{
+    text_xglyph_t g;
+    xslot_t *s;
+    int k;
+
+    if (!s_xn || !s_xget || c < 0x370u)
+        return -1;
+    for (k = 0; k < s_xn; k++)
+        if (s_xs[k].code == c) {
+            s_xused[k] = 1;
+            return s_xs[k].r.adv ? k : -1;
+        }
+    while (s_xused[s_xhand])                            /* the clock: a second chance */
+        s_xused[s_xhand] = 0, s_xhand = (uint16_t)((s_xhand + 1u) % s_xn);
+    k = s_xhand;
+    s_xhand = (uint16_t)((s_xhand + 1u) % s_xn);
+    s = &s_xs[k];
+    memset(s, 0, sizeof *s);
+    s->code = c;
+    s_xused[k] = 1;
+    if (s_xget(c, &g) || !g.adv || g.w > 16u || g.h > 12u)
+        return -1;                                      /* (remembered: adv stays 0) */
+    s->r.w = g.w;
+    s->r.h = g.h;
+    s->r.left = g.left;
+    s->r.top = g.top;
+    s->r.adv = g.adv;
+    memcpy(s->rows, g.rows, sizeof s->rows);
+    return k;
+}
+
+static const grec_t *rec(const fdata_t *d, unsigned i)
+{
+    return i >= XG ? &s_xs[i - XG].r : &d->recs[i];
+}
+
 static int one(const fdata_t *d, uint32_t c, sg_t *g)
 {
     int i = g_index(d, c);
 
+    if (i < 0 && (i = x_index(c)) >= 0)
+        i += (int)XG;
     g->idx = (uint16_t)(i < 0 ? d->fallback : i);
     g->dx = g->dy = 0;
     return 1;
@@ -634,7 +701,7 @@ static int cluster_w(const fdata_t *d, const sg_t *g, int n)
     int w = 0;
 
     for (int i = 0; i < n; i++)
-        w += d->recs[g[i].idx].adv;
+        w += rec(d, g[i].idx)->adv;
     return w;
 }
 
@@ -690,10 +757,10 @@ int text_shape(const font_t *f, const char *utf8, int nbytes, text_glyph_t *out,
         int n = next_cluster(d, &p, end, g);
 
         for (int i = 0; i < n; i++) {
-            const grec_t *r = &d->recs[g[i].idx];
+            const grec_t *r = rec(d, g[i].idx);
 
             if (k < max) {
-                out[k].code = d->codes[g[i].idx];
+                out[k].code = g[i].idx >= XG ? (uint16_t)s_xs[g[i].idx - XG].code : d->codes[g[i].idx];
                 out[k].x = (int16_t)(pen + g[i].dx);
                 out[k].y = g[i].dy;
                 out[k].adv = r->adv;
@@ -930,6 +997,23 @@ static void blit(const fdata_t *d, const grec_t *r, uint16_t *band, int band_y, 
     }
 }
 
+/* A glyph from outside the fonts: 1 bit a pixel, bit 15 of each row the left column. */
+static void blit1(const uint16_t *rows, const grec_t *r, uint16_t *band, int band_y, int band_h,
+                  int cx0, int cx1, int gx, int gy, uint16_t fg)
+{
+    int y0 = gy > band_y ? gy : band_y, y1 = gy + r->h < band_y + band_h ? gy + r->h : band_y + band_h;
+    int x0 = gx > cx0 ? gx : cx0, x1 = gx + r->w < cx1 ? gx + r->w : cx1;
+
+    for (int y = y0; y < y1; y++) {
+        unsigned bits = rows[y - gy];
+        uint16_t *row = band + (y - band_y) * TEXT_BAND_W;
+
+        for (int x = x0; x < x1; x++)
+            if (bits & 0x8000u >> (x - gx))
+                row[x] = fg;
+    }
+}
+
 int text_draw_band(const font_t *f, uint16_t *band, int band_y, int band_h,
                    int x, int baseline, int clip_x0, int clip_x1,
                    const char *utf8, int nbytes, uint16_t fg)
@@ -953,11 +1037,16 @@ int text_draw_band(const font_t *f, uint16_t *band, int band_y, int band_h,
         int n = next_cluster(d, &p, end, g);
 
         for (int i = 0; i < n; i++) {
-            const grec_t *r = &d->recs[g[i].idx];
+            const grec_t *r = rec(d, g[i].idx);
 
-            if (r->w && pen < clip_x1 + 8)
-                blit(d, r, band, band_y, band_h, clip_x0, clip_x1,
-                     pen + g[i].dx + r->left, baseline + g[i].dy + r->top, fg);
+            if (r->w && pen < clip_x1 + 8) {
+                if (g[i].idx >= XG)
+                    blit1(s_xs[g[i].idx - XG].rows, r, band, band_y, band_h, clip_x0, clip_x1,
+                          pen + g[i].dx + r->left, baseline + g[i].dy + r->top, fg);
+                else
+                    blit(d, r, band, band_y, band_h, clip_x0, clip_x1,
+                         pen + g[i].dx + r->left, baseline + g[i].dy + r->top, fg);
+            }
             pen += r->adv;
         }
     }

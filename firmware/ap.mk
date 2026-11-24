@@ -103,6 +103,7 @@ AP_SERVICE_SRCS := \
   firmware/services/fs_target.c \
   firmware/services/fs_write_ext.c \
   firmware/services/sdcard.c \
+  firmware/services/cjk_font.c \
   firmware/services/sd_selftest.c \
   firmware/services/selftest.c \
   firmware/services/gilb_move.c \
