@@ -194,7 +194,8 @@ SECTIONS
             *audio.o(.text.audio_b_fresh)
             *clock_rknanoc.o(.text.time_cycles)
             *sd_selftest.o(.text* .rodata*)
-            *bt_jieli.o(.text.bt_listen .rodata.bt_listen.*)
+            *services/selftest.o(.text* .rodata*)   /* (Settings > System > Self-test) */
+            *bt_jieli.o(.text.bt_listen .text.bt_version .rodata.bt_listen.*)
             *panel_io_rknanoc.o(.text.panel_te_probe .text.te_watch .rodata.panel_te_probe.*)
             /* (.rodata.usb_console_run.str1.1 and .rodata.usb_probe_menu.str1.1 stay resident:
                strings the compiler shares with resident tables in ap_ui.c) */
@@ -233,6 +234,7 @@ SECTIONS
             *ap_ovl.o(.text.ap_lib_tags .text.ap_lib_tags_ok)   /* (only the walk calls them) */
             *lib_io.o(.text.lr_get .text.lw_open_at .text.lw_u8 .text.lw_u16 .text.lw_u32)   /* (the walk's only) */
             *lib_coll.o(.text.lib_fnv)
+            *fs_target.o(.text.fs_open_append_at)   /* (the walk's only) */
             . = ALIGN(4);
         }
         /* the build: the views from the RAW, the external sort (lib_build.c, lib_sort.c) */

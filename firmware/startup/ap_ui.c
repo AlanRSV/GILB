@@ -150,7 +150,7 @@ static void repair_progress(const char *what, uint32_t done, uint32_t total)
  * queue and log, the BT module (audit bug 3: the cable question starved the input ring). */
 static int s_bt_ready;                    /* bt_app_init() ran (ask() runs at boot too) */
 
-static void pump(void)
+void ap_pump(void)                       /* (services/selftest.c too) */
 {
     (void)player_process();
     ap_bg_poll();
@@ -165,7 +165,7 @@ static int ask(int any_key)
     input_event_t ev;
 
     while (keys_power()) {
-        pump();
+        ap_pump();
         cpu_wait_tick();
     }
     input_mock_clear();
@@ -183,7 +183,7 @@ static int ask(int any_key)
             if (ev.type == KEY_BACK || ev.type == KEY_POWER)
                 return 0;
         }
-        pump();
+        ap_pump();
         cpu_wait_tick();
     }
 }
@@ -322,7 +322,7 @@ static int detect_wait(int want, uint32_t ms, uint32_t *took)
         input_scan(keys_adc(), keys_power());
         if (input_poll(&ev) > 0 && ev.type == KEY_BACK)
             return -1;
-        pump();
+        ap_pump();
         cpu_wait_tick();
     }
     *took = ms;
@@ -877,7 +877,7 @@ void usb_probe_menu(void)   /* in the Developer tests overlay (startup/ap_ovl.c)
         input_scan(keys_adc(), keys_power());
         if (input_poll(&ev) > 0 && ev.adc_value != INPUT_ADC_REPEAT)
             break;
-        pump();
+        ap_pump();
         cpu_wait_tick();
     }
     ui_invalidate_all();

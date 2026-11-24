@@ -104,6 +104,8 @@ the panel is 320×170).*
 - A boot guard and a crash record catch faults.
 - **Power on:** hold POWER about 1 second; a quick tap (a bump in a pocket) switches it straight
   back off. Not needed with a cable in.
+- **Self-test:** Settings > System > Self-test checks the keys, both audio channels, internal
+  storage, the microSD card, the clock, the battery and the Bluetooth module, with a summary.
 - **Recovery:** hold VOL+ at power-on.
 - **USB loader:** hold VOL− at power-on.
 - **The boot ROM's maskrom** is always the last resort, and nothing in ReChord touches what it
@@ -138,7 +140,6 @@ that document). Keep maskrom recovery at hand.
 - a key's way to the screen, measured in parts on the device (key->px: in, loop, wait, render,
   push): a full screen is 13 ms on DMA; most of the ~70 ms after a tap is the release's
   confirmation (~50 ms), not the display
-- an on-device self-test mode
 - hardware decoding
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).

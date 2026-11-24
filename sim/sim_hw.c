@@ -311,6 +311,9 @@ const char *bt_state_text(bt_state_t st) { return "Off"; }
 const bt_dev_t *bt_peer(void) { return NULL; }
 int bt_routed(void) { return 0; }
 int bt_listen(bt_listen_t *r, uint32_t *buf, unsigned words, uint32_t ms) { return -1; }
+int bt_power(int on) { return 0; }
+int bt_version(void) { return -1; }           /* (the self-test: no module answers) */
+void usb_dac_rail_cut(void) { }
 
 static int bt_count(void) { return 1; }
 

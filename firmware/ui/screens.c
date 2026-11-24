@@ -37,6 +37,7 @@
 void ap_later(void (*fn)(void));
 int ap_cable(void);
 void ap_usb_disk(void), ap_usb_dac(void), ap_dac_test(void), ap_usb_console(void), ap_usb_probe(void);
+void ap_self_test(void);              /* startup/ap_ovl.c: services/selftest.c */
 void ap_usb_detect(void), ap_bt_listen(void), ap_te_probe(void), ap_hifi_probe(void), ap_update(void), ap_power_off(void), ap_screen(int on);
 void ap_sd_test(void);
 void ap_cable_choice(int c);
@@ -1751,6 +1752,7 @@ static const set_t g_usb[] = {
 static const set_t g_system[] = {
     { ICON_UPDATE, S_DO, 0, 0, "Firmware update", 0, 0, ap_update },
     { ICON_GEAR, S_DO, 0, 0, "Restore defaults", 0, 0, restore_q },
+    { ICON_CHECK, S_DO, 0, 0, "Self-test", 0, 0, ap_self_test },
     { ICON_INFO, S_OPEN, 0, 0, "About", 0, 0, 0, &pg_about },
     { ICON_BUG, S_OPEN, 0, 0, "Developer", 0, 0, 0, &pg_set, G_DEV },
 };
