@@ -137,10 +137,7 @@ bus, as stock does; if a wide bus ever fails, the 8 GB build falls back to 1 bit
 that document). Keep maskrom recovery at hand.
 
 **Next:**
-- a key's way to the screen, measured in parts on the device (key->px: in, loop, wait, render,
-  push): a full screen is 13 ms on DMA; most of the ~70 ms after a tap is the release's
-  confirmation (~50 ms), not the display
-- hardware decoding
+- hardware decoding (the HIFI block's FFT for AAC, Vorbis and WMA: the Developer > HIFI probe first)
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 
