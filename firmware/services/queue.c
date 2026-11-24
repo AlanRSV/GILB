@@ -246,7 +246,7 @@ const fs_ref_t *queue_ref(int pos)
 #include "log.h"
 #include "player.h"
 
-#define QF_PATH  "/Internal/RECHORD/QUEUE.BIN"
+#define QF_PATH  "/Internal/GILB/QUEUE.BIN"
 #define QF_MAGIC 0x31455551u                 /* "QUE1" */
 #define QK_BAD   0x80u                       /* (kind's top bit: a reference that no longer holds) */
 

@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 
-#define CONFIG_PATH "/Internal/RECHORD.CFG"
+#define CONFIG_PATH "/Internal/GILB.CFG"
 
 enum { CFG_USB_ASK = 0, CFG_USB_DISK, CFG_USB_DAC, CFG_USB_CHARGE };
 enum { CFG_RESUME_OFF = 0, CFG_RESUME_FOLDER, CFG_RESUME_TRACK };

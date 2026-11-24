@@ -70,7 +70,7 @@ static const uint8_t k_dev[18] = {
 };
 static const uint8_t k_qual[10] = { 10, 6, 0x00, 0x02, 0, 0, 0, 0x40, 1, 0 };
 static const uint8_t k_str0[4] = { 4, 3, 0x09, 0x04 };
-static const char *const k_str[4] = { 0, "ReChord", "ReChord", "000000000001" };
+static const char *const k_str[4] = { 0, "GILB", "GILB", "000000000001" };
 static uint8_t s_cfg[32] = {
     9, 2, 32, 0, 1, 1, 0, 0x80, 0xC8,          /* config, bus powered 400 mA */
     9, 4, 0, 0, 2, 0x08, 0x06, 0x50, 0,        /* MSC, SCSI, bulk-only */

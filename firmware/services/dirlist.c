@@ -94,8 +94,8 @@ static int add(void *u, const char *name, const fs_ref_t *r)
 
     if (name[0] == '.' || (!dir && !kind))
         return 0;                            /* hidden, or not something we play */
-    if (dir && s_root && fold((uint8_t)name[0]) == 'r' && !dirlist_cmp(name, "RECHORD"))
-        return 0;                            /* the library's own folder (services/lib_job.c) */
+    if (dir && s_root && (!dirlist_cmp(name, "GILB") || !dirlist_cmp(name, "RECHORD")))
+        return 0;                            /* the player's own folder, and the old name's (services/lib_job.c) */
     if (s_seen++ < s_skip)
         return 0;
     if (s_n == DL_MAX) {

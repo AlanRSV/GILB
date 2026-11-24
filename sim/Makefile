@@ -52,7 +52,7 @@ FW_SRCS := \
   services/lib_coll.c services/lib_io.c services/lib_sort.c services/lib_scan.c services/lib_dir.c \
   services/lib_build.c services/lib_idx.c services/lib_fsx.c services/lib_job.c services/lib_m3u.c \
   services/lib_tags.c services/lib_plat.c services/lyrics.c services/tags_rg.c audio/rg_read.c \
-  services/clock_set.c services/wallclock.c services/selftest.c \
+  services/clock_set.c services/wallclock.c services/selftest.c services/gilb_move.c \
   theme/theme.c theme/themes_builtin.c theme/theme_store.c theme/theme_file.c \
   player/player_audio.c \
   audio/mp3_info.c audio/seek.c audio/mp4.c audio/ape_info.c audio/asf.c

@@ -286,7 +286,7 @@ static int text_of(char *t, unsigned long cap)
     else
         bt[0] = 0;
     n = snprintf(t, cap,
-                    "# ReChord settings (RECHO's format): key=value, one per line. Unknown keys are ignored.\n"
+                    "# GILB settings: key=value\n"
                     "play=%s\nbrightness=%u\nscreen_off=%s\nauto_off=%s\nusb=%s\nresume=%s\nstrip=%s\n"
                     "tags=%s\ncpu=%s\ndac_mhz=%u\ndac_charge=%s\nusb_out=%s\nusb_vbus=%s\nusb_out_ma=%u\nvolume=%s\n"
                     "# where the browser and the player were\nbrowse=%s\ncursor=%u\n%s%s%s",

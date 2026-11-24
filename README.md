@@ -1,13 +1,18 @@
-# ReChord
+# GILB
 
-A free, from-source custom firmware for the **SNOWSKY (FiiO) Echo Mini**: its own code on both
-of the player's cores, from boot to the screen you see. It runs on both boards: the 512 MB line is
-its author's daily firmware on a **512 MB** unit, and this fork runs it on an **8 GB** unit since
-2026-11-23.
+**GILB** is a free, from-source custom firmware for the **SNOWSKY (FiiO) Echo Mini**, a fork of
+**ReChord**: its own code on both of the player's cores, from boot to the screen you see. It runs on
+both boards: ReChord's 512 MB line is its author's daily firmware on a **512 MB** unit, and this fork
+runs on an **8 GB** unit since 2026-11-23. It was renamed from ReChord to GILB on 2026-11-24.
 
 ReChord was started by Bruno Moraga ([brnomt/ReChord](https://github.com/brnomt/ReChord)); the
-firmware that runs today was written by dragarok ([dragarok/ReChord](https://github.com/dragarok/ReChord));
+firmware GILB builds on was written by dragarok ([dragarok/ReChord](https://github.com/dragarok/ReChord));
 this repository is a fork of dragarok's. Who did what: [Sources and acknowledgements](#sources-and-acknowledgements).
+
+**Coming from ReChord?** Install GILB over it as any update. At its first start GILB moves its files
+to their new names: `RECHORD/` becomes `GILB/` (the library's index, playlists, the queue, the splash,
+themes; on the microSD card too, when it is first read) and `RECHORD.CFG` becomes `GILB.CFG`.
+Nothing needs setting up again.
 
 <p>
 <img src="docs/images/np_hires.png" width="320" alt="Now Playing: a 24/96 FLAC with its badges, bit rate and progress">
@@ -36,11 +41,11 @@ the panel is 320×170).*
   than core B's own code for FLAC).
 - **Library basics:** tags (ID3v2/ID3v1/APEv2/Vorbis/MP4/RIFF), a play queue, play modes, and
   resume after power-off: with Resume at power-on set to Last track, the same queue (a Library
-  list, a playlist, shuffle's order) plays on from the same song and time (`RECHORD/QUEUE.BIN`).
+  list, a playlist, shuffle's order) plays on from the same song and time (`GILB/QUEUE.BIN`).
 - **Library:** Songs, Albums, Artists, Genres, Years (newest first), Favourites and Playlists, indexed in the background
   (it re-reads only what changed, and refreshes by itself when a card goes in or the PC wrote).
   Playlists are made and edited on the player and kept as M3U8 files on the microSD card
-  (`/SD/RECHORD`, or Internal: Settings > Playback > Library data). Albums is a 2 x 2 grid of
+  (`/SD/GILB`, or Internal: Settings > Playback > Library data). Albums is a 2 x 2 grid of
   covers (each album folder's `cover56.rgb`, made by Echo Library; a letter tile without one),
   each with its release year, or its name and year (Settings > Display > Album grid).
 - **EQ** on core B: stock's six presets (Retro, Bass, Heavy, Pop, Jazz, Unique) and a 10-band
@@ -52,14 +57,14 @@ the panel is 320×170).*
   in the overlay window they hold).
 
 **Interface**
-- **Boot splash:** from about 0.18 s after power-on to the first screen at 0.4 s: `RECHORD/SPLASH.RGB`
+- **Boot splash:** from about 0.18 s after power-on to the first screen at 0.4 s: `GILB/SPLASH.RGB`
   if it's on Internal (320 × 170 RGB565 little-endian, 108,800 bytes; Echo Library makes it from any
-  picture), else "RECHORD" and the build date.
+  picture), else "GILB" and the build date.
 - **Header:** a status line on every screen with play state, volume, a Bluetooth icon while
   earphones are linked, the time, and the battery.
 - **Clock:** the player's battery-backed clock chip, kept running while it is off. Shown in the
   header in 12- or 24-hour time (Settings > Display > Clock). Set from Echo Library (Player
-  settings > Player clock): it leaves the PC's time in `RECHORD/TIME.TXT`, which the player takes
+  settings > Player clock): it leaves the PC's time in `GILB/TIME.TXT`, which the player takes
   as it leaves USB disk mode.
 - **Lists:** seven rows, with cursor memory per level.
 - **Now Playing:** shows the cover tile, title, artist and album, format and rate badges, bit
@@ -86,7 +91,7 @@ the panel is 320×170).*
   - A `REVERSE_LISTS=1` build swaps the list keys: VOL− moves up, VOL+ down.
 - **Text and themes:** Noto Sans in five sizes, with Latin, curly quotes and Devanagari, and
   five built-in themes: Classic, Paper, Night, Contrast and Pink. More come as files in
-  `RECHORD/THEMES/<name>.txt` (one `key=#RRGGBB` a line; Echo Library's Themes page makes them with a
+  `GILB/THEMES/<name>.txt` (one `key=#RRGGBB` a line; Echo Library's Themes page makes them with a
   live preview): Settings > Display > Refresh themes reads the folder again, and they are listed
   under Theme after the built-ins.
 - **Fast:** keys are sampled every 10 ms on a timer and timed in milliseconds. Each key press
@@ -113,7 +118,7 @@ the panel is 320×170).*
   storage, the microSD card, the clock, the battery and the Bluetooth module, with a summary.
 - **Recovery:** hold VOL+ at power-on.
 - **USB loader:** hold VOL− at power-on.
-- **The boot ROM's maskrom** is always the last resort, and nothing in ReChord touches what it
+- **The boot ROM's maskrom** is always the last resort, and nothing in GILB touches what it
   reads at reset.
 
 ## Status
@@ -131,10 +136,10 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | Bluetooth earphones, reconnect, routing | device |
 | VOP + DMA display path (display=dma), seek (VOL 2x + hold), fast boot | device (2026-10-18) |
 | USB-C earphones | QEMU |
-| 8 GB board: boot, eMMC on the 8-bit bus, playback, ReChord's own updater; USB disk at high speed (writes 5.7-5.9 MB/s, reads 8 MB/s) | device, 8 GB (2026-11-23) |
+| 8 GB board: boot, eMMC on the 8-bit bus, playback, its own updater; USB disk at high speed (writes 5.7-5.9 MB/s, reads 8 MB/s) | device, 8 GB (2026-11-23) |
 | Lyrics, Up Next and Spectrum views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
 | Boot: first screen at 0.48 s, a resumed track playing at 0.6 s; the USB wake in steps (no freeze); the microSD card (exFAT, 4-bit) | device, 8 GB (2026-11-23) |
-| Library > Years, the album grid's year (and its Album grid setting), hold-to-boot, the Self-test, the Pink theme and theme files (RECHORD/THEMES, Refresh themes); the HIFI probe (FLAC block kept, FFT unusable) | device, 8 GB (2026-11-24) |
+| Library > Years, the album grid's year (and its Album grid setting), hold-to-boot, the Self-test, the Pink theme and theme files (GILB/THEMES, Refresh themes); the HIFI probe (FLAC block kept, FFT unusable) | device, 8 GB (2026-11-24) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
@@ -154,7 +159,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 - **Updater:** copy `MINIV900.IMG` (512 MB board) or `HIFIEC90.IMG` (8 GB board) to the player's
   root, eject, and confirm on the player. Stock's updater takes it the first time; after that
-  ReChord's own does it (it shows the file's SHA-256; PLAY installs).
+  GILB's own does it (it shows the file's SHA-256; PLAY installs).
 - **Maskrom:**
   1. Unplug USB, press RST with a paperclip, hold every key except power, and plug USB in.
   2. Pad the image to 512-byte sectors and write it with `rkdeveloptool wl` to both firmware
@@ -210,7 +215,7 @@ firmware/
   services/  config, log, input and gestures, FAT/exFAT, tags, queue, updater, boot guard
   audio/     core A's audio engine, container parsers (MP4, ASF, APE)
   coreb/     core B runtime and decoders
-  theme/     theme tokens, the built-in themes, theme files (RECHORD/THEMES)
+  theme/     theme tokens, the built-in themes, theme files (GILB/THEMES)
 docs/        ROADMAP (start here), BT_DEVICE_NOTES, BOARD_DIFF_512M, hardware and RE notes
 ```
 
@@ -236,7 +241,7 @@ That machine and the suite live in a separate repository, not published yet.
     512 MB line (from 2026-10-14): all of core B (the decoders, the EQ, the HIFI work), and most of
     core A -- the UI, the library, storage, USB, Bluetooth, power and the board port. Where this
     README says "we", it is mostly dragarok's work, on Bruno's ground.
-  - **This fork** ([AlanRSV/GILB](https://github.com/AlanRSV/GILB), from 2026-11) brings it to
+  - **GILB, this fork** ([AlanRSV/GILB](https://github.com/AlanRSV/GILB), from 2026-11) brings it to
     the 8 GB board (the storage layout, the 8-bit eMMC bus), and adds ReplayGain, the clock, the
     queue kept across power-off, Now Playing's Lyrics, Up Next and Spectrum views, the album
     cover grid, Library > Years, the boot splash, hold-to-boot, the Self-test, the Pink theme and theme files, high-speed USB disk,
@@ -253,7 +258,7 @@ That machine and the suite live in a separate repository, not published yet.
 - **RECHO is the second reference.** [RECHO](https://recho.atzkey.workers.dev) is the
   closed-source custom firmware for the Echo Mini (earlier RefCFW), and it showed first what
   this hardware can do. We decompiled RECHO 0.9.2 and 0.10.0 and traced them in QEMU to learn
-  from them. Several parts of ReChord copy what RECHO does, rewritten in our own C:
+  from them. Several parts of ReChord, and so of GILB, copy what RECHO does, rewritten in our own C:
   - the PLL/clock sequence;
   - I2S/DMA;
   - backlight and power;
@@ -279,6 +284,6 @@ That machine and the suite live in a separate repository, not published yet.
 
 ## License and disclaimer
 
-GPL-3.0 (see `LICENSE`); bundled libraries keep their own licenses. ReChord is independent: it
+GPL-3.0 (see `LICENSE`); bundled libraries keep their own licenses. GILB, like ReChord, is independent: it
 is not affiliated with FiiO, SNOWSKY, Rockchip or the RECHO developers. No firmware images
 (stock or RECHO) are distributed here.

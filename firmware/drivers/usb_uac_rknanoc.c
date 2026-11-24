@@ -131,7 +131,7 @@ static const uint8_t k_dev[18] = {
     1, 2, 3, 1,
 };
 static const uint8_t k_qual[10] = { 10, 6, 0x00, 0x02, 0xEF, 0x02, 0x01, 64, 1, 0 };
-static const char *const k_str[4] = { 0, "ReChord", "ReChord USB DAC", "000000000002" };
+static const char *const k_str[4] = { 0, "GILB", "GILB USB DAC", "000000000002" };
 
 /* HID consumer control, one byte: bit 0 play/pause, 1 next track, 2 previous track
  * (what stock's DAC sends too), 3 stop; the other four bits padding. */

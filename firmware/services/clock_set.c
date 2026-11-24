@@ -14,7 +14,7 @@
 #include "drivers/rtc.h"
 #include "ui/np_extra.h"
 
-#define TIME_PATH "/Internal/RECHORD/TIME.TXT"
+#define TIME_PATH "/Internal/GILB/TIME.TXT"
 
 /* Seconds since 2000-01-01 00:00 (years 2000..2099: every fourth a leap year). */
 static uint32_t secs_of(const rtc_time_t *t)

@@ -177,7 +177,8 @@ SECTIONS
             *themes_builtin.o(.text* .rodata*)   /* the themes (theme/theme_store.c): main memory keeps the current one */
             *theme_store.o(.text* .rodata*)
             *theme_file.o(.text* .rodata*)
-            *fs_target.o(.text.fs_list_dir_each)   /* (only the theme folder's scan lists a folder) */
+            *fs_target.o(.text.fs_list_dir_each)   /* (only the theme scan and the GILB move list a folder) */
+            *gilb_move.o(.text* .rodata*)         /* RECHORD/ -> GILB/ (services/gilb_move.c) */
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */
@@ -194,7 +195,7 @@ SECTIONS
             *usb_msc_rknanoc.o(.text.usb_detect_state .text.usb_dwc2_init)
             *usb_probe_rknanoc.o(.text.usb_probe_run)   /* (the wake steps it itself) */
             *sdcard.o(.text.sdcard_mounted)
-            *fs_target.o(.text.fs_stat .text.fs_rename)
+            *fs_target.o(.text.fs_stat)   /* (fs_rename: resident, the GILB move uses it too) */
             *audio.o(.text.audio_b_fresh)
             *clock_rknanoc.o(.text.time_cycles)
             *sd_selftest.o(.text* .rodata*)

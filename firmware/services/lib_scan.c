@@ -205,7 +205,7 @@ static void push_cont(lib_job_t *j, uint32_t base, int32_t slot)
 
 static int skipped(const lib_job_t *j, const char *name)
 {
-    static const char *const k_skip[] = { "RECHORD", "System Volume Information", "$RECYCLE.BIN", 0 };
+    static const char *const k_skip[] = { "GILB", "RECHORD", "System Volume Information", "$RECYCLE.BIN", 0 };
 
     if (name[0] == '.')
         return 1;                        /* .Trashes, .Spotlight-V100, macOS "._" files */

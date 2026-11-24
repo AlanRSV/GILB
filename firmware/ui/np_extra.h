@@ -46,7 +46,7 @@ void rg_read(const fs_ref_t *ref, int kind, int32_t g[2]);
 /* The boot splash's picture: SPLASH_PATH on Internal, DISPLAY_W x DISPLAY_H RGB565 little-endian,
  * rows top down, exactly SPLASH_BYTES, no header (cover56.rgb's format, full screen; Echo Library
  * makes it). Without it: RECHORD and the build's date. */
-#define SPLASH_PATH  "/Internal/RECHORD/SPLASH.RGB"
+#define SPLASH_PATH  "/Internal/GILB/SPLASH.RGB"
 #define SPLASH_BYTES (320u * 170u * 2u)
 
 /* startup/ap_ovl.c, resident.
@@ -58,5 +58,6 @@ void ap_npx_next(void);
 int ap_npx_draw(void);
 void ap_npx_tick(void);
 void ap_npx_splash(void);              /* (loads the overlay: at boot, before anything else needs it) */
+int ap_gilb_move(int vol);             /* RECHORD/ -> GILB/ on volume vol (services/gilb_move.c, the viz overlay) */
 
 #endif

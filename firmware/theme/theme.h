@@ -22,7 +22,7 @@
 /* The picker's themes: the built-ins, then up to THEME_MAX in all from the
  * folder of theme files (RECHORD/THEMES/<name>.txt, theme_store.c). */
 #define THEME_MAX 16
-#define THEME_DIR "/Internal/RECHORD/THEMES"
+#define THEME_DIR "/Internal/GILB/THEMES"
 
 typedef struct theme
 {

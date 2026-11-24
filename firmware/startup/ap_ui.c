@@ -1385,6 +1385,10 @@ void ap_ui_loop(void)
     /* The splash (the user, 2026-11-23): RECHORD/SPLASH.RGB, else RECHORD and the build's date, from
      * the moment storage and the fonts are in (about 0.18 s) until the first frame, which waits for
      * SPLASH_MS. Drawn by the npx overlay (ui/np_extra.c: the code budget). */
+    /* The firmware's files under its new name, once (RECHORD/ -> GILB/, RECHORD.CFG -> GILB.CFG:
+     * services/gilb_move.c), before the splash and the settings are read from them. */
+    if (s_user)                          /* (the overlay checks; it is in for the theme at boot anyway) */
+        ap_gilb_move(0);
     ap_npx_splash();
     ap_npx_clock();                      /* (the overlay is in for the splash: ~2 ms) */
     power_hold_check();

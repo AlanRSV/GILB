@@ -340,7 +340,7 @@ static void home_enter(int first)
 static const char *home_verb(int i, int hold) { return hold ? (np_loaded() ? "PLAYING" : "") : "OPEN"; }
 
 const page_t pg_home = {
-    .name = "home", .kind = PK_LIST, .icon = ICON_HOME, .live = 1, .keys = k_home, .title = "ReChord",
+    .name = "home", .kind = PK_LIST, .icon = ICON_HOME, .live = 1, .keys = k_home, .title = "GILB",
     .count = home_count, .row = home_row, .act = home_act, .enter = home_enter, .verb = home_verb,
 };
 
@@ -1595,7 +1595,7 @@ static void about_row(int i, row_t *r)
     uint32_t s = time_ms() / 1000u;
 
     switch (i) {
-    case 0: pair(r, "Firmware", "ReChord " __DATE__); break;
+    case 0: pair(r, "Firmware", "GILB " __DATE__); break;
     case 1: pair(r, "Board", BOARD == BOARD_8G ? "8 GB (HIFIEC)" : "512 MB (MINIV)"); break;
     case 2: pair(r, "Battery", power_battery_text()); break;
     case 3: snprintf(v, sizeof v, "%u h %02u min", (unsigned)(s / 3600u), (unsigned)(s / 60u % 60u)); pair(r, "Uptime", v); break;

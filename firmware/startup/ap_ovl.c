@@ -438,8 +438,11 @@ typedef struct {
     void (*draw)(void); void (*tick)(void); void (*grid)(void);
     int (*theme_scan)(char (*names)[THEME_NAME_MAX], int max);    /* theme/theme_store.c */
     int (*theme_load)(int i, const char *name, theme_t *out);
+    int (*gilb_move)(int vol);                                    /* services/gilb_move.c */
 } viz_api_t;
-static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw, theme_store_scan, theme_store_load };
+int gilb_move(int vol);
+static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw, theme_store_scan, theme_store_load,
+                                              gilb_move };
 
 static int npx_ok(void);
 
@@ -448,6 +451,12 @@ static int npx_ok(void);
 int ap_theme_scan(char (*names)[THEME_NAME_MAX], int max)
 {
     return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, theme_scan(names, max)) : -1;
+}
+
+/* RECHORD/ and RECHORD.CFG under the firmware's new name, GILB (services/gilb_move.c). */
+int ap_gilb_move(int vol)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, gilb_move(vol)) : -1;
 }
 
 int ap_theme_load(int i, const char *name, theme_t *out)

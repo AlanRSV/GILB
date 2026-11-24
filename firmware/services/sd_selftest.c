@@ -26,7 +26,7 @@
 #include "ui/frame.h"
 #include "ui/nav.h"
 
-#define DIR   "/SD/RECHORD"
+#define DIR   "/SD/GILB"
 #define BIG   DIR "/SD test \xe2\x80\x94 Gr\xc3\xb6\xc3\x9f" "e.bin"   /* "SD test — Größe.bin" */
 #define MOVED DIR "/sdtest renamed.bin"
 #define CHUNK 32768u

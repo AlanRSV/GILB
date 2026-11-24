@@ -320,7 +320,7 @@ void npx_splash(void)
     if (s_splash && fs_file_size(s_splash) == (long)SPLASH_BYTES) {
         display_custom(0, 0, DISPLAY_W - 1, DISPLAY_H - 1, splash_band, 0, 1);
     } else {
-        splash_text(&font_d28, 92, "RECHORD", 7, 0xFFFF);   /* (display_text: a byte count, not -1) */
+        splash_text(&font_d28, 92, "GILB", 4, 0xFFFF);   /* (display_text: a byte count, not -1) */
         splash_text(&font_b13, 118, __DATE__, 11, 0x8410);
     }
     display_flush_rows(0, DISPLAY_H - 1);

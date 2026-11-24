@@ -50,12 +50,23 @@ static const char *vol_name(int v) { return v ? "SD" : "Internal"; }
 
 /* The directory for library files on volume v: /V/RECHORD, made if it is not there (when the FS
  * layer can make folders), else the root. */
+/* A card from before the rename: its RECHORD/ becomes GILB/ first (services/gilb_move.c; Internal's
+ * was moved at boot). Weak: the host tests have no overlay. */
+extern int ap_gilb_move(int vol) __attribute__((weak));
+
+static void gilb(int v)
+{
+    if (v && ap_gilb_move && fs_exists("/SD/RECHORD"))
+        ap_gilb_move(1);
+}
+
 const char *lib_data_dir(int v)
 {
     char p[24];
 
     if (!s_dir[v][0]) {
-        snprintf(p, sizeof p, "/%s/RECHORD", vol_name(v));
+        gilb(v);
+        snprintf(p, sizeof p, "/%s/GILB", vol_name(v));
         if (fs_exists(p) || (fs_mkdir && g_lib.writable[v] && fs_mkdir(p) == 0 && fs_exists(p)))
             snprintf(s_dir[v], sizeof s_dir[v], "%s", p);
         else
@@ -70,7 +81,8 @@ static const char *seek_dir(int v, char *buf, int n)
 {
     if (s_dir[v][0])
         return s_dir[v];
-    snprintf(buf, (unsigned)n, "/%s/RECHORD", vol_name(v));
+    gilb(v);
+    snprintf(buf, (unsigned)n, "/%s/GILB", vol_name(v));
     if (!fs_exists(buf))
         snprintf(buf, (unsigned)n, "/%s", vol_name(v));
     return buf;

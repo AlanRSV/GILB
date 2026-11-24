@@ -194,7 +194,7 @@ static const uint8_t k_dev[18] = {
 };
 static const uint8_t k_qual[10] = { 10, 6, 0x00, 0x02, 0x02, 0x00, 0, 0x40, 1, 0 };
 static const uint8_t k_str0[4] = { 4, 3, 0x09, 0x04 };
-static const char *const k_str[4] = { 0, "ReChord", "ReChord", "000000000001" };
+static const char *const k_str[4] = { 0, "GILB", "GILB", "000000000001" };
 
 /* Config: legacy CDC-ACM (no IAD), sized to ONE EP0 packet (62 <= 64) so it
  * uses the proven single-packet transfer path (multi-packet EP0 IN stalls on

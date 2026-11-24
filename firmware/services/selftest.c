@@ -312,9 +312,9 @@ void selftest_run(void)
     log_printf("selftest: start");
     t_keys();
     t_audio();
-    t_disk(T_INT, "/Internal/RECHORD");
+    t_disk(T_INT, "/Internal/GILB");
     if (sdcard_mounted())
-        t_disk(T_SD, "/SD/RECHORD");
+        t_disk(T_SD, "/SD/GILB");
     else
         set(T_SD, V_SKIP, "no card");
     t_clock();
