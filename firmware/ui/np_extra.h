@@ -32,7 +32,6 @@ typedef struct {
     void (*tick)(void);                /* the lyrics redrawn when another line is due */
     void (*splash)(void);              /* the boot splash (startup/ap_ui.c) */
     void (*rg)(const fs_ref_t *ref, int kind, int32_t g[2]);   /* ReplayGain (audio/rg_read.c) */
-    void (*clock)(void);               /* the time of day (services/clock_set.c) */
     long (*queue)(int op);             /* the saved queue (services/queue.c npx_queue) */
 } npx_api_t;
 long npx_queue(int op);

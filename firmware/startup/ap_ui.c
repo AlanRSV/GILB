@@ -1391,7 +1391,7 @@ void ap_ui_loop(void)
     if (s_user)                          /* (the overlay checks; it is in for the theme at boot anyway) */
         ap_gilb_move(0);
     ap_npx_splash();
-    ap_npx_clock();                      /* (the overlay is in for the splash: ~2 ms) */
+    ap_npx_clock();                      /* (the viz overlay: loaded for it, ~2 ms) */
     power_hold_check();
     bootcrumb(BC_SLOTS);
     if (s_user) {         /* a slot left invalid (an update cut short): copied from the good one */

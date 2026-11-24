@@ -1,5 +1,5 @@
 /*
- * clock_set.c -- the time of day from the clock chip, or from the PC (npx overlay, firmware_ap.ld:
+ * clock_set.c -- the time of day from the clock chip, or from the PC (viz overlay, firmware_ap.ld:
  * the code budget). Runs at boot and after a USB disk session (startup/ap_ovl.c ap_npx_clock).
  *
  * Echo Library's "Set the player's clock" writes TIME_PATH, one line "YYYY-MM-DD HH:MM:SS" (the PC's

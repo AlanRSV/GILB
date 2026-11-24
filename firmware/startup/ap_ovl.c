@@ -429,7 +429,7 @@ int ap_lib_tags(uint32_t (*rd)(void *, uint32_t, void *, uint32_t), void *u, uin
 void npx_draw(int v);
 void npx_tick(void);
 void npx_splash(void);
-static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg_read, npx_clock, npx_queue };
+static const npx_api_t k_npx OVL_API(npx) = { npx_draw, npx_tick, npx_splash, rg_read, npx_queue };
 OVL_HEADER(npx, OVL_NPX, &k_npx);
 
 void viz_draw(void), viz_tick(void), nav_grid_draw(void);
@@ -442,12 +442,13 @@ typedef struct {
     int (*cpuclk_log)(void);                                      /* services/cpuclk.c: the self-test's log */
     int (*retro_list)(void);                                      /* ui/nav.c: Look: Retro's lists */
     void (*sd_test)(void);                                        /* services/sd_selftest.c */
+    void (*clock)(void);                                          /* services/clock_set.c: the time of day */
 } viz_api_t;
 int gilb_move(int vol), retro_np(int part), cpuclk_log_selftest(void), nav_retro_list(void);
 void sd_selftest(void);
 static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw, theme_store_scan, theme_store_load,
                                               gilb_move, retro_np, cpuclk_log_selftest, nav_retro_list,
-                                              sd_selftest };
+                                              sd_selftest, npx_clock };
 
 /* Settings > Developer > SD card test: here rather than with the other tests (the dev overlay is full);
  * it runs to its end inside the call, as they do. */
@@ -558,11 +559,12 @@ void audio_rg_read(const fs_ref_t *ref, int kind, int32_t g[2])
         GATE_V(ovl_get, OVL_NPX, npx_api_t, rg(ref, kind, g));
 }
 
-/* The time of day: the clock chip, or Echo Library's TIME.TXT (services/clock_set.c). */
+/* The time of day: the clock chip, or Echo Library's TIME.TXT (services/clock_set.c, in the viz overlay:
+ * the npx overlay needs its room for Look: Retro's Lyrics and Up Next). */
 void ap_npx_clock(void)
 {
     if (npx_ok())
-        GATE_V(ovl_get, OVL_NPX, npx_api_t, clock());
+        GATE_V(ovl_get, OVL_VIZ, viz_api_t, clock());
 }
 
 long ap_npx_queue(int op)

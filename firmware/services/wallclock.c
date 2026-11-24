@@ -11,7 +11,7 @@
 static uint32_t s_secs, s_at;
 static uint8_t s_ok;
 
-OVL_TEXT(npx) void wallclock_set(uint32_t secs)
+OVL_TEXT(viz) void wallclock_set(uint32_t secs)
 {
     s_secs = secs;
     s_at = time_ms();

@@ -155,10 +155,8 @@ SECTIONS
             *lyrics.o(.text* .rodata*)
             *rg_read.o(.text* .rodata*)
             *tags_rg.o(.text* .rodata*)
-            *rtc_pcf8563.o(.text* .rodata*)
-            *clock_set.o(.text* .rodata*)
             /* tagged OVL_TEXT(npx): the queue file, the playing source, fs_ref_check, strncasecmp
-               (only the lyrics file match calls it), wallclock_set (only clock_set.c sets it) */
+               (only the lyrics file match calls it) */
             *(.text.ovl_npx .ovl_text_npx .rodata.ovl_npx .rodata.ovl_npx.*)
             . = ALIGN(4);
         }
@@ -175,9 +173,11 @@ SECTIONS
             *retro.o(.text* .rodata*)             /* Look: Retro's Now Playing (ui/retro.c) */
             *retro_tags.o(.text* .rodata*)        /* (its year: tags.c again, TAGS_EXT) */
             *sd_selftest.o(.text* .rodata*)       /* Developer > SD card test (room the dev overlay lacks) */
+            *rtc_pcf8563.o(.text* .rodata*)       /* the time of day (services/clock_set.c): room npx lacks */
+            *clock_set.o(.text* .rodata*)
             /* tagged OVL_TEXT(viz): audio_pcm_window, the album grid and Retro's list (ui/nav.c),
                fs_list_dir_each (only the theme scan and the GILB move list a folder),
-               cpuclk_log_selftest (once a boot) */
+               cpuclk_log_selftest (once a boot), wallclock_set (only clock_set.c sets it) */
             *(.text.ovl_viz .ovl_text_viz .rodata.ovl_viz .rodata.ovl_viz.*)
             . = ALIGN(4);
         }

@@ -19,6 +19,7 @@
 #include "drivers/text.h"
 #include "services/fs.h"
 #include "services/lyrics.h"
+#include "services/config.h"
 #include "services/queue.h"
 #include "ui/frame.h"
 #include "ui/np_extra.h"
@@ -276,12 +277,101 @@ static void draw_next(void)
         ui_text(&font_b13, 196, 54 + 16 * i, 116, 0, X.next[i], i ? t->text_dim : t->text, BODY_Y, BAND_Y - 1);
 }
 
+/* ---- Look: Retro: the views as an old LCD player's lists ----------------------------------------
+ * A heading row and a rule, then four rows of 23 px in the pixel font (B13 for a line PX lacks):
+ * Lyrics shows the line before, the line now (inverted, as the lists' cursor) and the two after;
+ * Up Next numbers the songs to come. Two colours, as the rest of Retro. */
+#define RR_Y0 44                       /* the first row (the heading: BODY_Y + 1 .. 42, the rule at 42) */
+#define RR_H  23
+
+static void rrow(int x, int y, int w, int align, const char *s, uint16_t fg)
+{
+    const font_t *f = text_has_all(&font_px, s) ? &font_px : &font_b13;
+    char b[160];
+
+    text_fit(f, s, -1, w, b, sizeof b);
+    ui_text(f, x, y + (f == &font_px ? 17 : 16), w, align, b, fg, y, y + RR_H - 1);
+}
+
+static void rhead(const char *left, const char *right)
+{
+    const theme_t *t = T;
+
+    rrow(8, BODY_Y + 1, right ? 200 : 304, 0, left, t->text);
+    if (right)
+        rrow(212, BODY_Y + 1, 100, 2, right, t->text);
+    ui_fill(8, 42, 304, 2, t->text);
+}
+
+static void retro_lyrics(void)
+{
+    const theme_t *t = T;
+    char head[170];
+    int k;
+
+    lyrics_load();
+    k = X.line = (int16_t)line_at((uint32_t)player_get_position_ms(), g_np.dur * 1000u);
+    if (g_np.artist[0])
+        snprintf(head, sizeof head, "%s - %s", g_np.title, g_np.artist);
+    else
+        snprintf(head, sizeof head, "%s", g_np.title);
+    rhead(head, NULL);
+    if (!s_ly.n) {
+        rrow(8, RR_Y0 + RR_H, 304, 1, "No lyrics", t->text);
+        return;
+    }
+    for (int i = 0, n = k - 1; i < 4; i++, n++) {          /* (the line now: two rows when it is long) */
+        int y = RR_Y0 + RR_H * i, on = n == k && k >= 0;
+        const char *s = n < 0 || n >= (int)s_ly.n ? "" : s_ly.text + s_ly.at[n];
+        const font_t *f = text_has_all(&font_px, s) ? &font_px : &font_b13;
+        text_line_t ln[2];
+        char b[160];
+        int m;
+
+        if (!on) {
+            rrow(8, y, 304, 0, n >= 0 && n < (int)s_ly.n && !s[0] ? "..." : s, t->text);
+            continue;
+        }
+        m = i < 3 ? text_wrap(f, s, -1, 304, 2, ln) : 1;
+        ui_fill(0, y, DISPLAY_W, RR_H * (m > 1 ? 2 : 1), t->sel_bg);
+        if (m < 2) {
+            rrow(8, y, 304, 0, s[0] ? s : "...", t->sel_text);
+            continue;
+        }
+        for (int j = 0; j < 2; j++) {
+            int len = ln[j].len < (int)sizeof b - 1 ? ln[j].len : (int)sizeof b - 1;
+
+            memcpy(b, s + ln[j].off, (size_t)len);
+            b[len] = 0;
+            rrow(8, y + RR_H * j, 304, 0, b, t->sel_text);
+        }
+        i++;
+    }
+}
+
+static void retro_next(void)
+{
+    const theme_t *t = T;
+    char num[8];
+
+    lyrics_load();                     /* (X.clus: the track, for the queue's key) */
+    next_load();
+    rhead("Up next", queue_mode() == Q_SHUFFLE ? "Shuffle" : queue_mode() ? "Repeat" : NULL);
+    if (!X.nn)
+        rrow(8, RR_Y0 + RR_H, 304, 1, "End of the queue", t->text);
+    for (int i = 0; i < X.nn && i < 4; i++) {
+        snprintf(num, sizeof num, "%d", i + 1);
+        rrow(0, RR_Y0 + RR_H * i, 22, 2, num, t->text);
+        rrow(30, RR_Y0 + RR_H * i, 282, 0, X.next[i], t->text);
+    }
+}
+
 void npx_draw(int v)
 {
     if (v == NPV_LYRICS)
-        draw_lyrics();
+        g_cfg.look ? retro_lyrics() : draw_lyrics();
     else if (v == NPV_NEXT)
-        draw_next();
+        g_cfg.look ? retro_next() : draw_next();
 }
 
 /* From Now Playing's poll while the Lyrics view is up: redrawn when another line is due. */

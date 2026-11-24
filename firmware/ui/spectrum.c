@@ -17,6 +17,7 @@
 #include "ui/np_extra.h"
 #include "ui/ui.h"
 #include "theme/theme.h"
+#include "services/config.h"
 
 #define NFFT  256
 #define NBAR  24
@@ -135,6 +136,19 @@ static void band(const display_band_t *d)
         uint16_t *row = d->band + (y - d->band_y) * DISPLAY_W;
         int up = Y1 - y;                           /* rows above the base */
 
+        if (g_cfg.look) {                          /* Retro: an LCD's segments, 3 rows lit and 1 gap; the
+                                                      unlit ones faint (text_off), the peak one segment */
+            int seg = up >> 2, gap = (up & 3) == 3 || up >= (BAR_H & ~3);
+
+            for (int x = d->cx0; x <= d->cx1; x++) {
+                int b = (x - X0) / BAR_P, in = (x - X0) % BAR_P < BAR_W;
+
+                row[x] = !in || b >= NBAR || gap ? t->background
+                       : seg < (s_bar[b] + 3) >> 2 || (s_peak[b] && seg == s_peak[b] >> 2) ? t->text
+                       : t->text_off;
+            }
+            continue;
+        }
         for (int x = d->cx0; x <= d->cx1; x++) {
             int b = (x - X0) / BAR_P, in = (x - X0) % BAR_P < BAR_W;
 
