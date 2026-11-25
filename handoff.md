@@ -63,11 +63,18 @@ make host-tests
 ```
 
 `run_tags.sh` fails in WSL because of CRLF line endings and because `lame` isn't installed. This is a known environment issue, not a code bug.
-It also stops `make host-tests` before the theme test, so run that one directly:
+It also stops `make host-tests` before the tests after it (display, theme, dirty rects, fs_write, power cut,
+64-bit division), so run those directly, for example:
 
 ```
 cc -std=c99 -Wall -Werror -Ifirmware/theme -o build/host/test_theme firmware/theme/tests/test_theme.c firmware/theme/theme.c firmware/theme/themes_builtin.c firmware/theme/theme_file.c && build/host/test_theme
+cc -O2 -Wall -Werror -D__udivmoddi4=my_udivmoddi4 -o build/host/test_udiv64 firmware/libc/tests/test_udiv64.c firmware/libc/udiv64.c && build/host/test_udiv64
 ```
+
+Known failures that are not code bugs (all fail the same on older commits): `firmware/drivers/tests/run_tests.sh`
+has CRLF line endings (run a copy with them stripped); its `test_text` fails `text_fonts_init == 4` (the test
+expects an older font count) and, in the Windows checkout only, two PPM goldens (line endings);
+`tools/test_fs_write.py` is killed in WSL (out of memory).
 
 **Pitfalls:**
 
@@ -91,9 +98,9 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 ## Memory: the main constraint
 
 - Core A's resident code must leave at least **3072 B free** (`AP_MIN_FREE`, lowered from 4096 on 2026-11-25,
-  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB build has **3448 B free** now,
-  376 B above the floor (RAM: 604 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` builds need
-  `AP_MIN_FREE=0`.
+  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB build has **4332 B free** now,
+  1260 B above the floor (RAM: 604 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` no longer
+  fits at all (964 B over even with `AP_MIN_FREE=0`).
 - New features go into **overlays**: swap-in code windows, opened through gates in `firmware/startup/ap_ovl.c`
   (`GATE`, `npx_ok()`). Files wholly in an overlay are placed by object name in `firmware/firmware_ap.ld`;
   mostly resident files tag their overlay functions `OVL_TEXT(<overlay>)` (`services/ovl.h`), so they can
@@ -104,8 +111,17 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
   - fonts window: about 3.6 KB, used as the CJK glyph cache.
   - lib window: about 630 B.
 - LTO: the link compiles each function apart (`-flto-partition=max`) so a string shared by resident and
-  overlay code stays resident. `ap_startup.o`, `watchdog.o` and `bootguard.o` stay out of LTO (inline asm;
-  the `.noinit` crash record at `0x0302FFC8`).
+  overlay code stays resident, on every core (`-flto=auto`: a clean core-A build about 13 s in WSL's own
+  filesystem, about 53 s on `/mnt/c`). `ap_startup.o`, `watchdog.o` and `bootguard.o` stay out of LTO (inline
+  asm; the `.noinit` crash record at `0x0302FFC8`), and so do the files the linker script places by name (keep
+  new overlay code on `OVL_TEXT` tags or section names, not `*file.o` patterns, or that file loses LTO).
+- What fills it (2026-11-25, 9be3351): about 13 KB of strings, 7.6 KB of them log messages; the biggest
+  functions are opening the next track (8.3 KB with the format readers inlined), the UI loop (7.8 KB) and the
+  audio poll. Measured and not worth it: `-Oz` (same code as `-Os` here), no inlining or cloning (0 or worse).
+  Done: LTO for `ap_ovl.c` (+288 B), `firmware/libc/udiv64.c` in place of libgcc's 754-byte 64-bit division
+  (+596 B). Keep: the 8x8 font (`drivers/font8x8.c`: the recovery screens draw with it before the fonts load),
+  the update prompt (recovery) and the clock's self-test (it runs while the clock switches). Still possible:
+  shorter log messages (1 to 3 KB, less detail in `ECHOLOG.TXT`), boot-only code in an overlay (riskier).
 - `docs/MEMORY_MAP.md` has the full memory layout.
 
 ## Where things are
@@ -129,7 +145,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last firmware change is **891844f**; Echo Library's is **738be7b**.
+Everything is committed and pushed. The last firmware change is **9be3351**; Echo Library's is **738be7b**.
 
 Done and confirmed on the device:
 
@@ -147,6 +163,8 @@ Done and confirmed on the device:
 - Layouts phase 3b (891844f; Echo Library 738be7b): Lyrics, Up Next, Spectrum, the EQ editor and the name
   entry from layout files; the built-ins moved to the layb overlay. A too-wide pixel-font line switches to
   its alt font only with `wide=alt` (Retro's questions); without it the line is cut, as before
+- Core A size (9be3351): LTO for the overlay gates and a compact 64-bit division: 3448 -> 4332 B free;
+  LTO builds in parallel
 - Retro's own themes (0b51e63; Echo Library 3d1156c): Settings › Display › Theme lists the current Look's
   themes, each Look remembers its own, and Echo Library's Themes page edits both
 - the self-test's audio step: 4 s a side, 2 s gap; its test feed now writes one 32-bit word a channel
@@ -164,8 +182,8 @@ Dropped or set aside:
 Still open:
 
 - **Layouts:** done but for the USB DAC screen, which stays hand-drawn (its overlay holds the window, and
-  it needs covers and badges the resident drawer lacks). Resident code has only 376 B above the floor:
-  anything new must go into an overlay or replace resident code.
+  it needs covers and badges the resident drawer lacks). Resident code has 1260 B above the floor:
+  anything sizeable must still go into an overlay or replace resident code.
 
 - **Second Echo Mini:** flash it (`docs/FLASHING.md`), run the self-test, copy `GILB/CJK.BIN` to it.
 
