@@ -8,6 +8,7 @@
  * one (tests/cfw/m31_ui.sh checks it after every key).
  */
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -294,6 +295,103 @@ const struct font *lay_font(unsigned f, unsigned alt, const char *s)
     if (ft == &font_px && !text_has_all(&font_px, s))
         return k_lfont[alt && alt <= 6u ? alt - 1u : 1u];
     return ft;
+}
+
+/* ---- the other screens, from their sections (phase 3: [question], [slider], [info]) ---------------
+ * The lay overlay parses the one shown into g_lscr (ap_lay_screen); this draws it. When it cannot be
+ * parsed (USB-C earphones hold the overlay's window) and g_lscr has another screen's: Modern's, below. */
+#define TO(f) (uint8_t)(offsetof(theme_t, f) / 2u)
+static const lay_el_t k_lq[] = {
+    { LK_ICON, 0, LFN_B13, 0, 10, 28, 0, 0, LCOL_DEF, LCOL_DEF, 0, 0 },
+    { LK_TEXT, LF_LINE1, LFN_M13, 0, 28, 38, 272, 0, LCOL_TONE, LCOL_DEF, 0, 0 },
+    { LK_TEXT, LF_LINE2, LFN_B13, 0, 28, 56, 272, 0, TO(text_dim), LCOL_DEF, 0, 0 },
+    { LK_BOX, 0, LFN_B13, 0, 0, 63, 320, 1, TO(divider), LCOL_DEF, 0, 0 },
+};
+static const lay_el_t k_lsl[] = {
+    { LK_TEXT, LF_LABEL, LFN_B13, 0, 16, 44, 288, 0, TO(text_dim), LCOL_DEF, 0, 0 },
+    { LK_TEXT, LF_VALUE, LFN_D28, 1, 0, 84, 320, 0, LCOL_DEF, LCOL_DEF, 0, 0 },
+    { LK_BAR, LF_LEVEL, LFN_B13, LG_TICKS, 16, 100, 288, 8, LCOL_DEF, LCOL_DEF, 0, 0 },
+    { LK_TEXT, LF_MIN, LFN_S8, 0, 16, 124, 40, 0, TO(text_dim), LCOL_DEF, 0, 0 },
+    { LK_TEXT, LF_MAX, LFN_S8, 2, 200, 124, 104, 0, TO(text_dim), LCOL_DEF, 0, 0 },
+    { LK_TEXT, LF_NOTE, LFN_B13, 0, 16, 150, 288, 0, TO(text_dim), LCOL_DEF, 0, 0 },
+};
+static const lay_el_t k_linfo[] = {
+    { LK_TEXT, LF_LABEL, LFN_B13, 0, 10, 36, 118, 0, TO(text_dim), LCOL_DEF, 0, 0 },
+    { LK_TEXT, LF_VALUE, LFN_B13, 0, 130, 36, 182, 0, LCOL_TONE, LCOL_DEF, 0, 0 },
+};
+
+const lay_el_t *lay_screen_els(int id, int *n)
+{
+    if ((g_lscr_id != id || g_lscr_key != g_lay_key || g_lay_key < 0) && !ap_lay_screen(id) && g_lscr_id != id) {
+        g_lscr_row = 18;                  /* (g_lscr is another screen's: Modern's built-in) */
+        *n = id == LS_QUESTION ? 4 : id == LS_SLIDER ? 6 : 2;
+        return id == LS_QUESTION ? k_lq : id == LS_SLIDER ? k_lsl : k_linfo;
+    }
+    *n = g_lscr_n;
+    return g_lscr;
+}
+
+void lay_screen_draw(int id, const lay_ctx_t *c, int dy)
+{
+    const theme_t *t = T;
+    int n;
+    const lay_el_t *els = lay_screen_els(id, &n);
+    char b[72];
+
+    for (int i = 0; i < n; i++) {
+        const lay_el_t *e = &els[i];
+        int y = e->y + dy, w = e->w;
+        uint16_t col = e->color == LCOL_TONE ? c->tone : lay_color(e->color, e->kind == LK_BOX || e->kind == LK_FRAME ?
+                                                                              t->divider : t->text);
+
+        switch (e->kind) {
+        case LK_BOX:
+            ui_fill(e->x, y, w, e->h, col);
+            break;
+        case LK_FRAME:
+            ui_frame_rect(e->x, y, w, e->h, col);
+            break;
+        case LK_ICON:
+            if (c->icon != NO_ICON)
+                ui_icon(c->icon, e->x, y, e->color == LCOL_DEF ? c->icon_c : col);
+            break;
+        case LK_BAR: {                    /* the level v of lo..hi: a box a step, outlined, or a line */
+            int span = c->hi > c->lo ? c->hi - c->lo : 1, k = c->v - c->lo, f = w * k / span;
+            uint16_t fc = e->color == LCOL_DEF ? t->bar_fill : col;
+
+            if (e->flags & LG_STEPS) {
+                int sw = w / (span + 1);
+
+                for (int j = 0; j <= span; j++)
+                    (j <= k ? ui_fill : ui_frame_rect)(e->x + sw * j, y, sw - 4, e->h, fc);
+                break;
+            }
+            if (e->flags & LG_ALT) {
+                ui_frame_rect(e->x, y, w, e->h, lay_color(e->color2, t->text));
+                if (f > 2)
+                    ui_fill(e->x + 2, y + 2, (f < w - 2 ? f : w - 2) - 2, e->h - 4, fc);
+            } else {
+                ui_fill(e->x, y, w, e->h, lay_color(e->color2, t->bar_track));
+                ui_fill(e->x, y, f, e->h, fc);
+                ui_fill(e->x + f - 2, y - 4, 4, e->h + 8, t->text);
+            }
+            for (int j = 0; (e->flags & LG_TICKS) && j <= span; j++)
+                ui_fill(e->x + w * j / span, y + e->h + 2, 1, 3, t->text_dim);
+            break;
+        }
+        case LK_TEXT: {                   /* px gives way to alt for what it lacks, and when it is too wide */
+            const char *s = c->words(e->field, b, sizeof b);
+            const font_t *f = lay_font(e->font, e->b, s);
+
+            if (!s[0])
+                break;
+            if (f == &font_px && e->b && text_width(f, s, -1) > w)
+                f = k_lfont[e->b - 1u < 6u ? e->b - 1u : 1u];
+            ui_text(f, e->x, y, w, e->flags & LG_ALIGN, s, col, y - text_ink_up(f) - 1, y + text_ink_down(f) + 1);
+            break;
+        }
+        }
+    }
 }
 
 /* An element's font for s: px falls back to b13 (one row higher) for what it lacks. */

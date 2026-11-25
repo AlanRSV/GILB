@@ -679,6 +679,9 @@ lay_el_t g_lrow[LROW_MAX];
 uint8_t g_lrow_n, g_lrow_h = ROW_H;
 lay_el_t g_lhdr[LHDR_MAX];
 uint8_t g_lhdr_n;
+lay_el_t g_lscr[LSCR_MAX];
+uint8_t g_lscr_n, g_lscr_id, g_lscr_row = 18;
+int32_t g_lscr_key = -1;
 static uint8_t s_lay_on;
 
 uint16_t lay_color(unsigned c, uint16_t dflt)
@@ -1543,22 +1546,34 @@ const page_t pg_queue = {
 #define VIEW_Y 36
 static uint32_t s_view_sig[VIEW_LINES];
 
+/* The viewer's lines from the layout's [info]: a line's elements, moved down its pitch (row) a line. */
+static row_t s_vr;
+
+static const char *view_words(int f, char *b, int cap) { return f == LF_LABEL ? s_vr.text : f == LF_VALUE ? s_vr.value : ""; }
+
+static int view_line_y(int *row)          /* the first line's baseline (its first element's), the pitch */
+{
+    int n;
+    const lay_el_t *e = lay_screen_els(LS_INFO, &n);
+
+    *row = g_lscr_row;
+    return n ? e->y : VIEW_Y;
+}
+
 static void view_draw(void)
 {
     const theme_t *t = T;
     const page_t *p = nav_top();
-    static row_t r;
-    int base = nav_arg() * VIEW_LINES, n = p->count();
+    int base = nav_arg() * VIEW_LINES, n = p->count(), row;
+    lay_ctx_t x = { view_words, 0, 0, 0, NO_ICON, 0, 0 };
 
+    view_line_y(&row);
     ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, t->background);
     for (int i = 0; i < VIEW_LINES && base + i < n; i++) {
-        int y = VIEW_Y + 18 * i;
-
-        memset(&r, 0, sizeof r);
-        p->row(base + i, &r);
-        ui_text(look_font(r.text, &font_b13), 10, y, 118, 0, r.text, g_cfg.look ? t->text : t->text_dim, y - 15, y + 3);
-        ui_text(look_font(r.value, &font_b13), 130, y, 182, 0, r.value, r.flags & R_OFF ? t->warn : t->text,
-                y - 15, y + 3);
+        memset(&s_vr, 0, sizeof s_vr);
+        p->row(base + i, &s_vr);
+        x.tone = s_vr.flags & R_OFF ? t->warn : t->text;
+        lay_screen_draw(LS_INFO, &x, row * i);
     }
 }
 
@@ -1583,8 +1598,10 @@ static void view_tick(void)
         for (const char *s = r.text; *s; s++)
             h = (h ^ (uint8_t)*s) * 16777619u;
         if (h != s_view_sig[i]) {
+            int row, y = view_line_y(&row) + row * i;
+
             s_view_sig[i] = h;
-            ui_invalidate(10, VIEW_Y + 18 * i - 15, 312, VIEW_Y + 18 * i + 3);
+            ui_invalidate(0, y - 15, DISPLAY_W - 1, y + 4);
         }
     }
 }
@@ -1760,7 +1777,7 @@ static uint8_t *theme_sel(void) { return g_cfg.look ? &g_cfg.retro_theme : &g_cf
 
 void theme_apply(void)
 {
-    g_lay_key = -1;                       /* the Look's layout parsed again (or before the next list) */
+    g_lay_key = -1, g_lscr_id = 0;                       /* the Look's layout parsed again (or before the next list) */
     ap_lay_load();
     theme_set_look(g_cfg.look);
     if (theme_load_index(*theme_sel()) != 0)
@@ -1794,7 +1811,7 @@ static void lay_apply(void)
     cur[0] = 0;
     if (s_lay_pick && s_lay_pick < s_lay_cnt)
         memcpy(cur, s_lay_names[s_lay_pick], LAY_NAME);
-    g_lay_key = -1;
+    g_lay_key = -1, g_lscr_id = 0;
     ap_lay_load();
     frame_invalidate();                       /* (parsed again at the next draw) */
 }
@@ -1806,7 +1823,7 @@ static void theme_refresh(void)
 
     snprintf(nm, sizeof nm, "%s", theme_name(*theme_sel()) ? theme_name(*theme_sel()) : "");
     n = theme_rescan();
-    g_lay_key = -1;                       /* (and the layout file: read again at the next draw) */
+    g_lay_key = -1, g_lscr_id = 0;                       /* (and the layout file: read again at the next draw) */
     i = theme_index(nm);
 
     *theme_sel() = (uint8_t)(i < 0 ? 0 : i);
@@ -2093,45 +2110,31 @@ const page_t pg_choice = {
     .count = ch_count, .row = ch_row, .act = ch_act, .enter = ch_enter, .tick = ch_tick,
 };
 
-/* The slider (2.2 E): label, the value in D28, the bar, min / max, a note. */
+/* The slider (2.2 E), from the layout's [slider]: its label, value, level, min / max, a note. */
+static const char *sl_words(int f, char *b, int cap)
+{
+    unsigned hi = s_edit->n;
+
+    switch (f) {
+    case LF_LABEL: return s_edit->label;
+    case LF_VALUE: snprintf(b, (unsigned)cap, "%u / %u", *s_edit->field, hi); break;
+    case LF_MIN: return "1";
+    case LF_MAX: snprintf(b, (unsigned)cap, "%u", hi); break;
+    case LF_NOTE: snprintf(b, (unsigned)cap, "Changes apply as you press. CANCEL restores %u / %u.", s_orig, hi); break;
+    case LF_RESTORE: snprintf(b, (unsigned)cap, "CANCEL restores %u / %u", s_orig, hi); break;
+    default: return "";
+    }
+    return b;
+}
+
 static void sl_draw(void)
 {
-    const theme_t *t = T;
-    char v[16], note[64];
-    int lo = 1, hi = s_edit->n, x = 16 + 288 * (*s_edit->field - lo) / (hi - lo);
+    lay_ctx_t x = { sl_words, *s_edit->field, 1, s_edit->n, NO_ICON, 0, T->text };
 
-    ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, t->background);
-    if (g_cfg.look) {                    /* Retro: the label and a rule, the value, a segment a step */
-        int n = hi - lo + 1, w = 304 / n;
-
-        ui_text(look_font(s_edit->label, &font_b13), 8, 38, 304, 0, s_edit->label, t->text, BODY_Y, 41);
-        ui_fill(8, 42, 304, 2, t->text);
-        snprintf(v, sizeof v, "%u / %u", *s_edit->field, hi);
-        ui_text(&font_px, 0, 78, DISPLAY_W, 1, v, t->text, 58, 82);
-        for (int k = 0; k < n; k++)
-            if (k < *s_edit->field - lo + 1)
-                ui_fill(8 + w * k, 88, w - 4, 20, t->text);
-            else
-                ui_frame_rect(8 + w * k, 88, w - 4, 20, t->text);
-        snprintf(note, sizeof note, "CANCEL restores %u / %u", s_orig, hi);
-        ui_text(look_font(note, &font_b13), 8, 150, 304, 0, note, t->text, 136, 156);
-        return;
-    }
-    ui_text(&font_b13, 16, 44, 288, 0, s_edit->label, t->text_dim, 30, 48);
-    snprintf(v, sizeof v, "%u / %u", *s_edit->field, hi);
-    ui_text(&font_d28, 0, 84, DISPLAY_W, 1, v, t->text, 58, 92);
-    ui_fill(16, 100, 288, 8, t->bar_track);
-    ui_fill(16, 100, x - 16, 8, t->bar_fill);
-    ui_fill(x - 2, 96, 4, 16, t->text);
-    for (int k = 0; k <= hi - lo; k++)
-        ui_fill(16 + 288 * k / (hi - lo), 110, 1, 3, t->text_dim);
-    snprintf(v, sizeof v, "%d", lo);
-    ui_text(&font_s8, 16, 124, 40, 0, v, t->text_dim, 116, 126);
-    snprintf(v, sizeof v, "%d", hi);
-    ui_text(&font_s8, 200, 124, 104, 2, v, t->text_dim, 116, 126);
-    snprintf(note, sizeof note, "Changes apply as you press. CANCEL restores %u / %u.", s_orig, hi);
-    ui_text(&font_b13, 16, 150, 288, 0, note, t->text_dim, 136, 156);
+    ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, T->background);
+    lay_screen_draw(LS_SLIDER, &x, 0);
 }
+
 
 static void sl_enter(int first)
 {
@@ -2169,7 +2172,7 @@ static void sl_act(int a, int i)
         *s_edit->field = (uint8_t)v;
         if (s_edit->fn)
             s_edit->fn();
-        ui_invalidate(0, 58, DISPLAY_W - 1, 113);
+        ui_invalidate(0, BODY_Y, DISPLAY_W - 1, DISPLAY_H - 1);   /* (the layout's: anywhere) */
     }
 }
 
@@ -2201,28 +2204,23 @@ const page_t pg_eq = {
 
 /* ---- questions (2.2 Q): a prompt, up to four choices; audio keeps playing ---------------------- */
 
+/* The question's prompt, from the layout's [question]: its icon, two lines (the first in its colour,
+ * the text's when it is ordinary), a rule. */
+static const char *s_ql[2];
+
+static const char *q_words(int f, char *b, int cap) { return f == LF_LINE1 ? s_ql[0] : f == LF_LINE2 ? s_ql[1] : ""; }
+
 void q_prompt(int icon, uint16_t c, const char *l1, const char *l2)
 {
     const theme_t *t = T;
-    int x = 10;
+    lay_ctx_t x = { q_words, 0, 0, 0, icon, c, c == t->accent ? t->text : c };
 
+    s_ql[0] = l1;
+    s_ql[1] = l2;
     ui_fill(0, BODY_Y, DISPLAY_W, 43, t->background);
-    if (g_cfg.look) {                    /* Retro: two lines in the pixel font (when it fits), a rule */
-        const font_t *f1 = look_font(l1, &font_m13), *f2 = look_font(l2, &font_b13);
-
-        ui_text(text_width(f1, l1, -1) > 304 ? &font_m13 : f1, 8, 38, 304, 0, l1, t->text, 24, 42);
-        ui_text(text_width(f2, l2, -1) > 304 ? &font_b13 : f2, 8, 57, 304, 0, l2, t->text, 42, 60);
-        ui_fill(8, 61, 304, 2, t->text);
-        return;
-    }
-    if (icon != NO_ICON) {
-        ui_icon(icon, 10, 28, c);
-        x = 28;
-    }
-    ui_text(&font_m13, x, 38, 300 - x, 0, l1, c == t->accent ? t->text : c, 24, 42);
-    ui_text(&font_b13, x, 56, 300 - x, 0, l2, t->text_dim, 42, 61);
-    ui_fill(0, 63, DISPLAY_W, 1, t->divider);
+    lay_screen_draw(LS_QUESTION, &x, 0);
 }
+
 
 /* The cable question (ap_ui.c pushes it on a cable plugged in with usb=ask). */
 static uint32_t s_q_t0;

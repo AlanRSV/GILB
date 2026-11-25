@@ -11,8 +11,9 @@ tested on the player.
 | Phase | Screens | State |
 |---|---|---|
 | 1 | Now Playing (its cover view) | done 2026-11-25, tested on the device |
-| 2 | the header, and the list rows (every list: Home, Library, Folders, Settings, options, pickers) | built 2026-11-25, on test |
-| 3 | questions, sliders, info pages, Lyrics, Up Next, Spectrum, the EQ editor, Rename, the USB DAC screen | planned |
+| 2 | the header, and the list rows (every list: Home, Library, Folders, Settings, options, pickers) | done 2026-11-25, tested on the device |
+| 3a | questions, sliders, info pages | built 2026-11-25, on test |
+| 3b | Lyrics, Up Next, Spectrum, the EQ editor, Rename, the USB DAC screen | planned |
 
 ## Where layouts come from
 
@@ -21,7 +22,8 @@ tested on the player.
   (`layout=` and `retro_layout=` in `GILB.CFG`).
 - `Built-in` is the Look's own layout, written in this same format (`ui/layout.c`): the screens look as
   they did before layouts.
-- A file names only the screens it changes (`[np]`, `[list]`, `[header]`); the others stay the Look's
+- A file names only the screens it changes (`[np]`, `[list]`, `[header]`, `[question]`, `[slider]`,
+  `[info]`); the others stay the Look's
   built-in.
 - Settings › Display › Refresh themes reads the layout folder again too.
 
@@ -134,6 +136,32 @@ hide that part.
 | `on=` (title) | its icon's colour |
 | `np=volume` (title) | Now Playing's title is the play mark and the volume ("-12dB"), as Retro |
 
+## Questions, sliders, info pages (phase 3a): `[question]`, `[slider]`, `[info]`
+
+These use `text`, `box`, `frame` and `bar` as `[np]` does (no covers, badges or `text="..."`), plus
+`icon x y` (the question's icon). A text in the pixel font gives way to its `alt=` font when the pixel
+font lacks a letter **or the line is too wide**.
+
+| Section | Text fields | Bar | Notes |
+|---|---|---|---|
+| `[question]` (Restore defaults, the power menu, the cable question, deleting a playlist) | `line1`, `line2` | | Drawn in y 20..62; the choices under it are list rows. `icon`: the question's icon in its colour (warning or accent) |
+| `[slider]` (Brightness, Screen off after, ...) | `label`, `value` ("5 / 8"), `min`, `max`, `note` (the long hint), `restore` ("CANCEL restores 8 / 8") | `kind=level`: the value from lowest to highest; `style=line\|outline\|steps` (steps: a box a step), `ticks=1` | |
+| `[info]` (About, track info, storage) | `label`, `value` | | `row N`: the pitch between its 8 lines; place the first line, the rest follow |
+
+The colour role `tone` is the screen's own colour: a warning question's warning colour (its text colour
+when the question is ordinary), and an info line's value colour (the warning colour when it is off).
+
+```
+# Modern's slider, as built in
+[slider]
+text 16 44 288 field=label font=b13 color=text_dim
+text 0 84 320 field=value font=d28 align=c
+bar 16 100 288 8 kind=level ticks=1
+text 16 124 40 field=min font=s8 color=text_dim
+text 200 124 104 field=max font=s8 align=r color=text_dim
+text 16 150 288 field=note font=b13 color=text_dim
+```
+
 ## On the player
 
 - The parser, Now Playing's drawing and the built-in layouts are their own overlay, `lay`
@@ -142,6 +170,9 @@ hide that part.
   hand-made screen, and lists and the header keep the layout parsed last.
 - The parsed layout (`lay_el_t`, 16 bytes an element: `g_lay`, `g_lrow`, `g_lhdr`) and the redraw
   rectangles live in main memory, so the second's redraw never loads the overlay.
+- Phase 3's screens are parsed one at a time, as each is shown, into `g_lscr` (12 elements), and drawn
+  by main memory's `lay_screen_draw` (`ui/nav.c`), which replaced their hand-drawn Modern and Retro code.
+  When the overlay cannot be had and `g_lscr` holds another screen, Modern's built-in is drawn.
 - Lists and the header are drawn by main memory's code (`ui/nav.c`, `ui/frame.c`) from the parsed
   elements; that replaced Retro's hand-written lists. To fit, the main-memory reserve went from 4 KiB
   to 3 KiB (2026-11-25, the user's choice).

@@ -1,7 +1,8 @@
 /*
  * layout.c -- screens drawn from layouts (docs/LAYOUTS.md): the parser, the drawing and the built-in
  * layouts, in the lay overlay (startup/ap_ovl.c ap_lay_np / ap_lay_scan, firmware_ap.ld). Phase 1:
- * Now Playing's cover view.
+ * Now Playing's cover view; phase 2: the list rows and the header (drawn by main memory's code); phase 3:
+ * the other screens' sections, parsed one at a time as each is shown (lay_screen; ui/nav.c draws them).
  *
  * A layout is text, one element a line ("text 126 48 186 field=title font=t17"); the built-ins are the
  * Looks' own screens written that way (k_modern, k_retro). The Look's Layout setting names a file of
@@ -62,7 +63,23 @@ static const char k_modern[] =
     "part output gap=13\n"
     "part lock gap=15 color=warn\n"
     "part play font=b13 y=14 gap=8\n"
-    "title font=m13 y=14\n";
+    "title font=m13 y=14\n"
+    "[question]\n"
+    "icon 10 28\n"
+    "text 28 38 272 field=line1 font=m13 color=tone\n"
+    "text 28 56 272 field=line2 font=b13 color=text_dim\n"
+    "box 0 63 320 1 color=divider\n"
+    "[slider]\n"
+    "text 16 44 288 field=label font=b13 color=text_dim\n"
+    "text 0 84 320 field=value font=d28 align=c\n"
+    "bar 16 100 288 8 kind=level ticks=1\n"
+    "text 16 124 40 field=min font=s8 color=text_dim\n"
+    "text 200 124 104 field=max font=s8 align=r color=text_dim\n"
+    "text 16 150 288 field=note font=b13 color=text_dim\n"
+    "[info]\n"
+    "row 18\n"
+    "text 10 36 118 field=label font=b13 color=text_dim\n"
+    "text 130 36 182 field=value font=b13 color=tone\n";
 
 static const char k_retro[] =
     "[np]\n"
@@ -93,16 +110,34 @@ static const char k_retro[] =
     "part output gap=13\n"
     "part lock gap=15 color=warn\n"
     "part play font=b13 y=14 gap=8\n"
-    "title font=px alt=m13 y=15 np=volume\n";
+    "title font=px alt=m13 y=15 np=volume\n"
+    "[question]\n"
+    "text 8 38 304 field=line1 font=px alt=m13 color=text\n"
+    "text 8 57 304 field=line2 font=px alt=b13 color=text\n"
+    "box 8 61 304 2 color=text\n"
+    "[slider]\n"
+    "text 8 38 304 field=label font=px alt=b13\n"
+    "box 8 42 304 2 color=text\n"
+    "text 0 78 320 field=value font=px align=c\n"
+    "bar 8 88 304 20 kind=level style=steps color=text\n"
+    "text 8 150 304 field=restore font=px alt=b13\n"
+    "[info]\n"
+    "row 18\n"
+    "text 10 36 118 field=label font=px alt=b13\n"
+    "text 130 36 182 field=value font=px alt=b13 color=tone\n";
 
 /* ---- names ------------------------------------------------------------------------------------- */
 
 static const char *const k_kinds[] = { "", "text", "cover", "box", "frame", "bar", "badge",
-                                       "mark", "label", "value", "chev", "select", "scroll", "part", "title" };
-static const uint8_t k_need[] = { 0, 3, 3, 4, 4, 4, 2, 2, 3, 3, 2, 4, 1, 0, 0 };   /* its numbers */
+                                       "mark", "label", "value", "chev", "select", "scroll", "part", "title",
+                                       "icon" };
+static const uint8_t k_need[] = { 0, 3, 3, 4, 4, 4, 2, 2, 3, 3, 2, 4, 1, 0, 0, 2 };   /* its numbers */
+static const char *const k_screens[] = { "", "[question]", "[slider]", "[info]" };   /* (LS_*) */
 static const char *const k_parts[] = { "battery", "percent", "clock", "volume", "output", "lock", "play" };
 static const char *const k_fields[] = { "", "title", "artist", "album", "year", "queue", "elapsed", "remaining",
-                                        "total", "kbps", "facts", "next", "codec", "format", "progress", "volume" };
+                                        "total", "kbps", "facts", "next", "codec", "format", "progress", "volume",
+                                        "line1", "line2", "label", "value", "min", "max", "note", "restore", "level" };
+#define NFIELDS ((int)(sizeof k_fields / sizeof k_fields[0]))
 static const char *const k_fonts[] = { "s8", "b13", "m13", "t17", "d28", "px" };
 static const font_t *const k_font[] = { &font_s8, &font_b13, &font_m13, &font_t17, &font_d28, &font_px };
 
@@ -115,7 +150,7 @@ static const struct { const char *name; uint8_t off; } k_roles[] = {
     { "sel_text", TOFF(sel_text) }, { "bar_fill", TOFF(bar_fill) }, { "bar_track", TOFF(bar_track) },
     { "badge_bg", TOFF(badge_bg) }, { "badge_text", TOFF(badge_text) }, { "hires", TOFF(hires) },
     { "danger", TOFF(danger) }, { "success", TOFF(success) }, { "warn", TOFF(warn) }, { "value", TOFF(value) },
-    { "scroll", TOFF(scroll) }, { "panel", LCOL_PANEL },
+    { "scroll", TOFF(scroll) }, { "panel", LCOL_PANEL }, { "tone", LCOL_TONE },
 };
 #define NROLES ((int)(sizeof k_roles / sizeof k_roles[0]))
 #define DEF LCOL_DEF
@@ -142,27 +177,32 @@ static int pick_role(const char *s, int n)   /* its place in theme_t (layout.h L
 static unsigned s_strn;                  /* bytes of g_lay_str used */
 
 /* One line into g_lay ([np]) or g_lrow ([list]) (ignored when it is not an element this build knows). */
-static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [header] */
+static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [header], 3 a screen's */
 {
     lay_el_t e;
-    int num[4] = { 0 }, nn = 0, need, k, i0;
+    int num[4] = { 0 }, nn = 0, need, k, i0, hdr;
     const char *q;
 
     while (*p == ' ' || *p == '\t')
         p++;
     for (q = p; *q && *q != ' ' && *q != '\t'; q++)
         ;
-    if (list == 1 && q - p == 3 && !memcmp(p, "row", 3)) {   /* a list row's height */
+    if ((list & 1) && q - p == 3 && !memcmp(p, "row", 3)) {   /* a list row's height; [info]'s line pitch */
         int h = atoi(q);
 
-        g_lrow_h = (uint8_t)(h < LROW_MIN ? LROW_MIN : h > LROW_MAXH ? LROW_MAXH : h);
+        if (list == 3)
+            g_lscr_row = (uint8_t)(h < 10 ? 10 : h > 60 ? 60 : h);
+        else
+            g_lrow_h = (uint8_t)(h < LROW_MIN ? LROW_MIN : h > LROW_MAXH ? LROW_MAXH : h);
         return;
     }
-    if ((k = pick(p, (int)(q - p), k_kinds, 15)) <= 0 ||
-        (list == 2 ? k < LK_PART || g_lhdr_n >= LHDR_MAX :
+    if ((k = pick(p, (int)(q - p), k_kinds, 16)) <= 0 ||
+        (list == 3 ? (k > LK_BAR && k != LK_ICON) || k == LK_COVER || g_lscr_n >= LSCR_MAX :
+         list == 2 ? k < LK_PART || k > LK_TITLE || g_lhdr_n >= LHDR_MAX :
          k >= LK_PART || (k >= LK_MARK ? !list : list && k != LK_BOX && k != LK_FRAME)) ||
         (list == 1 ? g_lrow_n >= LROW_MAX : !list && g_lay_n >= LAY_MAX))
         return;                          /* (boxes and frames: [np]'s and [list]'s) */
+    hdr = k == LK_PART || k == LK_TITLE;
     memset(&e, 0, sizeof e);
     e.kind = (uint8_t)k;
     e.font = LFN_B13;
@@ -216,11 +256,11 @@ static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [
 
 #define KEY(s) (kn == (int)sizeof(s) - 1 && !memcmp(key, s, (size_t)kn))
 #define VAL(s) (vn == (int)sizeof(s) - 1 && !memcmp(v, s, (size_t)vn))
-            if (KEY("field") && (i = pick(v, vn, k_fields, 16)) > 0)
+            if (KEY("field") && (i = pick(v, vn, k_fields, NFIELDS)) > 0)
                 e.field = (uint8_t)i;
-            else if (KEY("kind") && (i = pick(v, vn, k_fields, 16)) > 0)
+            else if (KEY("kind") && (i = pick(v, vn, k_fields, NFIELDS)) > 0)
                 e.field = (uint8_t)i;
-            else if (KEY("text") && s_strn + (unsigned)vn + 1u <= LAY_STR) {
+            else if (KEY("text") && !list && s_strn + (unsigned)vn + 1u <= LAY_STR) {
                 e.field = LF_WORDS;
                 e.b = (uint8_t)s_strn;
                 memcpy(g_lay_str + s_strn, v, (size_t)vn);
@@ -248,14 +288,16 @@ static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [
                 e.flags |= LG_PAUSE;
             else if (KEY("noart") && VAL("solid"))
                 e.flags |= LG_SOLID;
-            else if (KEY("alt") && k >= LK_PART && (i = pick(v, vn, k_fonts, 6)) >= 0)
-                e.b = (uint8_t)(i + 1);  /* (a header part's font when px lacks a letter) */
+            else if (KEY("alt") && (hdr || list == 3) && (i = pick(v, vn, k_fonts, 6)) >= 0)
+                e.b = (uint8_t)(i + 1);  /* (a header part's, a screen's text's font when px lacks a letter) */
             else if ((KEY("style") && (VAL("outline") || VAL("text"))) || (KEY("alt") && VAL("t17")) ||
                      (KEY("np") && VAL("volume")))
                 e.flags |= LG_ALT;
-            else if (KEY("y") && k >= LK_PART)
+            else if (KEY("y") && hdr)
                 num[1] = atoi(v), nn = nn > 1 ? nn : 2;
-            else if (KEY("gap") && k >= LK_PART)
+            else if ((KEY("ticks") && VAL("1")) || (KEY("style") && VAL("steps")))
+                e.flags |= KEY("ticks") ? LG_TICKS : LG_STEPS;
+            else if (KEY("gap") && hdr)
                 e.a = (uint8_t)atoi(v);
             else if (KEY("on") && (i = pick_role(v, vn)) >= 0)
                 e.color2 = (uint8_t)i;
@@ -291,9 +333,11 @@ static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [
         e.h = (int16_t)(nn > 3 ? num[3] : num[2]);
     if (k == LK_BAR && !e.field)
         e.field = LF_PROGRESS;
-    if (k >= LK_PART && !num[1])
+    if (hdr && !num[1])
         e.y = 14;                        /* (the header's baseline) */
-    if (list == 2)
+    if (list == 3)
+        g_lscr[g_lscr_n++] = e;
+    else if (list == 2)
         g_lhdr[g_lhdr_n++] = e;
     else if (list)
         g_lrow[g_lrow_n++] = e;
@@ -340,6 +384,8 @@ static int src_line(src_t *s, char *line, int cap)
 
 /* The sections of s (but those in skip: 1 [np], 2 [list], 4 [header]) into g_lay / g_lrow / g_lhdr;
  * returns the ones it had. */
+static int s_want;                       /* the screen (LS_*) whose section parse() takes, 0: none */
+
 static int parse(src_t *s, int skip)
 {
     char line[160];
@@ -351,9 +397,12 @@ static int parse(src_t *s, int skip)
         if (h && (h == line || h[-1] == ' ' || h[-1] == '\t') && !(h > line && strchr(line, '"') && strchr(line, '"') < h))
             *h = 0;                      /* (a comment: # at the start or after a space, not in quotes) */
         if (line[0] == '[') {
-            sec = !strncmp(line, "[np]", 4) ? 1 : !strncmp(line, "[list]", 6) ? 2 : !strncmp(line, "[header]", 8) ? 4 : 0;
+            sec = !strncmp(line, "[np]", 4) ? 1 : !strncmp(line, "[list]", 6) ? 2 : !strncmp(line, "[header]", 8) ? 4 :
+                  s_want && !strncmp(line, k_screens[s_want], strlen(k_screens[s_want])) ? 8 : 0;
             if (sec & skip)
                 sec = 0;
+            else if (sec == 8)
+                g_lscr_n = 0, g_lscr_row = 18;
             else if (sec == 1)
                 g_lay_n = 0, s_strn = 0;
             else if (sec == 2)
@@ -364,7 +413,7 @@ static int parse(src_t *s, int skip)
             continue;
         }
         if (sec)
-            parse_line(line, sec == 4 ? 2 : sec == 2);
+            parse_line(line, sec == 8 ? 3 : sec == 4 ? 2 : sec == 2);
     }
     return had;
 }
@@ -403,6 +452,40 @@ int lay_load(void)
     memset(&s, 0, sizeof s);
     s.mem = look ? k_retro : k_modern;
     parse(&s, had);
+    return 1;
+}
+
+/* A screen's section (LS_*) parsed into g_lscr: the file's, else the built-in's. */
+int lay_screen(int id)
+{
+    int look = g_cfg.look ? 1 : 0, had = 0;
+    const char *name = g_cfg.layout[look];
+    src_t s;
+
+    lay_load();
+    if (g_lscr_id == id && g_lscr_key == g_lay_key)
+        return 1;
+    s_want = id;
+    g_lscr_n = 0;
+    g_lscr_row = 18;
+    memset(&s, 0, sizeof s);
+    if (name[0]) {
+        char path[64];
+
+        snprintf(path, sizeof path, LAY_DIR "/%s.txt", name);
+        if ((s.f = fs_open_read(path)) != NULL) {
+            had = parse(&s, 7) & 8;
+            fs_close(s.f);
+        }
+    }
+    if (!had) {
+        memset(&s, 0, sizeof s);
+        s.mem = look ? k_retro : k_modern;
+        parse(&s, 7);
+    }
+    s_want = 0;
+    g_lscr_id = (uint8_t)id;
+    g_lscr_key = g_lay_key;
     return 1;
 }
 

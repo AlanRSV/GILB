@@ -505,8 +505,9 @@ typedef struct {
     int (*scan)(char (*names)[LAY_NAME], int max);
     int (*load)(void);
     int (*cfg)(void);                    /* services/config.c config_load */
+    int (*screen)(int id);
 } lay_api_t;
-static const lay_api_t k_lay OVL_API(lay) = { lay_np, lay_scan, lay_load, config_load };
+static const lay_api_t k_lay OVL_API(lay) = { lay_np, lay_scan, lay_load, config_load, lay_screen };
 OVL_HEADER(lay, OVL_LAY, &k_lay);
 
 /* Now Playing's cover view from its layout; 0 when the overlay cannot be had (Modern's hand-made one
@@ -523,6 +524,12 @@ int ap_lay_np(int band)
 int ap_lay_load(void)
 {
     return npx_ok() ? GATE(ovl_get, OVL_LAY, lay_api_t, 0, load()) : 0;
+}
+
+/* A screen's section of the layout (ui/nav.c lay_screen_els: when it is shown). */
+int ap_lay_screen(int id)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_LAY, lay_api_t, 0, screen(id)) : 0;
 }
 
 /* GILB.CFG read (services/config.c: boot, and after a USB disk session). */
