@@ -33,3 +33,16 @@ without them (the overlays' ABI hash and its CRC aside).
 The firmware tools still in `tools/` are the ones the build uses (`ap_size.py`, `ovl_pack.py`,
 `make_fw1.py`, `pack_*.py`, ...) and the ones run by hand (`gilb_pixfont.py`, `gilb_cjkfont.py`,
 `make_covers.py`, the firmware unpack and diff tools, `patch-rkdeveloptool-echo-mini.sh`).
+
+Third pass, 2026-11-25: `docs/` (467 files) down to what the README, `handoff.md` or today's code point
+at (32 files). The rest moved to `archive/docs/`, under the same paths; the docs still in `docs/` now
+name them there.
+
+| Folder | What it was |
+|---|---|
+| `docs/re/decomp/` (410 files) | The decompiled stock firmware (3.7.0), annotated: the spec the early rewrite was checked against |
+| `docs/re/` (the other 13) | Reverse-engineering plans and reports: SDK matching and porting, the dispatch and mailbox guides, the multi-version plan, the RE backlog. Still in `docs/re/`: `refcfw-analysis.md` and `route-b-minimum.md` (the code cites them) |
+| `docs/rewrite/` `services`, `player`, `modules`, `integration`, `customization` | Design notes of the first rewrite's parts that were later replaced; the parts the code still cites stay in `docs/rewrite/` |
+| `docs/STATUS.md`, `RE-HISTORY.md` | The SDK-splice era's build status and the decompilation phase's story |
+| `docs/bootloader-analysis.md`, `dispatch-map.md`, `sdk-reconciliation.md` | Early boot and SDK-header analyses (Aug 2026) |
+| `docs/PROPRIETARY-INVENTORY.md`, `MERGE_NOTES_bt.md` | The SDK era's list of binary parts, and the notes from merging the Bluetooth branches |

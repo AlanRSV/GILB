@@ -97,7 +97,7 @@ above the XIP image.
 3. **Validate on hardware UART** (fw1valid = %d fw2valid = %d) — the only
    authoritative check, since the ROM loader format is not fully documented.
 
-See also docs/dispatch-map.md, docs/bootloader-analysis.md, docs/HARDWARE.md.
+See also archive/docs/dispatch-map.md, archive/docs/bootloader-analysis.md, docs/HARDWARE.md.
 
 ## 6. Size analysis (flat AP build, after .bss NOLOAD fix)
 

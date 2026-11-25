@@ -177,7 +177,7 @@ firmware/player/
    annotated section_3 decomp), so Exp 1 = ROM sequence sanity → Exp 2 =
    tone → Exp 3 = player PCM into the ROM refill contract; the SDK
    `driver/IIS/I2s.c` + datasheet §4.13 I²C driver is the documented
-   fallback (`docs/re/dac-output-path.md` has the SDK DMA-ISR path). Until
+   fallback (`archive/docs/re/dac-output-path.md` has the SDK DMA-ISR path). Until
    then the player decodes but is silent and the ipc_b supervisor reports
    "no audio renderer".
 

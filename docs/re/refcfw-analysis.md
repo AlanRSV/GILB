@@ -273,7 +273,7 @@ Round-1 lessons:
 2. Map the boot chain: tiny sec2 stub → fw1 → section3; identify the module
    loader and the module header format.
 3. Map the AP↔B protocol (ring buffer + mailbox registers) and compare with
-   the stock IPC we already decompiled (`docs/re/decomp/...`, `Main2.c`).
+   the stock IPC we already decompiled (`archive/docs/re/decomp/...`, `Main2.c`).
 4. RE the `REFCFW.CFG` parser (all keys) and the `ECHOLOG.TXT` writer — a live
    device log is the cheapest ground truth we can get.
 5. On-device: boot RefCFW, pull `ECHOLOG.TXT`; use `BOOT CAPTURE`/`SYSTEM BACKUP`

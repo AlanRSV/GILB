@@ -9,8 +9,8 @@
 > It exists so a fresh AI session can pick up where the last one left off
 > without repeating months of RE work or re-discovering bugs the hard way.
 >
-> Companion docs: [STATUS.md](STATUS.md) (build status), [HARDWARE.md](HARDWARE.md)
-> (memory map), [FLASHING.md](FLASHING.md) (flash/recovery), [RE-HISTORY.md](RE-HISTORY.md)
+> Companion docs: [STATUS.md](../archive/docs/STATUS.md) (build status), [HARDWARE.md](HARDWARE.md)
+> (memory map), [FLASHING.md](FLASHING.md) (flash/recovery), [RE-HISTORY.md](../archive/docs/RE-HISTORY.md)
 > (decomp → SDK pivot), [re/](re/) (archived RE corpus + decompiled spec).
 
 ---
@@ -228,7 +228,7 @@ unflashable. Fixes landed: `make release` now = custom BB + STOCK AP only
 pack_img.py --pack-full.
 
 
-**UPDATE (2026-08, mailbox session): see `docs/re/AP-MAILBOX-GUIDE.md`** —
+**UPDATE (2026-08, mailbox session): see `archive/docs/re/AP-MAILBOX-GUIDE.md`** —
 verified mailbox map (base 0x40110000, struct 0x50, IRQ 9–12, real command
 IDs), the three causes of "blank top text + freeze" (ROM text-draw callback
 @0x0300710a lives in section_3; zero-padded section_3 tail corrupts fw1
@@ -458,7 +458,7 @@ working (so the stock UI can play audio through our BB), then modify
 - **`RKFIO_FOpen`** is old-style `()` to satisfy both .c variants.
 - **Windows:** files use CRLF; `$(cat file)` in bash needs `tr -d '\r'`.
 - **Ghidra:** project `FIIO-3.7.0-Decomp` — 852/2776 named (30.7%); 327 named
-  decompiled files compile. The `docs/re/decomp/` tree is the FiiO-layer spec.
+  decompiled files compile. The `archive/docs/re/decomp/` tree is the FiiO-layer spec.
 
 
 ---
@@ -470,7 +470,7 @@ marked otherwise.
 
 ## 0. Decisions made
 
-- Strategy PIVOT (user decision, recorded in docs/STATUS.md): stop extending
+- Strategy PIVOT (user decision, recorded in archive/docs/STATUS.md): stop extending
   the stock-AP hybrid (black-box mailbox protocol, no log drain, no UI). Go
   to the reference-CFW architecture: our own fw1 (AP+UI) + our BB as a
   core-B module + our own protocol. Milestone 1: fw1 that boots to OUR
@@ -1461,7 +1461,7 @@ placeholder). Wired end-to-end:
   (packer RESULT: PASS). STILL SILENT by design: pressing play now opens
   Now Playing and decodes up to the ring, but audible output needs the DAC
   renderer (next milestone: consume the ipc_b ring → I2S/DAC, see
-  `docs/re/dac-output-path.md` for the SDK's DMA-ISR decode loop) and mp3/flac
+  `archive/docs/re/dac-output-path.md` for the SDK's DMA-ISR decode loop) and mp3/flac
   need the vendored codecs (WAV only today).
 
 ### m6b (2026-10-12): power-key USB exit now scans for updates
@@ -1550,7 +1550,7 @@ Two layers, strict separation:
   module (`firmware/player/**`). Decodes to interleaved int16 PCM via
   `codec_t`, pushes into the SPSC ring (`ipc_b`) consumed by the B core.
   The B core starts at 400 MHz and clock-negotiates to 100 MHz
-  (facts in `docs/re/refcfw-analysis.md` and `docs/rewrite/player.md` §3).
+  (facts in `docs/re/refcfw-analysis.md` and `archive/docs/rewrite/player.md` §3).
 
 The reference CFW's ECHOLOG proves the contract we must match:
   - `B: boundary to track N: FLAC 44100 Hz, ~5840 frames queued (gapless)`

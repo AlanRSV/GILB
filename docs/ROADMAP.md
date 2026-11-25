@@ -1,6 +1,6 @@
 # ReChord roadmap and status (Echo Mini, 512 MB and 8 GB, 2026-11-23)
 
-This is the current picture. `STATUS.md` and `HANDOVER.md` are the history of the earlier
+This is the current picture. `archive/docs/STATUS.md` and `HANDOVER.md` are the history of the earlier
 approaches (SDK splice, hybrid fw1/BB) and are kept for reference only.
 
 **Both boards.** This line was built on the 512 MB Echo Mini (`MINIV*.IMG` firmware) and runs

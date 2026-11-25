@@ -6,8 +6,8 @@
 > CFW code; hardware facts / interface contracts (datasheet, stock call
 > sequences, ROM API contracts) are fair game.
 > Sources: `community/CS43131_DS1155F2.pdf` (local datasheet),
-> `docs/re/decomp/apps/audio/*` (stock 3.7.0 section_3 decomp, annotated),
-> `docs/re/decomp/stubs/rom_api_stubs.c` (ROM API inventory), SDK
+> `archive/docs/re/decomp/apps/audio/*` (stock 3.7.0 section_3 decomp, annotated),
+> `archive/docs/re/decomp/stubs/rom_api_stubs.c` (ROM API inventory), SDK
 > `driver/IIS/I2s.c` + `driver/I2C/i2c.c`.
 
 ## 1. The chip: CS43131 (datasheet facts)
@@ -48,7 +48,7 @@
 Stock/ref firmware does **not** bit-bang the CS43131 themselves — the
 **mask ROM** (chip HAL, `0x00000000..0x02FFFFFF`) exposes audio APIs that
 do I2S + DMA + DAC-I²C. Stock section_3's bring-up (annotated decomp,
-`docs/re/decomp/apps/audio/music_service.c`) is:
+`archive/docs/re/decomp/apps/audio/music_service.c`) is:
 
 ```c
 event_set(0xf7);

@@ -187,7 +187,7 @@ Done and confirmed on the device:
   No better codec is possible without replacing the module (its firmware is its own)
 - Repo tidy (ddebeaf): 884 files nothing used moved to `archive/` (git mv); the Makefile from 618 to 259
   lines; today's firmware builds the same code byte for byte (the overlays' ABI hash and CRC aside).
-  `docs/` (467 files, many old reports) is still to sort
+  `docs/` sorted the same way later (32 files left; the rest in `archive/docs/`, `archive/README.md`)
 - Download site `site/` (9da590d, 173aabe): one page and a dependency-free Node server showing the newest
   GitHub release's images (`HIFIEC90.IMG`, `MINIV900.IMG`) and extra files (`CJK.BIN`), for Railway (Root
   Directory `site`, `site/README.md`). Release images are built without `FONT_IMG` (Build, above)
@@ -251,6 +251,7 @@ Still open:
 - **Second Echo Mini:** on GILB (941a0a0's image) since 2026-11-25; optional: run its self-test, copy
   `GILB/CJK.BIN` to it.
 
-- **docs/:** 467 files, many old reports: sort them as `archive/` was.
+- **docs/:** sorted 2026-11-25: 32 files kept (those the README, this file or the code cite); 435 moved to
+  `archive/docs/` (the stock decompile, RE plans, SDK-era status), listed in `archive/README.md`.
 
 The list is now driven by the user's own ideas. Ask what they want next.

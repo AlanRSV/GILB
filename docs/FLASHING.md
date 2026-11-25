@@ -149,7 +149,7 @@ Part 5 (inside section 3 region): `ROCK26IMAGERES` — 1617 RGB565 UI bitmaps.
 
 ## Related Docs
 
-- [STATUS.md](STATUS.md) — build status and roadmap
+- [STATUS.md](../archive/docs/STATUS.md) — build status and roadmap
 - [HARDWARE.md](HARDWARE.md) — memory map, registers, segment table
-- [RE-HISTORY.md](RE-HISTORY.md) — decompilation → SDK pivot history
+- [RE-HISTORY.md](../archive/docs/RE-HISTORY.md) — decompilation → SDK pivot history
 - [re/](re/) — archived RE docs + decompiled spec (`re/decomp/`)
