@@ -10,7 +10,7 @@ It was renamed from ReChord to GILB on 2026-11-24.
 and on GILB's download site (`site/` in this repository). How to install: [Install](#install).
 
 The first custom firmware for the Echo Mini is [**RECHO**](https://recho.atzkey.workers.dev), by
-its creator **miauk** ([Ko-fi](https://ko-fi.com/miauk)): it proved what this player can do, and
+its creator **Atzkey** ([Ko-fi](https://ko-fi.com/miauk)): it proved what this player can do, and
 ReChord's authors learned from it by decompiling it, alongside the stock firmware. ReChord was
 started by Bruno Moraga ([brnomt/ReChord](https://github.com/brnomt/ReChord)); the firmware GILB
 builds on was written by dragarok ([dragarok/ReChord](https://github.com/dragarok/ReChord)); this
@@ -272,7 +272,7 @@ on its 8 GB players; Settings > System > Self-test checks a player's hardware.
 
 GILB is free. If it's useful to you, these are the people to thank:
 
-- **miauk**, creator of RECHO, the first custom firmware for the Echo Mini, which made all of this
+- **Atzkey**, creator of RECHO, the first custom firmware for the Echo Mini, which made all of this
   possible: [ko-fi.com/miauk](https://ko-fi.com/miauk)
 <!-- GILB's own Ko-fi goes here, e.g.: - **AlanRSV**, GILB: [ko-fi.com/NAME](https://ko-fi.com/NAME) -->
 
@@ -283,7 +283,7 @@ GILB stands on three projects, in this order. Each one made the next possible.
 ### RECHO: the first custom firmware for the Echo Mini
 
 [**RECHO**](https://recho.atzkey.workers.dev) (released earlier as RefCFW) is the first custom
-firmware for the Echo Mini, written from scratch by its creator, **miauk**
+firmware for the Echo Mini, written from scratch by its creator, **Atzkey**
 ([Ko-fi](https://ko-fi.com/miauk)). It proved first what this hardware can do: gapless playback,
 decoding on the second core, the clock at 200 MHz, a firmware of one's own that installs through
 the stock updater and back out again. Its source is not public.

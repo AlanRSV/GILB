@@ -3,7 +3,7 @@
 
 ---
 
-**GILB** is a free, open-source custom firmware for the **SNOWSKY (FiiO) Echo Mini**, **8 GB board**. It's a fork of [ReChord](https://github.com/dragarok/ReChord), which learned from [RECHO](https://recho.atzkey.workers.dev), the first custom firmware for this player, by **miauk** (please support them: <https://ko-fi.com/miauk>).
+**GILB** is a free, open-source custom firmware for the **SNOWSKY (FiiO) Echo Mini**, **8 GB board**. It's a fork of [ReChord](https://github.com/dragarok/ReChord), which learned from [RECHO](https://recho.atzkey.workers.dev), the first custom firmware for this player, by **Atzkey** (please support them: <https://ko-fi.com/miauk>).
 
 This is the first public release. Built from commit `COMMIT` of this repository, which is its source code (GPL-3.0).
 
@@ -47,7 +47,7 @@ Installing custom firmware is at your own risk. GILB has been tested on two 8 GB
 
 ## Credits and licenses
 
-- **RECHO** by miauk: the first Echo Mini custom firmware, which ReChord studied.
+- **RECHO** by Atzkey: the first Echo Mini custom firmware, which ReChord studied.
 - **ReChord**: started by Bruno Moraga, the firmware GILB builds on written by dragarok.
 - Decoders: libmad, FAAD2, Rockbox (libdemac, libwma, libwmapro), FFmpeg (WMA Lossless), Tremor and libogg, libopus and opusfile, WavPack, Apple ALAC, dr_flac.
 - Fonts: Noto Sans (SIL OFL 1.1); Fusion Pixel by TakWolf for `CJK.BIN` (SIL OFL 1.1, `OFL.txt`).
