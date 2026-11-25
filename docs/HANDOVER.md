@@ -373,7 +373,10 @@ exports), `firmware/rockchip_wireless/` (259 MB — wrong SDK, Wireless V1.5).
 
 ---
 
-## 8b. QEMU GUI dev harness (use this before flashing!)
+## 8b. QEMU GUI dev harness (archived)
+
+> **Archived 2026-11-25:** the desktop simulator (`sim/`) replaced this. The harness and its tools are in
+> `archive/firmware/qemu/` and `archive/tools/` (the paths below are the old ones).
 
 Iterate the ReChord GUI in QEMU instead of flash-testing every build.
 

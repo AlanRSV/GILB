@@ -1,31 +1,9 @@
-# firmware/ap.mk -- build fragment for the clean-room AP (fw1) image,
-# milestone 1a (fragment style per docs/rewrite/architecture.md section 2 and
-# firmware/libc/libc.mk).  It lists the AP link inputs and the compile/link
-# flags; build rules stay in the root Makefile.
+# firmware/ap.mk -- core A's build inputs: its sources, include roots, compile and link flags, its
+# overlays. The rules are the root Makefile's (cfw-ap, cfw-img). Linker contract: firmware/firmware_ap.ld.
 #
-# Usage (root Makefile, clean-room pivot -- replaces the stock-AP wiring
-# from firmware/rockchip/manifests/ap.mk):
-#     include firmware/ap.mk
-#
-# Per-source compile:
-#     $(CC) $(AP_CFLAGS) -c <src> -o <obj>        # one .o per $(AP_SRCS)
-# Link (mirrors link-bb in the Makefile):
-#     $(CC) $(AP_LDFLAGS) $(AP_OBJS) $(AP_LDLIBS) -o $(AP_ELF)
-#
-# Image layout / linker contract: firmware/firmware_ap.ld (SYS_CODE
-# 0x03060000 entry via ap_vectors, SYS_DATA 0x03000000, MSP 0x03050000 --
-# docs/fw1-packing.md).
-#
-# firmware/player is now linked (milestone 2a): player.c, codec_io, the codec
-# adapters, tags/replaygain, rg_math, and the A<->B IPC target backend
-# (ipc_b_target.c). It is the clean-road audio path; see docs/rewrite/audio.md.
-#
-# NOT linked in milestone 1a (by design):
-#   firmware/dsp, firmware/modules                      (later milestones)
-#   firmware/rockchip/**                                (stock SDK, hybrid era)
-#   firmware/services/fs_host.c                         (host-only backend;
-#       the device FS backend is fs_target.c, wired via fs.h)
-#   firmware/stubs.c, firmware/fault.c                  (hybrid-era glue)
+# Not linked: firmware/services/fs_host.c (the simulator's and the host tests' file system; the device's
+# is fs_target.c). The SDK-era code (firmware/rockchip, the first player, dsp, modules, the hybrid-era
+# glue) is in archive/ since 2026-11-25.
 #
 # NOTE on -std: the Makefile's COMMON_FLAGS passes no -std (default gnu17).
 # The clean-room sources are C99 (ui.mk uses -std=c99) and do NOT compile
@@ -197,9 +175,9 @@ AP_INCLUDE_DIRS := \
   firmware/theme
 
 # ---- flags -------------------------------------------------------------
-# Mirrors the BB build exactly (Makefile: ARCH_FLAGS + COMMON_FLAGS +
-# AP_CFLAGS), i.e. the SDK-era warning leniency set, -ffunction-sections /
-# -fdata-sections / -fcommon, and the force-included armcc_compat.h.
+# The SDK-era warning leniency set (the code began from the vendor SDK), -ffunction-sections /
+# -fdata-sections / -fcommon, and the force-included armcc_compat.h (firmware/compat/: armcc
+# keywords to GCC, the SDK base types).
 AP_ARCH_FLAGS := -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
 
 # Board variant (firmware/drivers/board.h): make BOARD=512m (default) or 8g.
@@ -216,7 +194,7 @@ AP_CFLAGS := $(AP_ARCH_FLAGS) -Os -Wall \
   -ffunction-sections -fdata-sections -MMD -MP -fcommon \
   -DRECHORD_AP_BUILD -DBOARD=$(BOARD_ID) -DRECHORD_LISTS_REVERSED=$(REVERSE_LISTS) \
   $(addprefix -I,$(AP_INCLUDE_DIRS)) \
-  -include firmware/rockchip/include/armcc_compat.h
+  -include firmware/compat/armcc_compat.h
 
 # ---- overlays (firmware/services/ovl.h, docs/MEMORY_MAP.md) --------------
 # Code for modes the user enters and leaves, loaded on demand into the overlay window. What each

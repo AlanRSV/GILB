@@ -24,7 +24,12 @@ No PC flashing tool is required. The player reads the IMG from internal flash an
 
 ---
 
-## Build pipeline (current status)
+## Build pipeline (historical: ReChord, Aug 2026)
+
+> **Archived 2026-11-25.** This section describes the SDK-era pipeline (`make release`: an SDK core B
+> with the stock UI). Its sources and Makefile targets are in `archive/` (`archive/Makefile.legacy`),
+> and it no longer builds. Today's image is `make cfw-img` (`build/HIFIEC90.IMG` on the 8 GB board);
+> the install steps are in `handoff.md` ("Install").
 
 ```bash
 mingw32-make release        # SAFE default: custom BB + STOCK AP
