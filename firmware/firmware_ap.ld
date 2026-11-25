@@ -170,8 +170,6 @@ SECTIONS
             *theme_store.o(.text* .rodata*)
             *theme_file.o(.text* .rodata*)
             *gilb_move.o(.text* .rodata*)         /* RECHORD/ -> GILB/ (services/gilb_move.c) */
-            *retro.o(.text* .rodata*)             /* Look: Retro's Now Playing (ui/retro.c) */
-            *retro_tags.o(.text* .rodata*)        /* (its year: tags.c again, TAGS_EXT) */
             *sd_selftest.o(.text* .rodata*)       /* Developer > SD card test (room the dev overlay lacks) */
             *rtc_pcf8563.o(.text* .rodata*)       /* the time of day (services/clock_set.c): room npx lacks */
             *clock_set.o(.text* .rodata*)
@@ -179,6 +177,16 @@ SECTIONS
                fs_list_dir_each (only the theme scan and the GILB move list a folder),
                cpuclk_log_selftest (once a boot), wallclock_set (only clock_set.c sets it) */
             *(.text.ovl_viz .ovl_text_viz .rodata.ovl_viz .rodata.ovl_viz.*)
+            . = ALIGN(4);
+        }
+        /* layouts (docs/LAYOUTS.md): the engine, its built-in layouts (Modern's and Retro's Now
+           Playing), the year Retro's shows (ui/retro_tags.c: tags.c again, TAGS_EXT) */
+        .ovl_lay
+        {
+            KEEP(*(.ovl_hdr.lay))
+            *(.ovl.lay.*)
+            *layout.o(.text* .rodata*)
+            *retro_tags.o(.text* .rodata*)
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */
@@ -364,8 +372,9 @@ NOCROSSREFS_TO(.ovl_lib .vectors .text .data .ovl_fsw)
 NOCROSSREFS_TO(.ovl_libtag .vectors .text .data .ovl_fsw)
 NOCROSSREFS_TO(.ovl_npx .vectors .text .data .ovl_fsw)
 NOCROSSREFS_TO(.ovl_viz .vectors .text .data .ovl_fsw)
-NOCROSSREFS_TO(.ovl_fsw .vectors .text .data .ovl_usbdac .ovl_usbout .ovl_dev .ovl_lib .ovl_libtag .ovl_lwalk .ovl_lbuild .ovl_npx .ovl_viz)
-NOCROSSREFS(.ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx .ovl_viz)
+NOCROSSREFS_TO(.ovl_lay .vectors .text .data .ovl_fsw)
+NOCROSSREFS_TO(.ovl_fsw .vectors .text .data .ovl_usbdac .ovl_usbout .ovl_dev .ovl_lib .ovl_libtag .ovl_lwalk .ovl_lbuild .ovl_npx .ovl_viz .ovl_lay)
+NOCROSSREFS(.ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx .ovl_viz .ovl_lay)
 /* the phases call the library's code (.ovl_lib, always loaded before them), never the reverse */
 NOCROSSREFS_TO(.ovl_lwalk .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
 NOCROSSREFS_TO(.ovl_lbuild .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
@@ -394,13 +403,14 @@ __ovl_win_end   = ORIGIN(OVL_WIN) + LENGTH(OVL_WIN);
 ASSERT(ORIGIN(OVL_WIN) >= 0x03040000, "the overlay window must stay above the audio input ring")
 ASSERT(__ovl_win_end <= 0x0304F000, "the overlay window must stay below the loaded image (0x0304F490)")
 ASSERT(ovl_hdr_usbdac == ORIGIN(OVL_WIN) && ovl_hdr_usbout == ORIGIN(OVL_WIN) && ovl_hdr_dev == ORIGIN(OVL_WIN) &&
-       ovl_hdr_libtag == ORIGIN(OVL_WIN) && ovl_hdr_npx == ORIGIN(OVL_WIN),
+       ovl_hdr_libtag == ORIGIN(OVL_WIN) && ovl_hdr_npx == ORIGIN(OVL_WIN) && ovl_hdr_lay == ORIGIN(OVL_WIN),
        "each overlay must start with its header")
 ASSERT(SIZEOF(.ovl_usbdac) <= LENGTH(OVL_WIN), "the usbdac overlay is over the window")
 ASSERT(SIZEOF(.ovl_usbout) <= LENGTH(OVL_WIN), "the usbout overlay is over the window")
 ASSERT(SIZEOF(.ovl_dev) <= LENGTH(OVL_WIN), "the dev overlay is over the window")
 ASSERT(SIZEOF(.ovl_libtag) <= LENGTH(OVL_WIN), "the libtag overlay is over the window")
 ASSERT(SIZEOF(.ovl_npx) <= LENGTH(OVL_WIN), "the npx overlay is over the window")
+ASSERT(SIZEOF(.ovl_lay) <= LENGTH(OVL_WIN), "the lay overlay is over the window")
 
 /* ---- layout contracts (fail the link loudly on violation) ------------- */
 ASSERT(ap_vectors == 0x03050000,

@@ -64,6 +64,7 @@ void config_defaults(void)
     g_cfg.cpu_b = CFG_CPU_B_96;              /* the FLAC point off until asked for (services/cpuclk.h) */
     g_cfg.theme = 0;                         /* Classic */
     g_cfg.retro_theme = 0;                   /* LCD (Look: Retro's own list) */
+    g_cfg.layout[0][0] = g_cfg.layout[1][0] = 0;   /* Built-in */
     g_cfg.eq = 0;                            /* Off, Custom flat */
     g_cfg.rg = 0;                            /* ReplayGain off */
     g_cfg.clock = CFG_CLOCK_12;
@@ -128,6 +129,8 @@ static void set(const char *k, const char *v)
         g_cfg.theme = (uint8_t)i;
     else if (!strcmp(k, "retro_theme") && (i = theme_index_look(1, v)) >= 0)
         g_cfg.retro_theme = (uint8_t)i;
+    else if (!strcmp(k, "layout") || !strcmp(k, "retro_layout"))
+        snprintf(g_cfg.layout[k[0] == 'r'], sizeof g_cfg.layout[0], "%s", v);
     else if (!strcmp(k, "display") && (i = pick(v, k_display, 5)) >= 0)
         g_cfg.display = (uint8_t)i;
     else if (!strcmp(k, "hifi") && (i = pick(v, k_hifi, 3)) >= 0)
@@ -344,6 +347,14 @@ static int text_of(char *t, unsigned long cap)
             return n + d;
         n += d;
     }
+    for (int l = 0; l < 2; l++)
+        if (g_cfg.layout[l][0]) {        /* (only when not Built-in) */
+            int d = snprintf(t + n, cap - (unsigned long)n, "%slayout=%s\n", l ? "retro_" : "", g_cfg.layout[l]);
+
+            if (d < 0 || (unsigned long)(n + d) >= cap)
+                return n + d;
+            n += d;
+        }
     if (g_cfg.retro_theme && theme_name_look(1, g_cfg.retro_theme)) {   /* (only when not LCD) */
         int d = snprintf(t + n, cap - (unsigned long)n, "retro_theme=%s\n", theme_name_look(1, g_cfg.retro_theme));
 

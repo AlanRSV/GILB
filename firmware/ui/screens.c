@@ -32,6 +32,7 @@
 #include "services/queue.h"
 #include "services/lib.h"
 #include "ui/np_extra.h"
+#include "ui/layout.h"
 #include "player.h"
 #include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
@@ -668,6 +669,32 @@ static const uint16_t k_hues[8] = {     /* the monogram tile's hues (content, no
 np_now_t g_np;                        /* (ui/np_extra.h: the npx overlay's views read it too) */
 #define N g_np
 
+/* Now Playing's layout, parsed by the lay overlay (ui/layout.c, docs/LAYOUTS.md); here so the second's
+ * redraw finds its rectangles without the overlay. s_lay_on: the cover view on screen came from it. */
+lay_el_t g_lay[LAY_MAX];
+uint8_t g_lay_n;
+char g_lay_str[LAY_STR];
+int32_t g_lay_key = -1;
+static uint8_t s_lay_on;
+
+/* What changes on the layout's screen: each second its times and progress bars; a pause, its covers'
+ * marks (the rows a text's font may reach, generously). */
+static void lay_inval(int pause)
+{
+    for (int i = 0; i < g_lay_n; i++) {
+        const lay_el_t *e = &g_lay[i];
+
+        if (pause) {
+            if (e->kind == LK_COVER && (e->flags & LG_PAUSE))
+                ui_invalidate(e->x + e->w - 22, e->y + e->w - 22, e->x + e->w - 5, e->y + e->w - 5);
+        } else if (e->kind == LK_BAR && e->field == LF_PROGRESS) {
+            ui_invalidate(e->x - 1, e->y - 2, e->x + e->w, e->y + e->h + 1);
+        } else if (e->kind == LK_TEXT && (e->field == LF_ELAPSED || e->field == LF_REMAIN)) {
+            ui_invalidate(e->x, e->y - 30, e->x + e->w - 1, e->y + 6);   /* (any font's ink: d28 the tallest) */
+        }
+    }
+}
+
 /* The album cover (tools/make_covers.py): COVER_NAME in the track's folder, COVER_W x COVER_W
  * RGB565 little-endian, rows top down, exactly sizeof s_cover bytes, no header. Drawn at 2x in the
  * art tile; a track without one keeps the monogram tile. */
@@ -919,7 +946,10 @@ static void np_poll(void)
     }
     if (paused != N.paused) {
         N.paused = (uint8_t)paused;
-        ui_invalidate(PAUSE_X, PAUSE_Y, PAUSE_X + 17, PAUSE_Y + 17);
+        if (s_lay_on)
+            lay_inval(1);
+        else
+            ui_invalidate(PAUSE_X, PAUSE_Y, PAUSE_X + 17, PAUSE_Y + 17);
     }
     if (N.band == 1 && (int32_t)(time_ms() - N.until) >= 0) {
         N.band = 0;
@@ -934,9 +964,13 @@ static void np_poll(void)
         if (!N.band) {
             int b = head_x();
 
-            ui_invalidate((a < b ? a : b) - 1, BAND_Y + 2, (a > b ? a : b) + 1, BAND_Y + 9);
-            ui_invalidate(8, BAND_Y + 11, 70, DISPLAY_H - 1);
-            ui_invalidate(232, BAND_Y + 11, 312, DISPLAY_H - 1);
+            if (s_lay_on) {
+                lay_inval(0);
+            } else {
+                ui_invalidate((a < b ? a : b) - 1, BAND_Y + 2, (a > b ? a : b) + 1, BAND_Y + 9);
+                ui_invalidate(8, BAND_Y + 11, 70, DISPLAY_H - 1);
+                ui_invalidate(232, BAND_Y + 11, 312, DISPLAY_H - 1);
+            }
         }
     }
 }
@@ -1039,10 +1073,27 @@ static void vol_band(int db, int bt)
     ui_text(look_font(v, &font_m13), 250, BAND_Y + 22, 62, 2, v, t->text, BAND_Y, DISPLAY_H - 1);
 }
 
+/* Does a pending redraw reach the band's rows? (A view's band from the layout costs an overlay swap:
+ * not for the Spectrum's 25 redraws a second of its own box.) */
+static int band_dirty(void)
+{
+    int y0, y1;
+
+    for (int i = 0; i < ui_dirty_band_count(); i++)
+        if (ui_dirty_band(i, &y0, &y1) && y1 >= BAND_Y)
+            return 1;
+    return 0;
+}
+
+int ap_npx_view(void);                    /* startup/ap_ovl.c: a view (Lyrics, Up Next, Spectrum) is on */
+
+/* Now Playing: the Look's layout (ui/layout.c, docs/LAYOUTS.md) draws the cover view and, for the
+ * views (the npx and viz overlays), the band's rows first: what the layout queues is the UI's own
+ * drawing, so the view's overlay may take the window after it. When the layout overlay cannot be had
+ * (USB-C earphones hold the window): the tile and the text column by hand, no band. */
 static void np_draw(void)
 {
     const theme_t *t = T;
-    char a[12], b[12];
 
     ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, t->background);
     if (g_cfg.look)                       /* Retro: a darker panel (14 % of the way to the text) in a light rim, as
@@ -1052,54 +1103,24 @@ static void np_draw(void)
         ui_text(&font_b13, 0, 92, DISPLAY_W, 1, "Nothing playing", t->text_dim, BODY_Y, BAND_Y);
         return;
     }
-    if (N.seq == 0xFFFFFFFFu || !ap_npx_draw()) {   /* (the Cover view, or one that can't be had now) */
-        if (g_cfg.look && ap_retro_np(0))   /* Look: Retro (ui/retro.c) */
+    if (N.seq != 0xFFFFFFFFu && ap_npx_view()) {
+        if (!N.band && band_dirty())
+            s_lay_on = (uint8_t)(ap_lay_np(2) > 0);
+        if (ap_npx_draw())
             goto band;
-        art(N.init, N.hue, N.paused, N.cover);
-        if (N.seq == 0xFFFFFFFFu) {           /* starting: the row's name only */
-            text_col(N.title, "", "");
-            return;
-        }
-        text_col(N.title, N.artist, N.album);
-        {
-            int x = badge(TX, N.codec, N.hires ? t->hires : t->badge_bg, N.hires ? 0 : t->badge_text, 0);
-
-            badge(x, N.fmt, N.hires ? t->hires : t->badge_bg, N.hires ? t->hires : t->text_dim, 1);
-        }
-        ui_text(&font_s8, TX, 130, TW, 0, N.facts, t->text_dim, 122, 132);
     }
+    if (ap_lay_np(N.band != 0)) {
+        s_lay_on = 1;
+        goto band;
+    }
+    s_lay_on = 0;
+    art(N.init, N.hue, N.paused, N.cover);
+    text_col(N.title, N.seq == 0xFFFFFFFFu ? "" : N.artist, N.seq == 0xFFFFFFFFu ? "" : N.album);
 band:
-    if (N.band == 1) {
+    if (N.band == 1)
         vol_band(player_get_volume(), bt_routed());
-        return;
-    }
-    if (N.band == 2) {
+    else if (N.band == 2)
         seek_band();
-        return;
-    }
-    if (g_cfg.look && ap_retro_np(1))
-        return;
-    {
-        int hx = head_x();
-
-        ui_fill(8, BAND_Y + 4, 304, 4, t->bar_track);
-        ui_fill(8, BAND_Y + 4, hx - 8, 4, t->bar_fill);
-        ui_fill(hx - 1, BAND_Y + 2, 2, 8, t->text);
-    }
-    fmt_time(a, sizeof a, N.pos);
-    ui_text(&font_b13, 8, BAND_Y + 25, 62, 0, a, t->text, BAND_Y + 11, DISPLAY_H - 1);
-    b[0] = 0;
-    if (N.dur) {
-        memcpy(b, MINUS, 3);
-        fmt_time(b + 3, sizeof b - 3, N.dur > N.pos ? N.dur - N.pos : 0);
-    }
-    ui_text(&font_b13, 232, BAND_Y + 25, 80, 2, b, t->text_dim, BAND_Y + 11, DISPLAY_H - 1);
-    if (N.next[0]) {
-        char nx[72];
-
-        snprintf(nx, sizeof nx, "NEXT  %s", N.next);
-        ui_text(&font_s8, 72, BAND_Y + 23, 156, 1, nx, t->text_dim, BAND_Y + 11, DISPLAY_H - 1);
-    }
 }
 
 static void ensure_playing(int rc)
@@ -1695,7 +1716,7 @@ const page_t pg_usbdisk = { .name = "usbdisk", .kind = PK_CUSTOM, .icon = ICON_U
 
 /* ---- Settings (groups of rows that are data) --------------------------------------------------- */
 
-enum { S_CYCLE, S_CHOICE, S_SLIDER, S_THEME, S_OPEN, S_DO, S_INFO };
+enum { S_CYCLE, S_CHOICE, S_SLIDER, S_THEME, S_OPEN, S_DO, S_INFO, S_LAYOUT };
 typedef struct {
     uint8_t icon, kind, n, def;
     const char *label;
@@ -1738,6 +1759,29 @@ static void look_set(void)
     ui_invalidate_all();
 }
 
+/* Display > Layout: the Look that is on's (g_cfg.layout[look]): Built-in, or a GILB/LAYOUTS/ file, listed
+ * when the picker opens (the lay overlay reads the folder). */
+static char s_lay_names[LAY_FILES + 1][LAY_NAME];
+static uint8_t s_lay_cnt, s_lay_pick;
+
+static void lay_list(void)
+{
+    int r = ap_lay_scan(s_lay_names, LAY_FILES + 1);   /* (no overlay: an empty list) */
+
+    s_lay_cnt = (uint8_t)(r > 0 ? r : 0);
+    s_lay_pick = (uint8_t)(r > 0 ? r >> 8 : 0);
+}
+
+static void lay_apply(void)
+{
+    char *cur = g_cfg.layout[g_cfg.look ? 1 : 0];
+
+    cur[0] = 0;
+    if (s_lay_pick && s_lay_pick < s_lay_cnt)
+        memcpy(cur, s_lay_names[s_lay_pick], LAY_NAME);
+    g_lay_key = -1;                       /* (parsed again at the next draw) */
+}
+
 static void theme_refresh(void)
 {
     char nm[THEME_NAME_MAX];
@@ -1745,6 +1789,7 @@ static void theme_refresh(void)
 
     snprintf(nm, sizeof nm, "%s", theme_name(*theme_sel()) ? theme_name(*theme_sel()) : "");
     n = theme_rescan();
+    g_lay_key = -1;                       /* (and the layout file: read again at the next draw) */
     i = theme_index(nm);
 
     *theme_sel() = (uint8_t)(i < 0 ? 0 : i);
@@ -1794,6 +1839,7 @@ static const set_t g_playback[] = {
 static const set_t g_display[] = {
     { ICON_SUN, S_CYCLE, 2, 0, "Look", &g_cfg.look, n_look, look_set },   /* Modern, or Retro (ui/retro.c) */
     { ICON_SUN, S_THEME, 0, 0, "Theme", &g_cfg.theme, 0, theme_apply },
+    { ICON_SUN, S_LAYOUT, 0, 0, "Layout", &s_lay_pick, 0, lay_apply },   /* (docs/LAYOUTS.md) */
     { ICON_UPDATE, S_DO, 0, 0, "Refresh themes", 0, 0, theme_refresh },   /* (RECHORD/THEMES/: theme/theme_store.c) */
     { ICON_SUN, S_SLIDER, 8, 8, "Brightness", &g_cfg.brightness, 0, apply_bright },
     { ICON_MOON, S_CHOICE, 5, 1, "Screen off after", &g_cfg.screen_off, n_screen },
@@ -1860,6 +1906,11 @@ static const char *set_value(const set_t *s, char *b, int cap)
         return b;
     case S_THEME:
         return theme_name(*theme_sel()) ? theme_name(*theme_sel()) : "";
+    case S_LAYOUT: {
+        const char *l = g_cfg.layout[g_cfg.look ? 1 : 0];
+
+        return l[0] ? l : "Built-in";
+    }
     case S_INFO:
         return ap_keys_text();
     }
@@ -1936,6 +1987,9 @@ static void set_act(int a, int i)
         nav_toast(s->icon, TOAST_TEXT, "%s: %s", s->label, set_value(s, b, sizeof b));
         list_row_changed(i);
         break;
+    case S_LAYOUT:
+        lay_list();
+        /* fall through */
     case S_CHOICE:
     case S_THEME:
         s_edit = s;
@@ -1972,13 +2026,14 @@ const page_t pg_set = {
 /* The choice list: radio marks, the cursor on the current value; the theme previews as it moves. */
 static int s_preview = -1;
 
-static int ch_count(void) { return s_edit->kind == S_THEME ? theme_count() : s_edit->n; }
+static int ch_count(void) { return s_edit->kind == S_THEME ? theme_count() : s_edit->kind == S_LAYOUT ? s_lay_cnt : s_edit->n; }
 
 static void ch_row(int i, row_t *r)
 {
     r->id = (uint16_t)i;
     r->flags = R_RADIO | (i == s_orig ? R_ON : 0);
-    snprintf(r->text, sizeof r->text, "%s", s_edit->kind == S_THEME ? theme_name(i) : s_edit->names[i]);
+    snprintf(r->text, sizeof r->text, "%s", s_edit->kind == S_THEME ? theme_name(i) :
+             s_edit->kind == S_LAYOUT ? s_lay_names[i] : s_edit->names[i]);
 }
 
 static void ch_title(char *o, int cap) { snprintf(o, (unsigned)cap, "%s", s_edit->label); }

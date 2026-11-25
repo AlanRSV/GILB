@@ -42,6 +42,8 @@ typedef struct {
     uint8_t display;             /* the panel's pixel path: CFG_DISPLAY_AUTO or a PANEL_PATH_* */
     uint8_t theme;               /* theme/theme.h built-in index (theme=<name>, Classic by default) */
     uint8_t retro_theme;         /* Look: Retro's own (retro_theme=<name>, LCD by default) */
+    char layout[2][24];          /* each Look's layout (docs/LAYOUTS.md): a GILB/LAYOUTS/ file's name,
+                                  * "" = Built-in (layout=, retro_layout=) */
     uint8_t hifi;                /* hifi=auto|off|verify: core B's FLAC LPC on the HIFI accelerator
                                   * (audio_shared.h AS_HIFI_*, docs/HIFI.md); written when not auto */
     uint8_t cpu_b;               /* cpu_b=96|auto|stock: core B's clock while playing (services/cpuclk.h,

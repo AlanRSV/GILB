@@ -35,6 +35,7 @@
 #include "services/lib.h"
 #include "services/fs_target.h"
 #include "ui/np_extra.h"
+#include "ui/layout.h"
 #include "ui/ui.h"
 #include "theme/theme.h"
 #include "theme/theme_priv.h"
@@ -67,6 +68,7 @@ const ovl_desc_t ovl_desc[OVL_COUNT] = {
     [OVL_LBUILD] = { "ov_lbld", "Library", NULL, 3 },
     [OVL_NPX]    = { "ov_npx", "Lyrics", NULL, 0 },
     [OVL_VIZ]    = { "ov_viz", "Spectrum", NULL, 0 },
+    [OVL_LAY]    = { "ov_lay", "Layout", NULL, 0 },
 };
 
 /* The USB interrupt goes wherever usb_irq_hook points (drivers/usb_msc_rknanoc.c): the USB DAC's
@@ -438,16 +440,15 @@ typedef struct {
     int (*theme_scan)(int retro, char (*names)[THEME_NAME_MAX], int max);    /* theme/theme_store.c */
     int (*theme_load)(int retro, int i, const char *name, theme_t *out);
     int (*gilb_move)(int vol);                                    /* services/gilb_move.c */
-    int (*retro_np)(int part);                                    /* ui/retro.c: Look: Retro's Now Playing */
     int (*cpuclk_log)(void);                                      /* services/cpuclk.c: the self-test's log */
     int (*retro_list)(void);                                      /* ui/nav.c: Look: Retro's lists */
     void (*sd_test)(void);                                        /* services/sd_selftest.c */
     void (*clock)(void);                                          /* services/clock_set.c: the time of day */
 } viz_api_t;
-int gilb_move(int vol), retro_np(int part), cpuclk_log_selftest(void), nav_retro_list(void);
+int gilb_move(int vol), cpuclk_log_selftest(void), nav_retro_list(void);
 void sd_selftest(void);
 static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw, theme_store_scan, theme_store_load,
-                                              gilb_move, retro_np, cpuclk_log_selftest, nav_retro_list,
+                                              gilb_move, cpuclk_log_selftest, nav_retro_list,
                                               sd_selftest, npx_clock };
 
 /* Settings > Developer > SD card test: here rather than with the other tests (the dev overlay is full);
@@ -471,10 +472,6 @@ int ap_theme_scan(int retro, char (*names)[THEME_NAME_MAX], int max)
 }
 
 /* RECHORD/ and RECHORD.CFG under the firmware's new name, GILB (services/gilb_move.c). */
-int ap_retro_np(int part)
-{
-    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, 0, retro_np(part)) : 0;
-}
 
 int ap_retro_list(void)
 {
@@ -506,6 +503,29 @@ int ap_grid_draw(void)
 }
 OVL_HEADER(viz, OVL_VIZ, &k_viz);
 
+/* ---- lay: layouts (ui/layout.c, docs/LAYOUTS.md), in the modes' window ---------------------------- */
+
+typedef struct {
+    int (*np)(int band);
+    int (*scan)(char (*names)[LAY_NAME], int max);
+} lay_api_t;
+static const lay_api_t k_lay OVL_API(lay) = { lay_np, lay_scan };
+OVL_HEADER(lay, OVL_LAY, &k_lay);
+
+/* Now Playing's cover view from its layout; 0 when the overlay cannot be had (Modern's hand-made one
+ * is drawn then, as Retro's was). */
+static int npx_ok(void);
+
+int ap_lay_np(int band)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_LAY, lay_api_t, 0, np(band)) : 0;
+}
+
+int ap_lay_scan(char (*names)[LAY_NAME], int max)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_LAY, lay_api_t, -1, scan(names, max)) : -1;
+}
+
 /* Not while USB-C earphones hold the window (loading the views would stop them), as for libtag;
  * not when the overlay was refused ("busy" passes: a moment, not a refusal). */
 static int npx_ok(void)
@@ -525,6 +545,11 @@ void ap_npx_next(void)
         s_npv = NPV_COVER;
     }
     ui_invalidate(0, BODY_Y, DISPLAY_W - 1, DISPLAY_H - 1);
+}
+
+int ap_npx_view(void)                   /* a view is on, and can be had (ui/screens.c np_draw) */
+{
+    return s_npv && npx_ok();
 }
 
 int ap_npx_draw(void)
