@@ -161,7 +161,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last change is **173aabe** (images without the stock fonts), the last firmware change **f121933**; Echo Library's is **738be7b**.
+Everything is committed and pushed. The last change is **941a0a0** (the update image's own header), the last firmware change **f121933**; Echo Library's is **738be7b**.
 
 Done and confirmed on the device:
 
@@ -194,6 +194,11 @@ Done and confirmed on the device:
 - Second Echo Mini (8 GB, stock until then, never had GILB): the release image (173aabe, no stock fonts,
   SHA-256 DF0348749DCE5EDC54C39241B42109D6F52825A2788B17526DE69738287A9640) installed through the stock
   updater and everything worked (2026-11-25): a new user's first install is proven
+- The update image's own outer header (941a0a0): `tools/make_fw1.py` `write_outer_header` writes it (brand
+  "GILB", the commit as build string, version 0, a part chain with no parts); RECHO's image is no longer an
+  input (`--ref`/`REF_IMG` removed) and none of its bytes are in GILB's images. Same bytes as before outside
+  the header. Tested 2026-11-25: the second player put back on stock 4.0.0 (through GILB's updater), then
+  the new image through the STOCK updater: all works. Field comparison: `docs/fw1-packing.md` §11
 - Retro's own themes (0b51e63; Echo Library 3d1156c): Settings › Display › Theme lists the current Look's
   themes, each Look remembers its own, and Echo Library's Themes page edits both
 - the self-test's audio step: 4 s a side, 2 s gap; its test feed now writes one 32-bit word a channel
@@ -214,12 +219,25 @@ Still open:
   it needs covers and badges the resident drawer lacks). Resident code has 920 B above the floor:
   anything sizeable must still go into an overlay or replace resident code.
 
-- **First public release:** publish a GitHub release (a tag, `HIFIEC90.IMG` built without `FONT_IMG`,
-  optionally `CJK.BIN`, the commit it was built from) and deploy `site/` on Railway. Before that, the
-  user's call: the image still carries about 500 bytes of RECHO's image header as its template
-  (`tools/make_fw1.py` `--ref`): ask RECHO's creator, or write those fields from our own layout.
+- **First public release** (the user's current goal). Done: no stock fonts in the image (173aabe), our own
+  header (941a0a0), a clean first install through the stock updater (second player). Left, in order:
+  1. Which boards: suggested 8 GB only (`HIFIEC90.IMG`); this fork never ran on a 512 MB unit.
+  2. Licenses and credits for the release: GPL-3.0 (the repo is the source; name the commit), `OFL.txt`
+     (Fusion Pixel's license) shipped beside `CJK.BIN` (`tools/gilb_cjkfont.py` builds it; a copy is in
+     `build/CJK.BIN`, git-ignored), the decoders' licenses (libmad, FAAD2 GPL; Tremor, Opus, WavPack BSD;
+     ALAC Apache) in the notes or a `THIRD_PARTY.md`.
+  3. README read-through: ReChord-era claims (e.g. "Every change is proven first in a QEMU machine of the
+     player": that suite is ReChord's, unpublished; GILB tests in the simulator and on the device), and a
+     pointer to the download site.
+  4. The release files from the final commit: `HIFIEC90.IMG` (no `FONT_IMG`), its SHA-256, `CJK.BIN` +
+     `OFL.txt`, and draft release notes (what GILB is, install, known limits: 512 MB untested, Bluetooth
+     is SBC through the module, credits, the risk note).
+  5. The user flashes the final image once; then the user publishes (GitHub › Releases › a tag such as
+     `v2026.11.25`) and deploys `site/` on Railway (`site/README.md`: Root Directory `site`, Watch Paths
+     `/site/**`, Generate Domain). Publishing is the user's own step.
 
-- **Second Echo Mini:** optional: run its self-test, copy `GILB/CJK.BIN` to it.
+- **Second Echo Mini:** on GILB (941a0a0's image) since 2026-11-25; optional: run its self-test, copy
+  `GILB/CJK.BIN` to it.
 
 - **docs/:** 467 files, many old reports: sort them as `archive/` was.
 
