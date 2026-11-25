@@ -1,0 +1,16 @@
+{
+  "repo": "AlanRSV/GILB",
+  "release": {
+    "tag": "v2026.11.25",
+    "name": "GILB 2026.11.25",
+    "date": "2026-11-25T18:00:00Z",
+    "url": "https://github.com/AlanRSV/GILB/releases",
+    "notes": "<h3>Layouts on every screen</h3><ul><li>Lyrics, Up Next, Spectrum, the EQ editor and the name entry from layout files</li><li>Bluetooth › Volume: a fixed level into the module</li></ul><p>A made-up release for testing the page.</p>",
+    "files": [
+      { "name": "HIFIEC90.IMG", "board": "8 GB", "size": 5242884, "url": "#", "downloads": 42,
+        "sha256": "3f5b8c1a9e2d47f0b6c8a1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2" },
+      { "name": "MINIV900.IMG", "board": "512 MB", "size": 5242884, "url": "#", "downloads": 7, "sha256": null },
+      { "name": "CJK.BIN", "board": null, "size": 1048576, "url": "#", "downloads": 3, "sha256": null }
+    ]
+  }
+}

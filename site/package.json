@@ -1,0 +1,13 @@
+{
+  "name": "gilb-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GILB's download page: the newest firmware release from GitHub",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

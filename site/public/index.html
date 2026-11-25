@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GILB · Echo Mini firmware</title>
+  <meta name="description" content="Download GILB, a free custom firmware for the SNOWSKY (FiiO) Echo Mini.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="/">GILB</a>
+      <nav>
+        <a href="#download">Download</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/AlanRSV/GILB" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="kicker">Custom firmware · SNOWSKY (FiiO) Echo Mini</p>
+          <h1>Your Echo Mini,<br>rebuilt from the boot up.</h1>
+          <p class="lede">GILB is free, from-source firmware for both of the player's cores: a music library with
+            albums, artists and years, lyrics, a spectrum, themes and layouts you can make yourself, and two Looks,
+            Modern and Retro.</p>
+          <a class="btn primary" href="#download">Download the latest firmware</a>
+        </div>
+        <figure class="screens" aria-label="GILB on the player">
+          <img src="img/modern_np.png" width="320" height="170" alt="Modern Now Playing: an album cover, the song, its format and progress">
+          <img src="img/retro_np.png" width="320" height="170" alt="Retro Now Playing: an LCD-style panel with the song and a segmented progress bar">
+          <img src="img/modern_albums.png" width="320" height="170" alt="Modern Library › Albums: a grid of covers with their years">
+          <img src="img/retro_home.png" width="320" height="170" alt="Retro Home menu in the pixel font">
+        </figure>
+      </div>
+    </section>
+
+    <section id="download" class="wrap">
+      <h2>Download</h2>
+      <div id="release" class="card" aria-live="polite">
+        <p class="muted">Looking for the latest release…</p>
+      </div>
+      <details class="which">
+        <summary>Which board do I have?</summary>
+        <p>The Echo Mini comes in two boards. The stock update file for yours is named
+          <code>HIFIEC…IMG</code> on the <b>8 GB</b> board and <code>MINIV…IMG</code> on the <b>512 MB</b> board.
+          With GILB already installed: <b>Settings › System › About</b> shows the board.</p>
+      </details>
+    </section>
+
+    <section id="install" class="wrap">
+      <h2>Install</h2>
+      <ol class="steps">
+        <li><b>Connect</b> the player by USB and pick <b>USB disk</b> (on stock: it shows up as a drive).</li>
+        <li><b>Copy</b> the <code>.IMG</code> for your board to the <b>root</b> of the player's internal storage. Remove the microSD card.</li>
+        <li><b>Eject</b> the drive and confirm on the player. Stock's updater takes it the first time; after that GILB's own
+          shows the file's SHA-256 and <b>PLAY</b> installs it.</li>
+      </ol>
+      <div class="note">
+        <p><b>Keep the stock firmware at hand.</b> Flashing modified firmware is at your own risk. Stock goes back the same
+          way, and a player that does not start can be recovered over USB:
+          <a href="https://github.com/AlanRSV/GILB/blob/main/docs/DEBRICK-LINUX.md" rel="noopener">recovery guide</a>.</p>
+        <p><b>Coming from ReChord?</b> Install GILB over it as any update; your library, playlists and settings carry over.</p>
+      </div>
+    </section>
+
+    <section id="notes" class="wrap" hidden>
+      <h2>What's new</h2>
+      <div id="notes-body" class="card prose"></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>GILB is a fork of <a href="https://github.com/dragarok/ReChord" rel="noopener">ReChord</a> (started by Bruno Moraga,
+      written by dragarok). The first custom firmware for the Echo Mini is
+      <a href="https://recho.atzkey.workers.dev" rel="noopener">RECHO</a> by miauk. Free software under the
+      <a href="https://github.com/AlanRSV/GILB/blob/main/LICENSE" rel="noopener">GPL-3.0</a>; not affiliated with SNOWSKY or FiiO.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
