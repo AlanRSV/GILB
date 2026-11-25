@@ -11,6 +11,8 @@
  *   <remembered device>   Connected / Connecting / Paired (PLAY: connect, or disconnect)
  *   <found devices>       up to 6 (PLAY: connect: CL06 + MAC)
  *   Scan for devices      found N (PLAY: CS00, 3 s)
+ *   Volume      Player / Fixed -6 dB / Fixed 0 dB (PLAY: the next): fixed holds the DAC at that level while
+ *               connected, so the module's own converter gets a full signal (volume keys change nothing)
  *   Disconnect  (connected: CT00)
  *   Forget      (a remembered device: our settings only -- stock sends the module
  *               nothing to forget, seg84:0307ae40)
@@ -33,13 +35,13 @@
 #include "ui/nav.h"
 #include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
 
-enum { ROW_POWER, ROW_PAIRED, ROW_SCAN, ROW_DEV, ROW_DISCONNECT, ROW_FORGET };
+enum { ROW_POWER, ROW_PAIRED, ROW_SCAN, ROW_DEV, ROW_DISCONNECT, ROW_FORGET, ROW_LEVEL };
 
 typedef struct {
     uint8_t kind, idx;
 } bt_row_t;
 
-#define ROWS (4 + BT_SCAN_MAX)
+#define ROWS (5 + BT_SCAN_MAX)
 static bt_row_t s_rows[ROWS];
 static int s_nrows;
 static uint32_t s_shown_seq;
@@ -76,13 +78,14 @@ static int build(void)
     s_rows[s_nrows++].kind = ROW_POWER;
     if (g_cfg.bt_paired)
         s_rows[s_nrows++].kind = ROW_PAIRED;
-    for (int i = 0; i < bt_scan_count() && s_nrows < ROWS - 3; i++) {
+    for (int i = 0; i < bt_scan_count() && s_nrows < ROWS - 4; i++) {
         if (g_cfg.bt_paired && same_mac(bt_scan_dev(i)->mac, g_cfg.bt_mac))
             continue;                   /* (the remembered row has it) */
         s_rows[s_nrows].kind = ROW_DEV;
         s_rows[s_nrows++].idx = (uint8_t)i;
     }
     s_rows[s_nrows++].kind = ROW_SCAN;
+    s_rows[s_nrows++].kind = ROW_LEVEL;
     if (st == BT_CONNECTED || st == BT_CONNECTING)
         s_rows[s_nrows++].kind = ROW_DISCONNECT;
     if (g_cfg.bt_paired)
@@ -133,6 +136,14 @@ static void bt_row(int i, row_t *r)
             snprintf(r->value, sizeof r->value, "Scanning\xE2\x80\xA6");
         else if (bt_scan_count())
             snprintf(r->value, sizeof r->value, "found %d", bt_scan_count());
+        break;
+    case ROW_LEVEL:
+        r->icon = ICON_SPEAKER;
+        snprintf(r->text, sizeof r->text, "Volume");
+        if (g_cfg.bt_fixed > 0)
+            snprintf(r->value, sizeof r->value, "Player");
+        else
+            snprintf(r->value, sizeof r->value, "Fixed %d dB", g_cfg.bt_fixed);
         break;
     case ROW_DISCONNECT:
         r->icon = ICON_POWER;
@@ -198,6 +209,13 @@ static void bt_act(int a, int i)
             bt_connect(d->mac, d->name);
         break;
     }
+    case ROW_LEVEL:                     /* Player -> Fixed -6 dB -> Fixed 0 dB -> Player */
+        g_cfg.bt_fixed = (int8_t)(g_cfg.bt_fixed > 0 ? -6 : g_cfg.bt_fixed < 0 ? 0 : 1);
+        if (s_routed && g_cfg.bt_fixed > 0)   /* (back to the player's: the BT volume it had) */
+            s_bt_db = audio_set_volume_db(g_cfg.bt_volume == CFG_BT_VOLUME_UNSET ? s_jack_db : g_cfg.bt_volume);
+        log_printf("bt: volume to the module: %s %d dB", g_cfg.bt_fixed > 0 ? "player" : "fixed", g_cfg.bt_fixed);
+        config_save_later();
+        break;
     case ROW_DISCONNECT:
         bt_disconnect();
         break;
@@ -218,7 +236,8 @@ static const char *bt_verb(int i, int hold)
     if (hold || i >= s_nrows)
         return "";
     switch (s_rows[i].kind) {
-    case ROW_POWER:      return "CHANGE";
+    case ROW_POWER:
+    case ROW_LEVEL:      return "CHANGE";
     case ROW_SCAN:       return "SCAN";
     case ROW_DISCONNECT: return "DO";
     case ROW_FORGET:     return "FORGET";
@@ -351,13 +370,18 @@ static void volume_follow(void)
 
     if (routed && !s_routed) {
         s_jack_db = audio_get_volume_db();
-        s_bt_db = g_cfg.bt_volume == CFG_BT_VOLUME_UNSET ? s_jack_db : g_cfg.bt_volume;
+        s_bt_db = g_cfg.bt_fixed <= 0 ? g_cfg.bt_fixed : g_cfg.bt_volume == CFG_BT_VOLUME_UNSET ? s_jack_db : g_cfg.bt_volume;
         s_bt_db = audio_set_volume_db(s_bt_db);
         log_printf("bt: volume %d dB (BT), jack %d dB", s_bt_db, s_jack_db);
     } else if (!routed && s_routed) {
         audio_set_volume_db(s_jack_db);
         g_cfg.volume = (int16_t)s_jack_db;
         log_printf("bt: volume %d dB (jack)", s_jack_db);
+    } else if (routed && g_cfg.bt_fixed <= 0) {
+        if (audio_get_volume_db() != g_cfg.bt_fixed) {   /* fixed: held there (a volume key changes nothing) */
+            s_bt_db = audio_set_volume_db(g_cfg.bt_fixed);
+            g_cfg.volume = (int16_t)s_jack_db;
+        }
     } else if (routed && audio_get_volume_db() != s_bt_db) {
         s_bt_db = audio_get_volume_db();   /* a volume key while connected: the BT volume */
         g_cfg.bt_volume = (int16_t)s_bt_db;

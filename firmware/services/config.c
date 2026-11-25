@@ -60,6 +60,7 @@ void config_defaults(void)
     g_cfg.usb_out_ma = 500;      /* stock's default: the phone's battery is not the player's charger */
     g_cfg.bt = 0;
     g_cfg.bt_volume = CFG_BT_VOLUME_UNSET;
+    g_cfg.bt_fixed = 1;                      /* (off: the player's volume) */
     g_cfg.display = CFG_DISPLAY_AUTO;
     g_cfg.hifi = 0;                          /* auto */
     g_cfg.cpu_b = CFG_CPU_B_96;              /* the FLAC point off until asked for (services/cpuclk.h) */
@@ -178,6 +179,8 @@ OVL_TEXT(lay) static void set(const char *k, const char *v)
     else if (!strcmp(k, "bt_volume") && (v[0] == '-' || (v[0] >= '0' && v[0] <= '9')) &&
              (i = atoi(v)) >= -90 && i <= 0)
         g_cfg.bt_volume = (int16_t)i;
+    else if (!strcmp(k, "bt_fixed") && (!strcmp(v, "-6") || !strcmp(v, "0")))
+        g_cfg.bt_fixed = (int8_t)atoi(v);
     else if (!strcmp(k, "bt_mac")) {
         uint8_t m[6];
 
@@ -360,6 +363,13 @@ static int text_of(char *t, unsigned long cap)
         }
     if (g_cfg.retro_theme && theme_name_look(1, g_cfg.retro_theme)) {   /* (only when not LCD) */
         int d = snprintf(t + n, cap - (unsigned long)n, "retro_theme=%s\n", theme_name_look(1, g_cfg.retro_theme));
+
+        if (d < 0 || (unsigned long)(n + d) >= cap)
+            return n + d;
+        n += d;
+    }
+    if (g_cfg.bt_fixed <= 0) {           /* (only when on) */
+        int d = snprintf(t + n, cap - (unsigned long)n, "bt_fixed=%d\n", g_cfg.bt_fixed);
 
         if (d < 0 || (unsigned long)(n + d) >= cap)
             return n + d;

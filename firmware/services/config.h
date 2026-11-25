@@ -37,6 +37,8 @@ typedef struct {
     uint8_t bt;                  /* 1 = module on at boot (and reconnect to bt_mac) */
     uint8_t bt_paired;           /* bt_mac / bt_name hold a remembered device */
     int16_t bt_volume;           /* dB while connected, CFG_BT_VOLUME_UNSET = take the jack's */
+    int8_t bt_fixed;             /* connected: the DAC held at this many dB (-6, 0) into the module, whose own
+                                  * converter then gets a full-level signal; 1 = off (the player's volume) */
     uint8_t bt_mac[6];
     char bt_name[33];
     uint8_t display;             /* the panel's pixel path: CFG_DISPLAY_AUTO or a PANEL_PATH_* */
