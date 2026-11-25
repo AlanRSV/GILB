@@ -315,6 +315,10 @@ static const lay_el_t k_lsl[] = {
     { LK_TEXT, LF_MAX, LFN_S8, 2, 200, 124, 104, 0, TO(text_dim), LCOL_DEF, 0, 0 },
     { LK_TEXT, LF_NOTE, LFN_B13, 0, 16, 150, 288, 0, TO(text_dim), LCOL_DEF, 0, 0 },
 };
+static const lay_el_t k_leq[] = {      /* (the EQ editor: in the usbout overlay, which USB-C earphones hold) */
+    { LK_TEXT, LF_BAND, LFN_B13, 1, 16, 44, 288, 0, LCOL_DEF, LCOL_DEF, 0, 0 },
+    { LK_BAR, LF_EQ, LFN_S8, 0, 20, 56, 290, 81, LCOL_DEF, LCOL_DEF, 152, LCOL_DEF },
+};
 static const lay_el_t k_linfo[] = {
     { LK_TEXT, LF_LABEL, LFN_B13, 0, 10, 36, 118, 0, TO(text_dim), LCOL_DEF, 0, 0 },
     { LK_TEXT, LF_VALUE, LFN_B13, 0, 130, 36, 182, 0, LCOL_TONE, LCOL_DEF, 0, 0 },
@@ -323,30 +327,56 @@ static const lay_el_t k_linfo[] = {
 const lay_el_t *lay_screen_els(int id, int *n)
 {
     if ((g_lscr_id != id || g_lscr_key != g_lay_key || g_lay_key < 0) && !ap_lay_screen(id) && g_lscr_id != id) {
-        g_lscr_row = 18;                  /* (g_lscr is another screen's: Modern's built-in) */
-        *n = id == LS_QUESTION ? 4 : id == LS_SLIDER ? 6 : 2;
-        return id == LS_QUESTION ? k_lq : id == LS_SLIDER ? k_lsl : k_linfo;
+        g_lscr_row = 18;                  /* (g_lscr is another screen's: Modern's built-in; none for the
+                                             views, whose overlay cannot be had then either) */
+        *n = id == LS_QUESTION ? 4 : id == LS_SLIDER ? 6 : id == LS_INFO || id == LS_EQ ? 2 : 0;
+        return id == LS_QUESTION ? k_lq : id == LS_SLIDER ? k_lsl : id == LS_EQ ? k_leq : k_linfo;
     }
     *n = g_lscr_n;
     return g_lscr;
 }
 
+/* An element's words (LF_WORDS: the layout's own; in capitals when it says), "" for none. */
+static const char *lscr_words(const lay_el_t *e, const lay_ctx_t *c, char *b, int cap)
+{
+    const char *s = e->field == LF_WORDS ? g_lscr_str + e->a : c->words(e, b, cap);
+
+    if ((e->flags & LG_CAPS) && s[0]) {
+        int i = 0;
+
+        for (; s[i] && i < cap - 1; i++)
+            b[i] = s[i] >= 'a' && s[i] <= 'z' ? (char)(s[i] - 32) : s[i];
+        b[i] = 0;
+        s = b;
+    }
+    return s;
+}
+
 void lay_screen_draw(int id, const lay_ctx_t *c, int dy)
 {
     const theme_t *t = T;
-    int n;
+    int n, grow = 0;
     const lay_el_t *els = lay_screen_els(id, &n);
-    char b[72];
+    char b[72], ln_b[100];
+    text_line_t ln[2];
 
+    for (int i = 0; i < n && !grow; i++)  /* the first wrapping text that wraps: how far later ones move */
+        if (els[i].kind == LK_TEXT && (els[i].flags & LG_WRAP)) {
+            const char *s = lscr_words(&els[i], c, b, sizeof b);
+
+            if (s[0] && text_wrap(lay_font(els[i].font, els[i].b, s), s, -1, els[i].w, 2, ln) == 2)
+                grow = els[i].h >> 8;
+        }
     for (int i = 0; i < n; i++) {
         const lay_el_t *e = &els[i];
-        int y = e->y + dy, w = e->w;
+        int y = e->y + dy + (e->flags & LG_FLOW ? grow : 0), w = e->w;
         uint16_t col = e->color == LCOL_TONE ? c->tone : lay_color(e->color, e->kind == LK_BOX || e->kind == LK_FRAME ?
                                                                               t->divider : t->text);
 
         switch (e->kind) {
         case LK_BOX:
-            ui_fill(e->x, y, w, e->h, col);
+            if (!e->field || lscr_words(e, c, b, sizeof b)[0])   /* (field=: only while it has words) */
+                ui_fill(e->x, y, w, e->h + (e->flags & LG_GROW ? grow : 0), col);
             break;
         case LK_FRAME:
             ui_frame_rect(e->x, y, w, e->h, col);
@@ -356,6 +386,8 @@ void lay_screen_draw(int id, const lay_ctx_t *c, int dy)
                 ui_icon(c->icon, e->x, y, e->color == LCOL_DEF ? c->icon_c : col);
             break;
         case LK_BAR: {                    /* the level v of lo..hi: a box a step, outlined, or a line */
+            if (e->field == LF_SPECTRUM || e->field == LF_EQ)
+                break;                    /* (ui/spectrum.c's, ui/eq_page.c's) */
             int span = c->hi > c->lo ? c->hi - c->lo : 1, k = c->v - c->lo, f = w * k / span;
             uint16_t fc = e->color == LCOL_DEF ? t->bar_fill : col;
 
@@ -379,15 +411,30 @@ void lay_screen_draw(int id, const lay_ctx_t *c, int dy)
                 ui_fill(e->x + w * j / span, y + e->h + 2, 1, 3, t->text_dim);
             break;
         }
-        case LK_TEXT: {                   /* px gives way to alt for what it lacks, and when it is too wide */
-            const char *s = c->words(e->field, b, sizeof b);
+        case LK_TEXT: {                   /* px gives way to alt for what it lacks (and when too wide: wide=alt) */
+            const char *s = lscr_words(e, c, b, sizeof b);
             const font_t *f = lay_font(e->font, e->b, s);
+            int m = 1, pitch;
 
-            if (!s[0])
+            if (!s[0] || (c->y1 && y + text_ink_down(f) > c->y1))
                 break;
-            if (f == &font_px && e->b && text_width(f, s, -1) > w)
+            if (e->flags & LG_WRAP)
+                m = text_wrap(f, s, -1, w, 2, ln);
+            else if ((e->flags & LG_WIDE) && f == &font_px && e->b && text_width(f, s, -1) > w)
                 f = k_lfont[e->b - 1u < 6u ? e->b - 1u : 1u];
-            ui_text(f, e->x, y, w, e->flags & LG_ALIGN, s, col, y - text_ink_up(f) - 1, y + text_ink_down(f) + 1);
+            if (m < 2) {
+                ui_text(f, e->x, y, w, e->flags & LG_ALIGN, s, col, y - text_ink_up(f) - 1, y + text_ink_down(f) + 1);
+                break;
+            }
+            pitch = e->h & 0xFF ? e->h & 0xFF : text_line_h(f);
+            y -= e->color2;
+            for (int j = 0; j < 2; j++, y += pitch) {   /* (wrapped: its two lines) */
+                int len = ln[j].len < (int)sizeof ln_b - 1 ? ln[j].len : (int)sizeof ln_b - 1;
+
+                memcpy(ln_b, s + ln[j].off, (size_t)len);
+                ln_b[len] = 0;
+                ui_text(f, e->x, y, w, e->flags & LG_ALIGN, ln_b, col, y - text_ink_up(f) - 1, y + text_ink_down(f) + 1);
+            }
             break;
         }
         }

@@ -31,8 +31,9 @@
 /* OVL_NPX: Now Playing's Lyrics and Up Next views (ui/np_extra.c, services/lyrics.c), the modes' window */
 /* OVL_VIZ: Now Playing's Spectrum view (ui/spectrum.c), the modes' window */
 /* OVL_LAY: layouts (ui/layout.c, docs/LAYOUTS.md): Now Playing's cover view, the modes' window */
+/* OVL_LAYB: the built-in layouts' text (ui/layout_text.c), in the library job's phase window */
 enum { OVL_NONE = 0, OVL_USBDAC, OVL_USBOUT, OVL_DEV, OVL_FSW, OVL_LIB, OVL_LIBTAG, OVL_LWALK, OVL_LBUILD, OVL_NPX,
-       OVL_VIZ, OVL_LAY, OVL_COUNT };
+       OVL_VIZ, OVL_LAY, OVL_LAYB, OVL_COUNT };
 
 #define OVL_MAGIC 0x314C564Fu        /* "OVL1" */
 

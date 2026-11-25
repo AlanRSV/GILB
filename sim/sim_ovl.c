@@ -9,13 +9,13 @@
 #include "services/ovl.h"
 
 extern const ovl_hdr_t ovl_hdr_usbdac, ovl_hdr_usbout, ovl_hdr_dev, ovl_hdr_fsw, ovl_hdr_lib,
-    ovl_hdr_libtag, ovl_hdr_lwalk, ovl_hdr_lbuild, ovl_hdr_npx, ovl_hdr_viz, ovl_hdr_lay;
+    ovl_hdr_libtag, ovl_hdr_lwalk, ovl_hdr_lbuild, ovl_hdr_npx, ovl_hdr_viz, ovl_hdr_lay, ovl_hdr_layb;
 
 static const ovl_hdr_t *const k_hdr[OVL_COUNT] = {
     [OVL_USBDAC] = &ovl_hdr_usbdac, [OVL_USBOUT] = &ovl_hdr_usbout, [OVL_DEV] = &ovl_hdr_dev,
     [OVL_FSW] = &ovl_hdr_fsw,       [OVL_LIB] = &ovl_hdr_lib,       [OVL_LIBTAG] = &ovl_hdr_libtag,
     [OVL_LWALK] = &ovl_hdr_lwalk,   [OVL_LBUILD] = &ovl_hdr_lbuild, [OVL_NPX] = &ovl_hdr_npx, [OVL_VIZ] = &ovl_hdr_viz,
-    [OVL_LAY] = &ovl_hdr_lay,
+    [OVL_LAY] = &ovl_hdr_lay,       [OVL_LAYB] = &ovl_hdr_layb,
 };
 
 static unsigned s_cur;                 /* the modes' window (win 0) */

@@ -27,6 +27,7 @@
 #include "services/lib_m3u.h"
 #include "services/queue.h"
 #include "services/config.h"
+#include "ui/layout.h"
 
 #define MINUS "\xE2\x88\x92"
 #define DOT " \xC2\xB7 "
@@ -1285,32 +1286,34 @@ static const char k_chars[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-'&!?.,()#+"
 #define NCHARS ((int)sizeof k_chars - 1)
 static struct { char s[32]; int ch, lower; } X;
 
+/* From the layout's [rename] (docs/LAYOUTS.md): the name so far, the letters around the chosen one, the
+ * keys' hint. */
+static const char *txt_words(const lay_el_t *e, char *b, int cap)
+{
+    switch (e->field) {
+    case LF_ENTRY:
+        snprintf(b, (unsigned)cap, "%s_", X.s);
+        return b;
+    case LF_LETTER: {
+        char c = k_chars[(X.ch + (int)e->a - 8 + NCHARS * 4) % NCHARS];
+
+        if (c == ' ')
+            return "\xC2\xB7";         /* (the space as a visible dot) */
+        b[0] = X.lower && c >= 'A' && c <= 'Z' ? (char)(c + 32) : c;
+        b[1] = 0;
+        return b;
+    }
+    case LF_HINT: return "VOL MOVE" DOT "PLAY TYPE" DOT "HOLD Aa" DOT "BACK DEL" DOT "MENU DONE";
+    }
+    return "";
+}
+
 static void txt_draw(void)
 {
-    const theme_t *t = T;
-    char line[40];
+    lay_ctx_t x = { txt_words, 0, 0, 0, NO_ICON, 0, T->text, 0 };
 
-    uint16_t dim = g_cfg.look ? t->text : t->text_dim;   /* (Retro: two colours, its pixel font) */
-
-    ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, t->background);
-    ui_text(look_font("Name", &font_b13), 16, 44, 288, 0, "Name", dim, 30, 48);
-    snprintf(line, sizeof line, "%s_", X.s);
-    ui_frame_rect(12, 52, 296, 30, g_cfg.look ? t->text : t->divider);
-    ui_text(look_font(line, &font_t17), 20, 74, 280, 0, line, t->text, 54, 80);
-    for (int k = -4; k <= 4; k++) {     /* the letters, the chosen one in the middle */
-        int i = (X.ch + k + NCHARS) % NCHARS, x = 160 + k * 32 - 14;
-        char c[4] = { k_chars[i], 0 };
-
-        if (c[0] == ' ')
-            memcpy(c, "\xC2\xB7", 3);           /* (the space as a visible dot) */
-        else if (X.lower && c[0] >= 'A' && c[0] <= 'Z')
-            c[0] = (char)(c[0] + 32);
-        if (!k)
-            ui_fill(x, 96, 28, 34, t->sel_bg);
-        ui_text(look_font(c, k ? &font_m13 : &font_t17), x, 120, 28, 1, c, k ? dim : t->sel_text, 96, 129);
-    }
-    ui_text(&font_s8, 0, 150, DISPLAY_W, 1, "VOL MOVE" DOT "PLAY TYPE" DOT "HOLD Aa" DOT "BACK DEL" DOT "MENU DONE",
-            dim, 140, 152);
+    ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, T->background);
+    lay_screen_draw(LS_RENAME, &x, 0);
 }
 
 static void txt_act(int a, int i)
@@ -1323,7 +1326,7 @@ static void txt_act(int a, int i)
         int st = g_ev && g_ev->gesture == IG_REPEAT ? g_ev->steps : 1;
 
         X.ch = (X.ch + (a == A_DOWN ? st : -st) % NCHARS + NCHARS) % NCHARS;
-        ui_invalidate(0, 94, DISPLAY_W - 1, 131);
+        ui_invalidate(0, BODY_Y, DISPLAY_W - 1, DISPLAY_H - 1);
         return;
     }
     case A_OPEN:
@@ -1376,7 +1379,7 @@ static void txt_act(int a, int i)
     default:
         return;
     }
-    ui_invalidate(0, 50, DISPLAY_W - 1, 131);
+    ui_invalidate(0, BODY_Y, DISPLAY_W - 1, DISPLAY_H - 1);
 }
 
 static void txt_enter(int first)

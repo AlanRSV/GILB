@@ -5,7 +5,7 @@
  * the other screens' sections, parsed one at a time as each is shown (lay_screen; ui/nav.c draws them).
  *
  * A layout is text, one element a line ("text 126 48 186 field=title font=t17"); the built-ins are the
- * Looks' own screens written that way (k_modern, k_retro). The Look's Layout setting names a file of
+ * Looks' own screens written that way (ui/layout_text.c). The Look's Layout setting names a file of
  * GILB/LAYOUTS/ ("" = Built-in): its [np] section, read a chunk at a time (no buffer for the whole
  * file), replaces the built-in's. The parsed elements are main memory's (g_lay, ui/layout.h); this
  * overlay draws them with the UI's own calls, in the theme's colours.
@@ -32,99 +32,7 @@
 
 unsigned retro_year(void);               /* ui/retro_tags.c (this overlay) */
 
-/* ---- the built-in layouts: the Looks' Now Playing as they were drawn by hand ---------------------- */
-
-static const char k_modern[] =
-    "[np]\n"
-    "cover 6 24 112 noart=hue pause=1\n"
-    "text 126 48 186 field=title font=t17 wrap=2 up=6 grow=12\n"
-    "text 126 70 186 field=artist font=b13 flow=1\n"
-    "text 126 88 186 field=album font=b13 color=text_dim flow=1\n"
-    "badge 126 108 field=codec style=fill hires=1\n"
-    "badge -1 108 field=format style=outline hires=1\n"
-    "text 126 130 186 field=facts font=s8 color=text_dim\n"
-    "bar 8 142 304 4 kind=progress style=line\n"
-    "text 8 163 62 field=elapsed font=b13\n"
-    "text 232 163 80 field=remaining font=b13 align=r color=text_dim\n"
-    "text 72 161 156 field=next font=s8 align=c color=text_dim\n"
-    "[list]\n"
-    "row 21\n"
-    "select 0 0 316 21 color=sel_bg\n"
-    "mark 6 5 numx=2 numw=18 numy=15 numfont=s8\n"
-    "value 24 15 286 font=b13 color=value gap=8\n"
-    "label 24 15 286 font=b13 bold=m13\n"
-    "chev 304 5 take=10\n"
-    "scroll 316\n"
-    "[header]\n"
-    "part battery\n"
-    "part percent font=s8 y=13 gap=3\n"
-    "part clock font=s8 y=13 gap=8\n"
-    "part volume font=b13 y=14 gap=8 color=text\n"
-    "part output gap=13\n"
-    "part lock gap=15 color=warn\n"
-    "part play font=b13 y=14 gap=8\n"
-    "title font=m13 y=14\n"
-    "[question]\n"
-    "icon 10 28\n"
-    "text 28 38 272 field=line1 font=m13 color=tone\n"
-    "text 28 56 272 field=line2 font=b13 color=text_dim\n"
-    "box 0 63 320 1 color=divider\n"
-    "[slider]\n"
-    "text 16 44 288 field=label font=b13 color=text_dim\n"
-    "text 0 84 320 field=value font=d28 align=c\n"
-    "bar 16 100 288 8 kind=level ticks=1\n"
-    "text 16 124 40 field=min font=s8 color=text_dim\n"
-    "text 200 124 104 field=max font=s8 align=r color=text_dim\n"
-    "text 16 150 288 field=note font=b13 color=text_dim\n"
-    "[info]\n"
-    "row 18\n"
-    "text 10 36 118 field=label font=b13 color=text_dim\n"
-    "text 130 36 182 field=value font=b13 color=tone\n";
-
-static const char k_retro[] =
-    "[np]\n"
-    "box 3 22 314 145 color=panel\n"
-    "text 8 37 160 field=queue font=px\n"
-    "cover 8 42 84 tint=1 noart=solid color=text\n"
-    "text 102 58 210 field=title font=px alt=t17\n"
-    "text 102 80 210 field=artist font=px alt=t17\n"
-    "text 102 102 210 field=album font=px alt=t17\n"
-    "text 102 124 210 field=year font=px alt=t17\n"
-    "bar 8 139 304 10 kind=progress style=outline color=bar_fill track=text\n"
-    "text 8 167 62 field=elapsed font=px\n"
-    "text 232 167 80 field=remaining font=px align=r\n"
-    "text 72 164 158 field=kbps font=s8 align=c\n"
-    "[list]\n"
-    "row 21\n"
-    "select 0 0 312 21 color=sel_bg\n"
-    "mark 6 5 numx=0 numw=24 numy=16 numfont=px icons=0 color=text on=text\n"
-    "value 8 16 298 font=px color=text gap=10 max=140\n"
-    "label 8 16 298 font=px after=6\n"
-    "chev 299 16 style=text take=14 font=px color=text\n"
-    "scroll 313 style=outline\n"
-    "[header]\n"
-    "part battery\n"
-    "part percent font=px alt=s8 y=15 gap=3\n"
-    "part clock font=s8 y=13 gap=8\n"
-    "part volume font=b13 y=14 gap=8 color=text\n"
-    "part output gap=13\n"
-    "part lock gap=15 color=warn\n"
-    "part play font=b13 y=14 gap=8\n"
-    "title font=px alt=m13 y=15 np=volume\n"
-    "[question]\n"
-    "text 8 38 304 field=line1 font=px alt=m13 color=text\n"
-    "text 8 57 304 field=line2 font=px alt=b13 color=text\n"
-    "box 8 61 304 2 color=text\n"
-    "[slider]\n"
-    "text 8 38 304 field=label font=px alt=b13\n"
-    "box 8 42 304 2 color=text\n"
-    "text 0 78 320 field=value font=px align=c\n"
-    "bar 8 88 304 20 kind=level style=steps color=text\n"
-    "text 8 150 304 field=restore font=px alt=b13\n"
-    "[info]\n"
-    "row 18\n"
-    "text 10 36 118 field=label font=px alt=b13\n"
-    "text 130 36 182 field=value font=px alt=b13 color=tone\n";
+/* ---- the built-in layouts: ui/layout_text.c, the layb overlay (ap_lay_builtin) -------------------- */
 
 /* ---- names ------------------------------------------------------------------------------------- */
 
@@ -132,11 +40,14 @@ static const char *const k_kinds[] = { "", "text", "cover", "box", "frame", "bar
                                        "mark", "label", "value", "chev", "select", "scroll", "part", "title",
                                        "icon" };
 static const uint8_t k_need[] = { 0, 3, 3, 4, 4, 4, 2, 2, 3, 3, 2, 4, 1, 0, 0, 2 };   /* its numbers */
-static const char *const k_screens[] = { "", "[question]", "[slider]", "[info]" };   /* (LS_*) */
+static const char *const k_screens[] = { "", "[question]", "[slider]", "[info]", "[lyrics]", "[next]", "[spectrum]",
+                                         "[eq]", "[rename]" };   /* (LS_*) */
 static const char *const k_parts[] = { "battery", "percent", "clock", "volume", "output", "lock", "play" };
 static const char *const k_fields[] = { "", "title", "artist", "album", "year", "queue", "elapsed", "remaining",
                                         "total", "kbps", "facts", "next", "codec", "format", "progress", "volume",
-                                        "line1", "line2", "label", "value", "min", "max", "note", "restore", "level" };
+                                        "line1", "line2", "label", "value", "min", "max", "note", "restore", "level",
+                                        "song", "lyric", "nolyrics", "audio", "mode", "upnext", "upnum", "endqueue",
+                                        "spectrum", "eq", "band", "entry", "letter", "hint" };
 #define NFIELDS ((int)(sizeof k_fields / sizeof k_fields[0]))
 static const char *const k_fonts[] = { "s8", "b13", "m13", "t17", "d28", "px" };
 static const font_t *const k_font[] = { &font_s8, &font_b13, &font_m13, &font_t17, &font_d28, &font_px };
@@ -175,6 +86,7 @@ static int pick_role(const char *s, int n)   /* its place in theme_t (layout.h L
 }
 
 static unsigned s_strn;                  /* bytes of g_lay_str used */
+static unsigned s_sstrn;                 /* bytes of g_lscr_str used */
 
 /* One line into g_lay ([np]) or g_lrow ([list]) (ignored when it is not an element this build knows). */
 static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [header], 3 a screen's */
@@ -207,6 +119,8 @@ static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [
     e.kind = (uint8_t)k;
     e.font = LFN_B13;
     e.color = e.color2 = DEF;
+    if (list == 3 && k == LK_BAR)
+        e.a = e.b = DEF;
     need = k_need[k];
     p = q;
     if (k == LK_PART) {                  /* part <name> */
@@ -260,7 +174,13 @@ static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [
                 e.field = (uint8_t)i;
             else if (KEY("kind") && (i = pick(v, vn, k_fields, NFIELDS)) > 0)
                 e.field = (uint8_t)i;
-            else if (KEY("text") && !list && s_strn + (unsigned)vn + 1u <= LAY_STR) {
+            else if (KEY("text") && list == 3 && s_sstrn + (unsigned)vn + 1u <= LSCR_STR) {
+                e.field = LF_WORDS;      /* (a screen's words: e.a their offset in g_lscr_str) */
+                e.a = (uint8_t)s_sstrn;
+                memcpy(g_lscr_str + s_sstrn, v, (size_t)vn);
+                g_lscr_str[s_sstrn + (unsigned)vn] = 0;
+                s_sstrn += (unsigned)vn + 1u;
+            } else if (KEY("text") && !list && s_strn + (unsigned)vn + 1u <= LAY_STR) {
                 e.field = LF_WORDS;
                 e.b = (uint8_t)s_strn;
                 memcpy(g_lay_str + s_strn, v, (size_t)vn);
@@ -276,6 +196,20 @@ static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [
                 e.color2 = (uint8_t)i;
             else if (KEY("wrap") && VAL("2"))
                 e.flags |= LG_WRAP;
+            else if (list == 3 && KEY("up"))
+                e.color2 = (uint8_t)atoi(v);   /* (a screen's text: its wrapped first line's rise) */
+            else if (list == 3 && (KEY("grow") || KEY("pitch")))
+                e.h = (int16_t)(KEY("grow") ? (e.h & 0xFF) | atoi(v) << 8 : (e.h & ~0xFF) | (atoi(v) & 0xFF));
+            else if (list == 3 && k == LK_BAR && KEY("labels"))
+                e.a = (uint8_t)atoi(v);  /* (the EQ's band labels' baseline) */
+            else if (list == 3 && k == LK_BAR && (KEY("off") || KEY("back")) && (i = pick_role(v, vn)) >= 0)
+                *(KEY("off") ? &e.a : &e.b) = (uint8_t)i;   /* (the Spectrum's unlit segments, its background) */
+            else if (list == 3 && KEY("at"))
+                e.a = (uint8_t)(atoi(v) + 8);  /* (a lyric's line from the one now, a song to come: 0 the next) */
+            else if (list == 3 && KEY("wide") && VAL("alt"))
+                e.flags |= LG_WIDE;      /* (else a line too wide is cut, in its font) */
+            else if (list == 3 && ((KEY("stretch") || KEY("caps")) && VAL("1")))
+                e.flags |= KEY("caps") ? LG_CAPS : LG_GROW;
             else if (KEY("up"))
                 e.a = (uint8_t)atoi(v);
             else if (KEY("grow"))
@@ -335,6 +269,8 @@ static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [
         e.field = LF_PROGRESS;
     if (hdr && !num[1])
         e.y = 14;                        /* (the header's baseline) */
+    if (list == 3 && k == LK_TEXT && e.color2 == DEF)
+        e.color2 = 0;                    /* (no rise) */
     if (list == 3)
         g_lscr[g_lscr_n++] = e;
     else if (list == 2)
@@ -402,7 +338,7 @@ static int parse(src_t *s, int skip)
             if (sec & skip)
                 sec = 0;
             else if (sec == 8)
-                g_lscr_n = 0, g_lscr_row = 18;
+                g_lscr_n = 0, g_lscr_row = 18, s_sstrn = 0;
             else if (sec == 1)
                 g_lay_n = 0, s_strn = 0;
             else if (sec == 2)
@@ -450,7 +386,10 @@ int lay_load(void)
         }
     }
     memset(&s, 0, sizeof s);
-    s.mem = look ? k_retro : k_modern;
+    if (!(s.mem = ap_lay_builtin(look))) {   /* (the built-ins cannot be had: tried again at the next list) */
+        g_lay_key = -1;
+        return 0;
+    }
     parse(&s, had);
     return 1;
 }
@@ -468,6 +407,7 @@ int lay_screen(int id)
     s_want = id;
     g_lscr_n = 0;
     g_lscr_row = 18;
+    s_sstrn = 0;
     memset(&s, 0, sizeof s);
     if (name[0]) {
         char path[64];
@@ -480,8 +420,8 @@ int lay_screen(int id)
     }
     if (!had) {
         memset(&s, 0, sizeof s);
-        s.mem = look ? k_retro : k_modern;
-        parse(&s, 7);
+        if ((s.mem = ap_lay_builtin(look)) != NULL)
+            parse(&s, 7);
     }
     s_want = 0;
     g_lscr_id = (uint8_t)id;

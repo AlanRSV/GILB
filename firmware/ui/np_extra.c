@@ -24,6 +24,7 @@
 #include "ui/frame.h"
 #include "ui/np_extra.h"
 #include "ui/ui.h"
+#include "ui/layout.h"
 #include "player.h"
 
 #define BAND_Y 138                     /* ui/screens.c: the band starts here */
@@ -180,22 +181,6 @@ static void next_load(void)
 
 /* ---- drawing ---------------------------------------------------------------------------- */
 
-/* text centred on x 8..312, cut to fit */
-static void centre(const font_t *f, int base, const char *s, uint16_t c)
-{
-    ui_text(f, 8, base, 304, 1, s, c, BODY_Y, BAND_Y - 1);
-}
-
-static const char *line_text(int i)
-{
-    const char *s;
-
-    if (i < 0 || i >= (int)s_ly.n)
-        return "";
-    s = s_ly.text + s_ly.at[i];
-    return s[0] ? s : "\xE2\x80\xA2  \xE2\x80\xA2  \xE2\x80\xA2";   /* an instrumental gap: "•  •  •" */
-}
-
 static int line_at(uint32_t pos_ms, uint32_t dur_ms)
 {
     if (!s_ly.n)
@@ -206,172 +191,58 @@ static int line_at(uint32_t pos_ms, uint32_t dur_ms)
     return dur_ms ? (int)((uint64_t)(pos_ms < dur_ms ? pos_ms : dur_ms - 1u) * s_ly.n / dur_ms) : 0;
 }
 
-static void draw_lyrics(void)
+/* The views from the layout's [lyrics] and [next] (docs/LAYOUTS.md; ui/nav.c lay_screen_draw draws them,
+ * startup/ap_ovl.c ap_npx_draw parsed the section before this overlay took the window): their words. */
+static int s_k;                        /* the lyrics line now (-1: before the first) */
+
+static const char *view_words(const lay_el_t *e, char *b, int cap)
 {
-    const theme_t *t = T;
-    char head[170];
-    int k;
+    int px = e->font == LFN_PX, at = (int)e->a - 8;
 
-    lyrics_load();
-    k = X.line = (int16_t)line_at((uint32_t)player_get_position_ms(), g_np.dur * 1000u);
-    if (g_np.artist[0])
-        snprintf(head, sizeof head, "%s \xC2\xB7 %s", g_np.title, g_np.artist);
-    else
-        snprintf(head, sizeof head, "%s", g_np.title);
-    centre(&font_b13, 36, head, t->text_dim);
-    ui_fill(40, 44, 240, 1, t->divider);
-    if (!s_ly.n) {
-        centre(&font_b13, 92, "No lyrics in this song's tags", t->text_dim);
-        return;
+    b[0] = 0;
+    switch (e->field) {
+    case LF_TITLE: return g_np.title;
+    case LF_ARTIST: return g_np.artist;
+    case LF_ALBUM: return g_np.album;
+    case LF_SONG:                      /* (the pixel font has no "Â·") */
+        if (!g_np.artist[0])
+            return g_np.title;
+        snprintf(b, (unsigned)cap, px ? "%s - %s" : "%s \xC2\xB7 %s", g_np.title, g_np.artist);
+        return b;
+    case LF_LYRIC: {                   /* (an instrumental gap: "â¢  â¢  â¢", "..." in the pixel font) */
+        int n = s_k + at;
+        const char *l;
+
+        if (n < 0 || n >= (int)s_ly.n || (!at && s_k < 0))
+            return "";
+        l = s_ly.text + s_ly.at[n];
+        return l[0] ? l : px ? "..." : "\xE2\x80\xA2  \xE2\x80\xA2  \xE2\x80\xA2";
     }
-    {
-        const char *cur = k < 0 ? "" : line_text(k);
-        text_line_t ln[2];
-        int n = text_wrap(&font_t17, cur, -1, 300, 2, ln);
-        char b[160];
-
-        if (k > 0)
-            centre(&font_b13, 64, line_text(k - 1), t->text_dim);
-        for (int i = 0; i < n; i++) {
-            int len = ln[i].len < (int)sizeof b - 1 ? ln[i].len : (int)sizeof b - 1;
-
-            memcpy(b, cur + ln[i].off, (size_t)len);
-            b[len] = 0;
-            centre(&font_t17, n == 2 ? 88 + 20 * i : 96, b, t->text);
-        }
-        if (k + 1 < (int)s_ly.n)
-            centre(&font_b13, 128, line_text(k + 1), t->text_dim);
+    case LF_NOLYRICS: return s_ly.n ? "" : px ? "No lyrics" : "No lyrics in this song's tags";
+    case LF_AUDIO: snprintf(b, (unsigned)cap, "%s  %s", g_np.codec, g_np.fmt); return b;
+    case LF_MODE: return queue_mode() == Q_SHUFFLE ? "Shuffle" : queue_mode() ? "Repeat" : "";
+    case LF_UPNEXT: return at >= 0 && at < X.nn ? X.next[at] : "";
+    case LF_UPNUM:
+        if (at >= 0 && at < X.nn)
+            snprintf(b, (unsigned)cap, "%d", at + 1);
+        return b;
+    case LF_ENDQUEUE: return X.nn ? "" : "End of the queue";
     }
-}
-
-static void draw_next(void)
-{
-    const theme_t *t = T;
-    text_line_t ln[2];
-    int n = text_wrap(&font_t17, g_np.title, -1, 172, 2, ln), y;
-    char b[100];
-
-    lyrics_load();                     /* (X.clus: the track, for the queue's key) */
-    next_load();
-    for (int i = 0; i < n; i++) {
-        int len = ln[i].len < (int)sizeof b - 1 ? ln[i].len : (int)sizeof b - 1;
-
-        memcpy(b, g_np.title + ln[i].off, (size_t)len);
-        b[len] = 0;
-        ui_text(&font_t17, 8, 44 + 20 * i, 172, 0, b, t->text, BODY_Y, BAND_Y - 1);
-    }
-    y = n == 2 ? 86 : 66;
-    ui_text(&font_b13, 8, y, 172, 0, g_np.artist, t->text, BODY_Y, BAND_Y - 1);
-    ui_text(&font_b13, 8, y + 18, 172, 0, g_np.album, t->text_dim, BODY_Y, BAND_Y - 1);
-    snprintf(b, sizeof b, "%s  %s", g_np.codec, g_np.fmt);
-    ui_text(&font_s8, 8, 130, 172, 0, b, t->text_dim, BODY_Y, BAND_Y - 1);
-
-    ui_fill(188, BODY_Y + 6, 1, BAND_Y - BODY_Y - 12, t->divider);
-    ui_text(&font_s8, 196, 34, 116, 0, "UP NEXT", t->accent, BODY_Y, BAND_Y - 1);
-    if (queue_mode())
-        ui_text(&font_s8, 196, 34, 116, 2, queue_mode() == Q_SHUFFLE ? "SHUFFLE" : "REPEAT", t->text_dim,
-                BODY_Y, BAND_Y - 1);
-    if (!X.nn)
-        ui_text(&font_b13, 196, 58, 116, 0, "End of the queue", t->text_dim, BODY_Y, BAND_Y - 1);
-    for (int i = 0; i < X.nn; i++)
-        ui_text(&font_b13, 196, 54 + 16 * i, 116, 0, X.next[i], i ? t->text_dim : t->text, BODY_Y, BAND_Y - 1);
-}
-
-/* ---- Look: Retro: the views as an old LCD player's lists ----------------------------------------
- * A heading row and a rule, then four rows of 23 px in the pixel font (B13 for a line PX lacks):
- * Lyrics shows the line before, the line now (inverted, as the lists' cursor) and the two after;
- * Up Next numbers the songs to come. Two colours, as the rest of Retro. */
-#define RR_Y0 44                       /* the first row (the heading: BODY_Y + 1 .. 42, the rule at 42) */
-#define RR_H  23
-
-static void rrow(int x, int y, int w, int align, const char *s, uint16_t fg)
-{
-    const font_t *f = text_has_all(&font_px, s) ? &font_px : &font_b13;
-    char b[160];
-
-    text_fit(f, s, -1, w, b, sizeof b);
-    ui_text(f, x, y + (f == &font_px ? 17 : 16), w, align, b, fg, y, y + RR_H - 1);
-}
-
-static void rhead(const char *left, const char *right)
-{
-    const theme_t *t = T;
-
-    rrow(8, BODY_Y + 1, right ? 200 : 304, 0, left, t->text);
-    if (right)
-        rrow(212, BODY_Y + 1, 100, 2, right, t->text);
-    ui_fill(8, 42, 304, 2, t->text);
-}
-
-static void retro_lyrics(void)
-{
-    const theme_t *t = T;
-    char head[170];
-    int k;
-
-    lyrics_load();
-    k = X.line = (int16_t)line_at((uint32_t)player_get_position_ms(), g_np.dur * 1000u);
-    if (g_np.artist[0])
-        snprintf(head, sizeof head, "%s - %s", g_np.title, g_np.artist);
-    else
-        snprintf(head, sizeof head, "%s", g_np.title);
-    rhead(head, NULL);
-    if (!s_ly.n) {
-        rrow(8, RR_Y0 + RR_H, 304, 1, "No lyrics", t->text);
-        return;
-    }
-    for (int i = 0, n = k - 1; i < 4; i++, n++) {          /* (the line now: two rows when it is long) */
-        int y = RR_Y0 + RR_H * i, on = n == k && k >= 0;
-        const char *s = n < 0 || n >= (int)s_ly.n ? "" : s_ly.text + s_ly.at[n];
-        const font_t *f = text_has_all(&font_px, s) ? &font_px : &font_b13;
-        text_line_t ln[2];
-        char b[160];
-        int m;
-
-        if (!on) {
-            rrow(8, y, 304, 0, n >= 0 && n < (int)s_ly.n && !s[0] ? "..." : s, t->text);
-            continue;
-        }
-        m = i < 3 ? text_wrap(f, s, -1, 304, 2, ln) : 1;
-        ui_fill(3, y, DISPLAY_W - 6, RR_H * (m > 1 ? 2 : 1), t->sel_bg);   /* (inside the panel's rim) */
-        if (m < 2) {
-            rrow(8, y, 304, 0, s[0] ? s : "...", t->sel_text);
-            continue;
-        }
-        for (int j = 0; j < 2; j++) {
-            int len = ln[j].len < (int)sizeof b - 1 ? ln[j].len : (int)sizeof b - 1;
-
-            memcpy(b, s + ln[j].off, (size_t)len);
-            b[len] = 0;
-            rrow(8, y + RR_H * j, 304, 0, b, t->sel_text);
-        }
-        i++;
-    }
-}
-
-static void retro_next(void)
-{
-    const theme_t *t = T;
-    char num[8];
-
-    lyrics_load();                     /* (X.clus: the track, for the queue's key) */
-    next_load();
-    rhead("Up next", queue_mode() == Q_SHUFFLE ? "Shuffle" : queue_mode() ? "Repeat" : NULL);
-    if (!X.nn)
-        rrow(8, RR_Y0 + RR_H, 304, 1, "End of the queue", t->text);
-    for (int i = 0; i < X.nn && i < 4; i++) {
-        snprintf(num, sizeof num, "%d", i + 1);
-        rrow(0, RR_Y0 + RR_H * i, 22, 2, num, t->text);
-        rrow(30, RR_Y0 + RR_H * i, 282, 0, X.next[i], t->text);
-    }
+    return b;
 }
 
 void npx_draw(int v)
 {
+    lay_ctx_t x = { view_words, 0, 0, 0, NO_ICON, 0, T->text, BAND_Y - 1 };
+
+    lyrics_load();                     /* (X.clus: the track, for the queue's key too) */
     if (v == NPV_LYRICS)
-        g_cfg.look ? retro_lyrics() : draw_lyrics();
+        s_k = X.line = (int16_t)line_at((uint32_t)player_get_position_ms(), g_np.dur * 1000u);
     else if (v == NPV_NEXT)
-        g_cfg.look ? retro_next() : draw_next();
+        next_load();
+    else
+        return;
+    lay_screen_draw(v == NPV_LYRICS ? LS_LYRICS : LS_NEXT, &x, 0);
 }
 
 /* From Now Playing's poll while the Lyrics view is up: redrawn when another line is due. */

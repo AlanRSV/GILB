@@ -18,15 +18,20 @@
 #include "ui/ui.h"
 #include "theme/theme.h"
 #include "services/config.h"
+#include "ui/layout.h"
 
 #define NFFT  256
 #define NBAR  24
-#define BAR_W 10
-#define BAR_P 12                       /* a bar and its gap */
-#define X0    ((DISPLAY_W - NBAR * BAR_P) / 2 + 1)
-#define Y0    (BODY_Y + 8)             /* the box: the bars stand on Y1 */
-#define Y1    133                      /* (the band starts at 138: ui/screens.c) */
-#define BAR_H (Y1 - Y0 - 3)            /* the tallest bar, its cap above it */
+/* The box, from the layout's [spectrum] (docs/LAYOUTS.md): its bar of kind=spectrum (s_e), parsed
+ * before this overlay took the window (startup/ap_ovl.c ap_npx_draw). The bars stand on Y1; a bar and
+ * its gap: BAR_P, the gap 2 px. */
+static const lay_el_t *s_e;
+#define X0    s_e->x
+#define Y0    s_e->y
+#define Y1    (s_e->y + s_e->h - 1)
+#define BAR_P (s_e->w / NBAR > 2 ? s_e->w / NBAR : 2)
+#define BAR_W (BAR_P - 2)
+#define BAR_H (s_e->h - 4)             /* the tallest bar, its cap above it */
 
 /* sin(2 pi i / 256), i = 0..64, Q15 */
 static const int16_t k_sin[65] = {
@@ -95,9 +100,25 @@ static int height(unsigned m, int b)
     return lv <= 0 ? 0 : lv >= 40 ? BAR_H : lv * BAR_H / 40;
 }
 
+static int box(void)                   /* s_e: the layout's bars, or none (nothing drawn) */
+{
+    int n;
+    const lay_el_t *els = lay_screen_els(LS_SPECTRUM, &n);
+
+    s_e = NULL;
+    for (int i = 0; i < n; i++)
+        if (els[i].kind == LK_BAR && els[i].field == LF_SPECTRUM && els[i].h > 8)
+            s_e = &els[i];
+    return s_e != NULL;
+}
+
 void viz_tick(void)
 {
-    int ok = audio_pcm_window(s_re, NFFT) > 0;
+    int ok;
+
+    if (!box())
+        return;
+    ok = audio_pcm_window(s_re, NFFT) > 0;
 
     if (ok) {
         for (unsigned i = 0; i < NFFT; i++) {      /* Hann */
@@ -131,37 +152,47 @@ void viz_tick(void)
 static void band(const display_band_t *d)
 {
     const theme_t *t = T;
-    uint16_t panel = ui_mix(t->background, t->text, 36);   /* (Retro: Now Playing's panel, ui/screens.c np_draw) */
+    uint16_t back = lay_color(s_e->b, t->background), lit = lay_color(s_e->color, t->accent),
+             peak = lay_color(s_e->color2, t->text), off = lay_color(s_e->a, t->text_off);
 
     for (int y = d->ya; y <= d->yb; y++) {
         uint16_t *row = d->band + (y - d->band_y) * DISPLAY_W;
         int up = Y1 - y;                           /* rows above the base */
 
-        if (g_cfg.look) {                          /* Retro: an LCD's segments, 3 rows lit and 1 gap; the
-                                                      unlit ones faint (text_off), the peak one segment */
+        if (s_e->flags & LG_STEPS) {               /* steps: an LCD's segments, 3 rows lit and 1 gap; the
+                                                      unlit ones faint (off=), the peak one segment */
             int seg = up >> 2, gap = (up & 3) == 3 || up >= (BAR_H & ~3);   /* (gaps: Retro's panel) */
 
             for (int x = d->cx0; x <= d->cx1; x++) {
                 int b = (x - X0) / BAR_P, in = (x - X0) % BAR_P < BAR_W;
 
-                row[x] = !in || b >= NBAR || gap ? panel
-                       : seg < (s_bar[b] + 3) >> 2 || (s_peak[b] && seg == s_peak[b] >> 2) ? t->text
-                       : t->text_off;
+                row[x] = !in || b >= NBAR || gap ? back
+                       : seg < (s_bar[b] + 3) >> 2 ? lit : s_peak[b] && seg == s_peak[b] >> 2 ? peak
+                       : off;
             }
             continue;
         }
         for (int x = d->cx0; x <= d->cx1; x++) {
             int b = (x - X0) / BAR_P, in = (x - X0) % BAR_P < BAR_W;
 
-            row[x] = !in || b >= NBAR ? t->background
-                   : up < s_bar[b] ? t->accent
-                   : s_peak[b] && up >= s_peak[b] + 1 && up <= s_peak[b] + 2 ? t->text
-                   : t->background;
+            row[x] = !in || b >= NBAR ? back
+                   : up < s_bar[b] ? lit
+                   : s_peak[b] && up >= s_peak[b] + 1 && up <= s_peak[b] + 2 ? peak
+                   : back;
         }
     }
 }
 
+static const char *viz_words(const lay_el_t *e, char *b, int cap)
+{
+    return e->field == LF_TITLE ? g_np.title : e->field == LF_ARTIST ? g_np.artist : e->field == LF_ALBUM ? g_np.album : "";
+}
+
 void viz_draw(void)
 {
-    display_custom(X0, Y0, X0 + NBAR * BAR_P - 1, Y1, band, 0, 1);
+    lay_ctx_t x = { viz_words, 0, 0, 0, NO_ICON, 0, T->text, 137 };
+
+    lay_screen_draw(LS_SPECTRUM, &x, 0);  /* (what else the layout has: words, boxes) */
+    if (box())
+        display_custom(X0, Y0, X0 + NBAR * BAR_P - 1, Y1, band, 0, 1);
 }

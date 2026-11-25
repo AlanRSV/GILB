@@ -108,6 +108,7 @@ AP_SERVICE_SRCS := \
   firmware/services/selftest.c \
   firmware/services/gilb_move.c \
   firmware/ui/layout.c \
+  firmware/ui/layout_text.c \
   firmware/ui/retro_tags.c \
   firmware/services/screenshot.c \
   firmware/services/tags.c \
@@ -221,7 +222,7 @@ AP_CFLAGS := $(AP_ARCH_FLAGS) -Os -Wall \
 # AP_OVL_WRAP: the overlays' functions resident code calls by name; each call from another object
 # reaches a gate (__wrap_<name>, firmware/startup/ap_ovl.c) that loads or checks the overlay.
 AP_OVLS := usbdac:ov_dac usbout:ov_uout dev:ov_dev fsw:ov_fsw lib:ov_lib libtag:ov_ltag lwalk:ov_lwalk lbuild:ov_lbld \
-  npx:ov_npx viz:ov_viz lay:ov_lay
+  npx:ov_npx viz:ov_viz lay:ov_lay layb:ov_layb
 comma := ,
 AP_OVL_WRAP := $(addprefix -Wl$(comma)--wrap=,usb_uac_key \
   usb_out_active usb_out_status usb_out_start usb_out_stop usb_out_poll usb_out_set_format \

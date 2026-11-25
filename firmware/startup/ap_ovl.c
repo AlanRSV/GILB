@@ -70,6 +70,7 @@ const ovl_desc_t ovl_desc[OVL_COUNT] = {
     [OVL_NPX]    = { "ov_npx", "Lyrics", NULL, 0 },
     [OVL_VIZ]    = { "ov_viz", "Spectrum", NULL, 0 },
     [OVL_LAY]    = { "ov_lay", "Layout", NULL, 0 },
+    [OVL_LAYB]   = { "ov_layb", "Layout", NULL, 3 },
 };
 
 /* The USB interrupt goes wherever usb_irq_hook points (drivers/usb_msc_rknanoc.c): the USB DAC's
@@ -240,6 +241,10 @@ int __wrap_usb_out_set_volume(int db)
  * at every main-loop pass). Refused (damaged: ovl.c logs why): the page stays blank; BACK held leaves it. */
 void ap_eq(int a, int i)             /* the page's act; its draw with a = -1 */
 {
+    int n;
+
+    if (a < 0)                           /* (its layout first: lay shares the window with usbout) */
+        lay_screen_els(LS_EQ, &n);
     GATE_V(ovl_get, OVL_USBOUT, usbout_api_t, eq(a, i));
 }
 
@@ -526,6 +531,19 @@ int ap_lay_load(void)
     return npx_ok() ? GATE(ovl_get, OVL_LAY, lay_api_t, 0, load()) : 0;
 }
 
+/* layb: the built-in layouts' text (ui/layout_text.c), in the phase window: lay reads it while parsing. */
+extern const char k_lay_modern[], k_lay_retro[];
+typedef struct { const char *modern, *retro; } layb_api_t;
+static const layb_api_t k_layb OVL_API(layb) = { k_lay_modern, k_lay_retro };
+OVL_HEADER(layb, OVL_LAYB, &k_layb);
+
+const char *ap_lay_builtin(int look)
+{
+    const layb_api_t *a = (const layb_api_t *)ovl_get(OVL_LAYB);
+
+    return a ? (look ? a->retro : a->modern) : NULL;
+}
+
 /* A screen's section of the layout (ui/nav.c lay_screen_els: when it is shown). */
 int ap_lay_screen(int id)
 {
@@ -573,11 +591,18 @@ int ap_npx_draw(void)
 {
     const npx_api_t *a;
 
-    if (s_npv == NPV_SPECTRUM && npx_ok()) {
+    if (!s_npv || !npx_ok())
+        return 0;
+    {                                    /* (the view's layout first: lay shares the window with npx, viz) */
+        int n;
+
+        lay_screen_els(s_npv == NPV_LYRICS ? LS_LYRICS : s_npv == NPV_NEXT ? LS_NEXT : LS_SPECTRUM, &n);
+    }
+    if (s_npv == NPV_SPECTRUM) {
         GATE_V(ovl_get, OVL_VIZ, viz_api_t, draw());
         return ovl_current() == OVL_VIZ;
     }
-    if (!s_npv || !npx_ok() || !(a = ovl_get(OVL_NPX)))
+    if (!(a = ovl_get(OVL_NPX)))
         return 0;
     ovl_hold(1);
     a->draw(s_npv);

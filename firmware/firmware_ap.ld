@@ -247,6 +247,14 @@ SECTIONS
             *lib_coll.o(.text.lib_letter)
             . = ALIGN(4);
         }
+        /* the built-in layouts' text (ui/layout_text.c, docs/LAYOUTS.md): the lay overlay parses it */
+        .ovl_layb
+        {
+            KEEP(*(.ovl_hdr.layb))
+            *(.ovl.layb.*)
+            *(.rodata.ovl_layb .rodata.ovl_layb.*)
+            . = ALIGN(4);
+        }
     }
 
     /* the music library (services/lib.h, docs/LIBRARY.md): the index job, the views, the lists,
@@ -383,6 +391,7 @@ NOCROSSREFS_TO(.ovl_lwalk .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ov
 NOCROSSREFS_TO(.ovl_lbuild .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
 NOCROSSREFS(.ovl_lwalk .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
 NOCROSSREFS(.ovl_lbuild .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx)
+NOCROSSREFS_TO(.ovl_layb .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx .ovl_viz .ovl_lay)
 __ovl_lph_start = ORIGIN(OVL_LPH);
 __ovl_lph_end   = ORIGIN(OVL_LPH) + LENGTH(OVL_LPH);
 ASSERT(__ovl_lph_start >= ORIGIN(OVL_LIB) + LENGTH(OVL_LIB), "the phase window must not overlap the library's")
@@ -390,6 +399,8 @@ ASSERT(__ovl_lph_end <= 0x0304F000, "the phase window must stay below the loaded
 ASSERT(ovl_hdr_lwalk == ORIGIN(OVL_LPH) && ovl_hdr_lbuild == ORIGIN(OVL_LPH), "the phases must start with their headers")
 ASSERT(SIZEOF(.ovl_lwalk) <= LENGTH(OVL_LPH), "the walk overlay is over the phase window")
 ASSERT(SIZEOF(.ovl_lbuild) <= LENGTH(OVL_LPH), "the build overlay is over the phase window")
+ASSERT(ovl_hdr_layb == ORIGIN(OVL_LPH), "layb must start with its header")
+ASSERT(SIZEOF(.ovl_layb) <= LENGTH(OVL_LPH), "the layb overlay is over the phase window")
 __ovl_fs_start = ORIGIN(OVL_FS);
 __ovl_fs_end   = ORIGIN(OVL_FS) + LENGTH(OVL_FS);
 ASSERT(__ovl_fs_start >= ORIGIN(OVL_WIN) + LENGTH(OVL_WIN), "the file system's window must not overlap the modes' window")

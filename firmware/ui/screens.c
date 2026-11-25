@@ -680,6 +680,7 @@ uint8_t g_lrow_n, g_lrow_h = ROW_H;
 lay_el_t g_lhdr[LHDR_MAX];
 uint8_t g_lhdr_n;
 lay_el_t g_lscr[LSCR_MAX];
+char g_lscr_str[LSCR_STR];
 uint8_t g_lscr_n, g_lscr_id, g_lscr_row = 18;
 int32_t g_lscr_key = -1;
 static uint8_t s_lay_on;
@@ -1549,7 +1550,10 @@ static uint32_t s_view_sig[VIEW_LINES];
 /* The viewer's lines from the layout's [info]: a line's elements, moved down its pitch (row) a line. */
 static row_t s_vr;
 
-static const char *view_words(int f, char *b, int cap) { return f == LF_LABEL ? s_vr.text : f == LF_VALUE ? s_vr.value : ""; }
+static const char *view_words(const lay_el_t *e, char *b, int cap)
+{
+    return e->field == LF_LABEL ? s_vr.text : e->field == LF_VALUE ? s_vr.value : "";
+}
 
 static int view_line_y(int *row)          /* the first line's baseline (its first element's), the pitch */
 {
@@ -2111,11 +2115,11 @@ const page_t pg_choice = {
 };
 
 /* The slider (2.2 E), from the layout's [slider]: its label, value, level, min / max, a note. */
-static const char *sl_words(int f, char *b, int cap)
+static const char *sl_words(const lay_el_t *e, char *b, int cap)
 {
     unsigned hi = s_edit->n;
 
-    switch (f) {
+    switch (e->field) {
     case LF_LABEL: return s_edit->label;
     case LF_VALUE: snprintf(b, (unsigned)cap, "%u / %u", *s_edit->field, hi); break;
     case LF_MIN: return "1";
@@ -2208,7 +2212,10 @@ const page_t pg_eq = {
  * the text's when it is ordinary), a rule. */
 static const char *s_ql[2];
 
-static const char *q_words(int f, char *b, int cap) { return f == LF_LINE1 ? s_ql[0] : f == LF_LINE2 ? s_ql[1] : ""; }
+static const char *q_words(const lay_el_t *e, char *b, int cap)
+{
+    return e->field == LF_LINE1 ? s_ql[0] : e->field == LF_LINE2 ? s_ql[1] : "";
+}
 
 void q_prompt(int icon, uint16_t c, const char *l1, const char *l2)
 {
