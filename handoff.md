@@ -38,6 +38,12 @@ install and check changes. (`docs/HANDOVER.md` is an older history from October 
 
 ## Build (in WSL; the repo is at `/mnt/c/Users/loy/Documents/GitHub/ReChord`)
 
+The repo holds only today's code: `firmware/` (core A: `ap.mk` lists its sources; core B: `coreb/`;
+`compat/`: the two SDK headers every core-A file force-includes), `sim/`, `tools/`, `docs/`. Everything
+from the earlier stages (the QEMU harness, the Rockchip SDK and its `make release` pipeline, the boot
+experiments, the first player and module system, the reverse-engineering tools) is in `archive/`, with
+its history; `archive/README.md` says what each was. Plain `make` builds core A.
+
 Build core A:
 
 ```
@@ -140,12 +146,14 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 | Library views (Albums grid, Years, ...) | `firmware/ui/nav.c`; index build in `lib_build.c` (index version 3) |
 | Self-test (Settings › System) | `firmware/services/selftest.c` (dev overlay) |
 | Screens and settings menus | `firmware/ui/screens.c` |
+| Bluetooth screen and its volume (`bt_fixed=`) | `firmware/startup/ap_bt.c`; the module's driver `firmware/drivers/bt_jieli.c`; `docs/BT_DEVICE_NOTES.md` |
+| Old code, tools and build targets (not built) | `archive/` (`archive/README.md`, `archive/Makefile.legacy`) |
 | Feature list and device-test status | `docs/ROADMAP.md` |
 | Hardware decoding results | `docs/HIFI_PLAN.md` §4.5 |
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last firmware change is **f121933**; Echo Library's is **738be7b**.
+Everything is committed and pushed. The last change is **ddebeaf** (the archive), the last firmware change **f121933**; Echo Library's is **738be7b**.
 
 Done and confirmed on the device:
 
@@ -169,6 +177,9 @@ Done and confirmed on the device:
   module re-digitizes the DAC's analog output and sends SBC (`docs/BT_DEVICE_NOTES.md`), so a turned-down
   DAC raised its noise; fixed holds the DAC at that level while connected (volume keys change nothing).
   No better codec is possible without replacing the module (its firmware is its own)
+- Repo tidy (ddebeaf): 884 files nothing used moved to `archive/` (git mv); the Makefile from 618 to 259
+  lines; today's firmware builds the same code byte for byte (the overlays' ABI hash and CRC aside).
+  `docs/` (467 files, many old reports) is still to sort
 - Retro's own themes (0b51e63; Echo Library 3d1156c): Settings › Display › Theme lists the current Look's
   themes, each Look remembers its own, and Echo Library's Themes page edits both
 - the self-test's audio step: 4 s a side, 2 s gap; its test feed now writes one 32-bit word a channel
