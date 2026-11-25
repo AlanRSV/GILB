@@ -4,7 +4,7 @@
  * end and one log line per part ("selftest: ...").
  *
  *   Keys       press each of the six when asked (8 s each)
- *   Audio      a tone in the left ear, then the right, through the jack; the listener answers
+ *   Audio      4 s of tone in the left ear, 2 s of silence, 4 s in the right, through the jack; the listener answers
  *   Storage    the internal volume: 512 KB written, read back, compared, removed; its bus width
  *   SD card    the same on the card (skipped without one)
  *   Clock      the time of day known, and running
@@ -27,6 +27,7 @@
 #include "scratch.h"
 #include "sdcard.h"
 #include "wallclock.h"
+#include "watchdog.h"
 #include "drivers/bt_jieli.h"
 #include "drivers/clock.h"
 #include "drivers/dac_cs43131.h"
@@ -117,7 +118,8 @@ static void t_keys(void)
     }
 }
 
-/* ~690 Hz (a 64-sample triangle at 44.1 kHz) for ms on one side (ch 0 left, 1 right). */
+/* ~690 Hz (a 64-sample triangle at 44.1 kHz) for ms on one side (ch 0 left, 1 right; 2: silence, the
+ * DAC kept running so neither side clicks). Fed the watchdog: a tone outlasts its 4.5 s. */
 static void tone(int ch, uint32_t ms)
 {
     int16_t *c = (int16_t *)g_scratch;
@@ -128,12 +130,13 @@ static void tone(int ch, uint32_t ms)
         for (int i = 0; i < 256; i++) {
             int p = (int)((n + (uint32_t)i) & 63u), s = (p < 32 ? p - 16 : 48 - p) * 400;
 
-            c[2 * i] = (int16_t)(ch ? 0 : s);
-            c[2 * i + 1] = (int16_t)(ch ? s : 0);
+            c[2 * i] = (int16_t)(ch == 0 ? s : 0);
+            c[2 * i + 1] = (int16_t)(ch == 1 ? s : 0);
         }
         if (dac_i2s_feed(c, 256) != DAC_OK)
             break;
         n += 256u;
+        watchdog_feed();
     }
     dac_i2s_stop();
 }
@@ -159,9 +162,11 @@ static void t_audio(void)
         return;
     }
     st_screen("Self-test 2/6: audio", "A tone in the LEFT ear...", NULL);
-    tone(0, 1500u);
+    tone(0, 4000u);                      /* (4 s a side, 2 s of silence between: each side heard apart) */
+    st_screen("Self-test 2/6: audio", "(a pause)", NULL);
+    tone(2, 2000u);
     st_screen("Self-test 2/6: audio", "...then in the RIGHT ear", NULL);
-    tone(1, 1500u);
+    tone(1, 4000u);
     dac_output_off();
     usb_dac_rail_cut();                  /* (the next play brings the DAC up as it wants it) */
     st_screen("Self-test 2/6: audio", "Heard left, then right?", "PLAY yes   BACK no");

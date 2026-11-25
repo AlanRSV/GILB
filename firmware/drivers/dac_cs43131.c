@@ -832,11 +832,13 @@ phase1:
     dac_map_write(0x00040019, 0x0A);
     dac_map_write(0x00050000, 0x00);
     dac_map_write(0x00050001, 0x00);
-    /* Per-chip output channel/gain (ref FUN_03055ecc): L=7, R=15. */
-    dac_map_write_chan(0, 0x0005000A, 0x07);
-    dac_map_write_chan(0, 0x0005000B, 0x07);
-    dac_map_write_chan(1, 0x0005000A, 0x0F);
-    dac_map_write_chan(1, 0x0005000B, 0x0F);
+    /* Per-chip output channel (ref FUN_03055ecc writes 7 to chip 0, 15 to chip 1): swapped here, chip 0
+     * 15 and chip 1 7, as below. With the ref's values every source came out mirrored on this player:
+     * music too (a left-only test track was heard in the right ear; 2026-11-24). */
+    dac_map_write_chan(0, 0x0005000A, 0x0F);
+    dac_map_write_chan(0, 0x0005000B, 0x0F);
+    dac_map_write_chan(1, 0x0005000A, 0x07);
+    dac_map_write_chan(1, 0x0005000B, 0x07);
     dac_map_write(0x00090000, 0x02);
     dac_map_write(0x00010009, 0xFF);   /* ref FUN_03056a98(255): mute/max  */
     dac_map_write(0x00090003, 0xEC);
@@ -894,10 +896,10 @@ phase2:
     dac_gpio_out(1, 4, 1);            /* amp enable again (ref)           */
     dac_map_write(0x00010009, 0x00);   /* unmute                          */
     /* Ref FUN_03055ecc again right before the feed. */
-    dac_map_write_chan(0, 0x0005000A, 0x07);
-    dac_map_write_chan(0, 0x0005000B, 0x07);
-    dac_map_write_chan(1, 0x0005000A, 0x0F);
-    dac_map_write_chan(1, 0x0005000B, 0x0F);
+    dac_map_write_chan(0, 0x0005000A, 0x0F);
+    dac_map_write_chan(0, 0x0005000B, 0x0F);
+    dac_map_write_chan(1, 0x0005000A, 0x07);
+    dac_map_write_chan(1, 0x0005000B, 0x07);
     dac_delay_ms(10);
 
     STEP(DAC_STEP_DONE);
@@ -949,7 +951,7 @@ OVL_TEXT(dev) int dac_i2s_feed(const int16_t *pcm, int frames)
          * 0x1e (SDK I2s.c I2S_PIO_Write). The old "== 0" waited while the
          * FIFO was EMPTY (inverted), so an empty FIFO spun to timeout ->
          * DAC_ERR_TIMEOUT, frames 0. */
-        for (stall = 0; (I2S_FIFOLR & 0x3Fu) >= 0x1Eu; stall++) {
+        for (stall = 0; (I2S_FIFOLR & 0x3Fu) >= 0x1Du; stall++) {   /* (room for the frame's two words) */
             if (stall > 8000000u)
                 return DAC_ERR_TIMEOUT;     /* FIFO never drains: no clock */
         }
@@ -958,8 +960,12 @@ OVL_TEXT(dev) int dac_i2s_feed(const int16_t *pcm, int frames)
             s_fifo_lo = fl;
         if (fl > s_fifo_hi)
             s_fifo_hi = fl;
-        I2S_TXDR = (uint32_t)(uint16_t)pcm[2 * i] |
-                   ((uint32_t)(uint16_t)pcm[2 * i + 1] << 16);
+        /* One 32-bit word a channel, left then right, the sample in its top 16 bits: TXCR's 32-bit
+         * valid data (i2s1_setup), as core B's playback writes them (coreb/b_pcm.c). Both halves of one
+         * word, as this once wrote, put the right sample in both channels and the left one nowhere
+         * (the self-test's left tone was silent; 2026-11-24). */
+        I2S_TXDR = (uint32_t)(uint16_t)pcm[2 * i] << 16;
+        I2S_TXDR = (uint32_t)(uint16_t)pcm[2 * i + 1] << 16;
     }
     return DAC_OK;
 }
