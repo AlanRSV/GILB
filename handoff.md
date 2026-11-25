@@ -12,8 +12,10 @@ install and check changes. (`docs/HANDOVER.md` is an older history from October 
 - **Echo Library** is the companion web app.
   - Local folder: `C:\Users\loy\Documents\GitHub\musicorganizer`. GitHub: AlanRSV/musicorganizer. It runs on Railway.
   - It manages the library, covers and tags, and has a Themes page that writes GILB theme files.
-  - Run the tests with `wsl -e bash <scratchpad>/mo.sh npm test`; 87 pass. If that script is gone, run
-    `npm test` in WSL from the repo.
+  - Run the tests in WSL with Node from `~/.local/node/bin` (not on the PATH): a script that sets
+    `PATH="$HOME/.local/node/bin:$PATH"`, cds to `/mnt/c/Users/loy/Documents/GitHub/musicorganizer` and runs
+    `npm test`; 90 pass. `.claude/launch.json` in this repo starts its dev server the same way (its script path
+    points at an old scratchpad: update it if the server won't start).
   - The dev server is launch config `echo-library` (port 5173) in `.claude/launch.json`. Restart it to see file changes.
 - **Hardware:** the user owns two Echo Minis, both the **8 GB board**. One runs GILB. The other is still on
   stock 4.0.0 (drive `D:` in USB disk mode), and the user plans to flash it.
@@ -61,6 +63,11 @@ make host-tests
 ```
 
 `run_tags.sh` fails in WSL because of CRLF line endings and because `lame` isn't installed. This is a known environment issue, not a code bug.
+It also stops `make host-tests` before the theme test, so run that one directly:
+
+```
+cc -std=c99 -Wall -Werror -Ifirmware/theme -o build/host/test_theme firmware/theme/tests/test_theme.c firmware/theme/theme.c firmware/theme/themes_builtin.c firmware/theme/theme_file.c && build/host/test_theme
+```
 
 **Pitfalls:**
 
@@ -84,13 +91,13 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 ## Memory: the main constraint
 
 - Core A's resident code must leave at least **4096 B free** (`AP_MIN_FREE`); otherwise the link fails.
-  The 8 GB build has **4944 B free** now (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` builds need
+  The 8 GB build has **4644 B free** now (RAM: 2512 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` builds need
   `AP_MIN_FREE=0` (about 1.9 KB free without LTO).
 - New features go into **overlays**: swap-in code windows, opened through gates in `firmware/startup/ap_ovl.c`
   (`GATE`, `npx_ok()`). Files wholly in an overlay are placed by object name in `firmware/firmware_ap.ld`;
   mostly resident files tag their overlay functions `OVL_TEXT(<overlay>)` (`services/ovl.h`), so they can
   still use LTO. `NOCROSSREFS` stops resident code calling into an overlay. Room left:
-  - modes window (14 KB): viz about 1.8 KB free, npx about 0.8 KB, usbdac 6.7 KB, usbout 4.9 KB, dev 1 KB.
+  - modes window (14 KB): viz about 1.3 KB free, npx about 0.8 KB, usbdac 6.7 KB, usbout 4.9 KB, dev 1 KB.
   - fonts window: about 3.6 KB, used as the CJK glyph cache.
   - lib window: about 390 B.
 - LTO: the link compiles each function apart (`-flto-partition=max`) so a string shared by resident and
@@ -104,7 +111,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 |---|---|
 | Settings file (`GILB.CFG`) | `firmware/services/config.c/.h`, `g_cfg` |
 | One-time move of `RECHORD/`, `RECHORD.CFG` to `GILB/` | `firmware/services/gilb_move.c` |
-| Themes: built-in Classic, Paper, Night, Contrast, Pink, LCD, plus `GILB/THEMES/*.txt` | `firmware/theme/theme_store.c`; Echo Library `src/themes.js`, `src/themepreview.js` |
+| Themes: Modern built-ins Classic, Paper, Night, Contrast, Pink plus `GILB/THEMES/*.txt`; Retro's own built-ins LCD, Amber, Green LCD, Mono plus `GILB/THEMES/RETRO/*.txt` (three colours: glass, ink, highlight) | `firmware/theme/theme_store.c`, `theme.c` (two name lists, `theme_set_look`), `themes_builtin.c` (`theme_retro_derive`); `GILB.CFG` `theme=` and `retro_theme=`; Echo Library `src/themes.js` (`retroDerive`), `src/themepreview.js`, the Themes page's Modern / Retro switch in `src/main.js` |
 | Look: Modern or Retro (Settings › Display › Look) | `g_cfg.look`, `theme_apply()`; Retro Now Playing in `ui/retro.c`; year lookup in `ui/retro_tags.c`; header in `ui/frame.c` (`hdr_pass`); lists in `ui/nav.c` (`nav_retro_list`); grid in `nav_grid_draw` |
 | Fonts (blob `RCFONT2`) | `firmware/drivers/fonts/rechord_fonts.bin` and the generated `fonts_blob.c`; `drivers/text.c` (`F_PX`) |
 | GILB's own pixel font PX (ASCII, curly quotes, dashes) | `tools/gilb_pixfont.py`: edit a glyph's rows, then run `blob`; `look_font()` in `ui/frame.c` picks PX in Retro |
@@ -118,7 +125,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last firmware change is **9764150**.
+Everything is committed and pushed. The last firmware change is **0b51e63**; Echo Library's is **3d1156c**.
 
 Done and confirmed on the device:
 
@@ -128,6 +135,8 @@ Done and confirmed on the device:
 - Retro look on every screen: lists, menus, grid, header, Now Playing and its Lyrics / Up Next / Spectrum
   views, questions, sliders, info pages, Custom EQ, Rename, USB DAC (a24b054, c2c37fc, f3f2562), and Now
   Playing's darker panel in a light rim (9764150)
+- Retro's own themes (0b51e63; Echo Library 3d1156c): Settings › Display › Theme lists the current Look's
+  themes, each Look remembers its own, and Echo Library's Themes page edits both
 - the self-test's audio step: 4 s a side, 2 s gap; its test feed now writes one 32-bit word a channel
   (b741491). The DAC chips' channel values stay as stock's: b741491's swap was reverted in e2cab7d (the
   earphones in that test were in backwards). `LR TEST/LR test.flac` (`build/lrtest/`) checks left/right.
