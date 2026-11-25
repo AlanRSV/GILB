@@ -158,7 +158,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last change is **ddebeaf** (the archive), the last firmware change **f121933**; Echo Library's is **738be7b**.
+Everything is committed and pushed. The last change is **173aabe** (images without the stock fonts), the last firmware change **f121933**; Echo Library's is **738be7b**.
 
 Done and confirmed on the device:
 
@@ -185,6 +185,12 @@ Done and confirmed on the device:
 - Repo tidy (ddebeaf): 884 files nothing used moved to `archive/` (git mv); the Makefile from 618 to 259
   lines; today's firmware builds the same code byte for byte (the overlays' ABI hash and CRC aside).
   `docs/` (467 files, many old reports) is still to sort
+- Download site `site/` (9da590d, 173aabe): one page and a dependency-free Node server showing the newest
+  GitHub release's images (`HIFIEC90.IMG`, `MINIV900.IMG`) and extra files (`CJK.BIN`), for Railway (Root
+  Directory `site`, `site/README.md`). Release images are built without `FONT_IMG` (Build, above)
+- Second Echo Mini (8 GB, stock until then, never had GILB): the release image (173aabe, no stock fonts,
+  SHA-256 DF0348749DCE5EDC54C39241B42109D6F52825A2788B17526DE69738287A9640) installed through the stock
+  updater and everything worked (2026-11-25): a new user's first install is proven
 - Retro's own themes (0b51e63; Echo Library 3d1156c): Settings › Display › Theme lists the current Look's
   themes, each Look remembers its own, and Echo Library's Themes page edits both
 - the self-test's audio step: 4 s a side, 2 s gap; its test feed now writes one 32-bit word a channel
@@ -205,6 +211,13 @@ Still open:
   it needs covers and badges the resident drawer lacks). Resident code has 920 B above the floor:
   anything sizeable must still go into an overlay or replace resident code.
 
-- **Second Echo Mini:** flash it (`docs/FLASHING.md`), run the self-test, copy `GILB/CJK.BIN` to it.
+- **First public release:** publish a GitHub release (a tag, `HIFIEC90.IMG` built without `FONT_IMG`,
+  optionally `CJK.BIN`, the commit it was built from) and deploy `site/` on Railway. Before that, the
+  user's call: the image still carries about 500 bytes of RECHO's image header as its template
+  (`tools/make_fw1.py` `--ref`): ask RECHO's creator, or write those fields from our own layout.
+
+- **Second Echo Mini:** optional: run its self-test, copy `GILB/CJK.BIN` to it.
+
+- **docs/:** 467 files, many old reports: sort them as `archive/` was.
 
 The list is now driven by the user's own ideas. Ask what they want next.
