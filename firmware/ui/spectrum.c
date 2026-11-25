@@ -131,6 +131,7 @@ void viz_tick(void)
 static void band(const display_band_t *d)
 {
     const theme_t *t = T;
+    uint16_t panel = ui_mix(t->background, t->text, 36);   /* (Retro: Now Playing's panel, ui/screens.c np_draw) */
 
     for (int y = d->ya; y <= d->yb; y++) {
         uint16_t *row = d->band + (y - d->band_y) * DISPLAY_W;
@@ -138,12 +139,12 @@ static void band(const display_band_t *d)
 
         if (g_cfg.look) {                          /* Retro: an LCD's segments, 3 rows lit and 1 gap; the
                                                       unlit ones faint (text_off), the peak one segment */
-            int seg = up >> 2, gap = (up & 3) == 3 || up >= (BAR_H & ~3);
+            int seg = up >> 2, gap = (up & 3) == 3 || up >= (BAR_H & ~3);   /* (gaps: Retro's panel) */
 
             for (int x = d->cx0; x <= d->cx1; x++) {
                 int b = (x - X0) / BAR_P, in = (x - X0) % BAR_P < BAR_W;
 
-                row[x] = !in || b >= NBAR || gap ? t->background
+                row[x] = !in || b >= NBAR || gap ? panel
                        : seg < (s_bar[b] + 3) >> 2 || (s_peak[b] && seg == s_peak[b] >> 2) ? t->text
                        : t->text_off;
             }

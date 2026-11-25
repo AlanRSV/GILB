@@ -333,7 +333,7 @@ static void retro_lyrics(void)
             continue;
         }
         m = i < 3 ? text_wrap(f, s, -1, 304, 2, ln) : 1;
-        ui_fill(0, y, DISPLAY_W, RR_H * (m > 1 ? 2 : 1), t->sel_bg);
+        ui_fill(3, y, DISPLAY_W - 6, RR_H * (m > 1 ? 2 : 1), t->sel_bg);   /* (inside the panel's rim) */
         if (m < 2) {
             rrow(8, y, 304, 0, s[0] ? s : "...", t->sel_text);
             continue;

@@ -1045,6 +1045,9 @@ static void np_draw(void)
     char a[12], b[12];
 
     ui_fill(0, BODY_Y, DISPLAY_W, DISPLAY_H - BODY_Y, t->background);
+    if (g_cfg.look)                       /* Retro: a darker panel (14 % of the way to the text) in a light rim, as
+                                             the reference LCD's lit glass (the user's photo, 2026-11-24) */
+        ui_fill(3, BODY_Y + 2, DISPLAY_W - 6, DISPLAY_H - BODY_Y - 5, ui_mix(t->background, t->text, 36));
     if (!N.seq) {
         ui_text(&font_b13, 0, 92, DISPLAY_W, 1, "Nothing playing", t->text_dim, BODY_Y, BAND_Y);
         return;
