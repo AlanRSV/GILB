@@ -221,7 +221,7 @@ Still open:
 
 - **First public release** (the user's current goal). Done: no stock fonts in the image (173aabe), our own
   header (941a0a0), a clean first install through the stock updater (second player). Prepared
-  2026-11-25 (not yet committed when written; check `git log`):
+  2026-11-25 (b0c21ea):
   1. Boards: **8 GB only** (`HIFIEC90.IMG`); the README and notes say 512 MB is untested and not released.
   2. Licenses: `THIRD_PARTY.md` (every decoder and font, its license and license file);
      `release/OFL.txt` (Fusion Pixel's header + SIL OFL 1.1, shipped beside `CJK.BIN`). Fusion Pixel's
@@ -236,10 +236,15 @@ Still open:
      (the draft notes: `COMMIT`, `SHA_IMG`, `SHA_CJK` placeholders). A trial build on 45a8a0f plus these
      uncommitted docs: 3992 B free; CJK.BIN's SHA-256 94AF030E060984F7582B92C83755B86653BD5E3B4EB378267D610455C83105E6
      (it doesn't change between builds).
-  5. Left: the user commits, the release files are rebuilt, the user flashes that image once; then the
-     user publishes (GitHub › Releases › a tag such as `v2026.11.25`, notes from `release/NOTES.md`,
-     attach the three files) and deploys `site/` on Railway (`site/README.md`: Root Directory `site`,
-     Watch Paths `/site/**`, Generate Domain). Publishing is the user's own step.
+  5. **Done 2026-11-25.** Committed b0c21ea, rebuilt (`HIFIEC90.IMG` SHA-256
+     C8B53D6E8C3FBAE934182206962AAE3120643E7B812468B0A3812039E5DF17DF), flashed ("All works"), published
+     as GitHub release **v2026.11.25** (tag on b0c21ea; `HIFIEC90.IMG`, `CJK.BIN`, `OFL.txt`; GitHub's
+     digests match), and the user deployed `site/` on Railway: https://gilb-production.up.railway.app
+     (checked: shows the release, its SHA-256 and the extra files). Release notes must not be
+     hard-wrapped: GitHub keeps each line break (`release/NOTES.md` has one line per paragraph).
+  - Next releases: commit, `sh release/build.sh` in WSL, fill `release/NOTES.md`'s placeholders into
+    `build/release/NOTES.md`, the user flashes it, then a new release. This PC has no `gh`: the release
+    was made in the browser pane (the user signs in and drags the files in; the notes go in by form fill).
 
 - **Second Echo Mini:** on GILB (941a0a0's image) since 2026-11-25; optional: run its self-test, copy
   `GILB/CJK.BIN` to it.
