@@ -247,43 +247,64 @@ def add_modules(out: bytearray, fw1_end: int, modules) -> None:
     out[MODULES_OFF:MODULES_OFF + len(table)] = table
 
 
-def build_ref_shape_5m(img33: bytes, ref_path: Path, out_path: Path, font_img: Path = None,
-                       modules=()) -> Path:
-    """Test #9: a 5MB fw1-ONLY image with the reference's outer-table shape.
+# The 5 MB update image's outer header (0x000..0x1F7), written field by field: the RKnano update
+# container's own format (stock's images and every custom image share these words), GILB's own date,
+# brand, build tag and layout. Until 2026-11-25 it was copied from RECHO 0.10.1's image (--ref); the
+# comparison (stock 4.0.0, RECHO, ours) is in docs/fw1-packing.md, "The outer header, written by us".
+IMG_5M = 0x500004                 # 5 MiB + the trailer CRC
+FW_END = 0x450000                 # the header copy's offset (0x1F4); the trailer lands at
+                                  # (FW_END + 0x104000) & ~0xFFFFF = 0x500000, the updater's rule
+HDR_MAGIC = 0x76543210            # 0x00C
 
-    The reference image (5,242,884 B) is the only fw1-only image proven to
-    boot on hardware. This builder clones its envelope: outer header from its
-    template (brand/date/hash patched to ours), our fw1 container at 0x1F8,
-    an empty RKnanoFW marker container at fw_end + 0x1F8, and the CRC trailer
-    in the last 4 bytes. Fields describing OUR fw1 extent are patched to ours.
 
-    fw_end (header 0x1F4) comes from the template: 0x44C000 in RefCFW 0.9.2,
-    0x450000 in RECHO 0.10.1 (its parts grew past 0x44C000). Both put the
-    trailer at (fw_end + 0x104000) & ~0xFFFFF = 0x500000, the updater's rule.
-    """
-    ref = ref_path.read_bytes()
-    IMG_SIZE = 0x500004
-    ref_fw_end = struct.unpack_from("<I", ref, 0x1F4)[0]
-    if len(ref) != IMG_SIZE:
-        raise SystemExit(f"{ref_path}: {len(ref):,} B, not a 5MB reference ({IMG_SIZE:,} B)")
-    if (ref_fw_end + 0x104000) & ~0xFFFFF != IMG_SIZE - 4:
-        raise SystemExit(f"{ref_path}: fw_end 0x{ref_fw_end:X} does not put the trailer at 0x{IMG_SIZE - 4:X}")
-    if ref[ref_fw_end:ref_fw_end + 0x200] != ref[:0x200]:
-        raise SystemExit(f"{ref_path}: no header copy at its fw_end 0x{ref_fw_end:X}")
-    if ref_fw_end < FONT_SLOT_END:
-        raise SystemExit(f"{ref_path}: fw_end 0x{ref_fw_end:X} is below the fonts' end 0x{FONT_SLOT_END:X}")
-    MARKER_HDR = ref_fw_end + 0x1F8
-    print(f"      template {ref_path.name}: fw_end 0x{ref_fw_end:X}")
+def build_tag() -> bytes:
+    """The build's commit (git describe), as the header's build string (0x030, 16 bytes)."""
+    try:
+        r = subprocess.run(["git", "describe", "--always"], capture_output=True, text=True,   # (no --dirty:
+                           cwd=Path(__file__).resolve().parent, timeout=30)              # slow on /mnt/c)
+        tag = r.stdout.strip() if r.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        tag = ""
+    return (tag or "dev").encode("ascii", "replace")[:15]
 
-    out = bytearray(IMG_SIZE)
-    out[:0x1F8] = ref[:0x1F8]                 # outer table template (proven shape)
+
+def write_outer_header(out: bytearray) -> None:
+    hdr = bytearray(0x1F8)
     # build date as stock writes it: u16 BCD year, u8 BCD day, u8 BCD month.
     # The boot ROM boots the slot with the newer date, so it must be valid BCD.
     d = datetime.date.today()
     bcd = lambda v: int(str(v), 16)
-    struct.pack_into("<HBB", out, 0x00, bcd(d.year), bcd(d.day), bcd(d.month))
-    out[0x10:0x18] = b"ReChord\x00"                    # brand (scrub-clean)
-    out[0x30:0x38] = b"cfwtest01"[:8]                   # build tag
+    struct.pack_into("<HBB", hdr, 0x00, bcd(d.year), bcd(d.day), bcd(d.month))
+    # 0x004, 0x008: a version (custom images put theirs here, e.g. 0x00100000 / 1 for 0.10.1); 0 as stock
+    struct.pack_into("<I", hdr, 0x0C, HDR_MAGIC)
+    hdr[0x10:0x10 + 4] = b"GILB"                        # brand (stock: "Rockchip")
+    tag = build_tag()
+    hdr[0x30:0x30 + len(tag)] = tag                     # build string (stock: "RKnano SDK 1.0")
+    # the part table's header: four 0x200-byte slots (every image, stock's too)
+    struct.pack_into("<I", hdr, 0x50, 4)
+    for o in (0x54, 0x5C, 0x64, 0x6C):
+        struct.pack_into("<I", hdr, o, 0x200)
+    # 0x70..: the part chain (part header offset, count, then (offset, type) pairs): stock and RECHO
+    # list their bitmap fonts (types 0x201C06, 0x211C06) and RECHO its icons there. GILB has no such
+    # parts (its fonts and code are modules: add_modules), so: none, its header right after fw1.
+    struct.pack_into("<I", hdr, 0x19C, 1)               # (every image: meaning unknown)
+    struct.pack_into("<I", hdr, 0x1F4, FW_END)
+    out[:0x1F8] = hdr
+
+
+def build_ref_shape_5m(img33: bytes, out_path: Path, font_img: Path = None, modules=()) -> Path:
+    """The 5 MB fw1-only update image: our outer header (write_outer_header), our fw1 container at
+    0x1F8, the chain's part header after it, the modules, an empty RKnanoFW end marker at
+    FW_END + 0x1F8, the header copy at FW_END, and the CRC trailer in the last 4 bytes. Its shape is
+    RECHO's, the first fw1-only image proven to boot (verdict #20); none of its bytes are.
+    """
+    IMG_SIZE = IMG_5M
+    assert (FW_END + 0x104000) & ~0xFFFFF == IMG_SIZE - 4
+    assert FW_END >= FONT_SLOT_END
+    MARKER_HDR = FW_END + 0x1F8
+
+    out = bytearray(IMG_SIZE)
+    write_outer_header(out)
 
     # our fw1 container: header + padded table + payload (copy from the 33MB)
     fw1 = img33[0x1F8:0x7B8]                 # header + table area (padded)
@@ -307,11 +328,11 @@ def build_ref_shape_5m(img33: bytes, ref_path: Path, out_path: Path, font_img: P
             and sp == 0x03004000 and reset & 1):
         raise SystemExit(f"entry VT: row1 {ram_start:#x}/{init_size:#x}, IMG "
                          f"0x{entry_vt:X} = sp 0x{sp:08X} reset 0x{reset:08X}")
-    # leading part-chain field: #12 (updater-accepted) carried our fw1 end here
-    struct.pack_into("<I", out, 0x80, fw1_end)
+    # the part chain: its header right after fw1, no parts
+    struct.pack_into("<II", out, 0x70, fw1_end, 0)
 
-    # empty marker container (the reference's trailing RKnanoFW + zeros)
-    out[MARKER_HDR:MARKER_HDR + 16] = ref[MARKER_HDR:MARKER_HDR + 16]
+    # the empty end marker container: "RKnanoFW" and zeros (the format's; stock ends the same way)
+    out[MARKER_HDR:MARKER_HDR + 8] = b"RKnanoFW"
 
     if font_img:
         add_fonts(out, fw1_end, font_img)
@@ -353,9 +374,6 @@ def main() -> int:
                     help="blob stored in the image's module table (core-B images)")
     ap.add_argument("--fonts", type=Path, default=None,
                     help="stock IMG to copy the bitmap fonts from (into the 5MB image)")
-    ap.add_argument("--ref", type=Path, default=Path("community/refcfw/HIFIEC90.IMG"),
-                    help="5MB reference image whose envelope the flashable image takes "
-                         "(default community/refcfw/HIFIEC90.IMG)")
     ap.add_argument("--placeholder", action="store_true",
                     help="build a tiny placeholder ELF (vector table + reset "
                          "loop at 0x03050000) and run the chain on it")
@@ -634,13 +652,8 @@ def main() -> int:
         return 1
     print("RESULT: PASS - all verification checks OK")
     # Test #9 companion output: the 5MB ref-shape image
-    ref_img = args.ref
-    if ref_img.exists():
-        build_ref_shape_5m(bytes(img), ref_img, args.output.with_name("ReChord_AP5M.IMG"), args.fonts,
-                           [m.split("=", 1) for m in args.module])
-    else:
-        print(f"RESULT: FAIL - reference image not found: {ref_img}", file=sys.stderr)
-        return 1
+    build_ref_shape_5m(bytes(img), args.output.with_name("ReChord_AP5M.IMG"), args.fonts,
+                       [m.split("=", 1) for m in args.module])
     print()
     print("  NOTE: flash ReChord_AP5M.IMG (boots on hardware, verdict #20). A")
     print("  standalone fw1 has no USB/updater yet: leaving it needs maskrom")

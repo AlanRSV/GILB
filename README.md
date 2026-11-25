@@ -196,9 +196,9 @@ Stock goes back the same way.
 ```bash
 export PATH=<arm-gnu-toolchain>/bin:$PATH
 make cfw-ap -j8                               # core A: build/cfw/rechord_ap.elf
-make cfw-img REF_IMG=<RECHO 0.10.1 HIFIEC90.IMG>   # + core-B codec images and the fonts module
+make cfw-img STOCK_IMG=<a stock HIFIEC/MINIV IMG>  # + core-B codec images and the fonts module
 # -> build/MINIV900.IMG (512 MB board); BOARD=8g -> build/HIFIEC90.IMG
-# REF_IMG: RECHO's image, the template of the update image's outer table (see Credits)
+# STOCK_IMG: a stock image the build packs our fw1 into on the way; none of it is in the update file
 # REVERSE_LISTS=1 (cfw-ap, cfw-img, sim): VOL- moves up in lists, VOL+ down
 make host-tests                               # host unit tests
 make sim                                      # desktop simulator: build/sim/rechord_sim
@@ -275,10 +275,11 @@ ReChord, and so GILB, owe RECHO directly:
   - the battery reading;
   - the volume-key shortcuts;
   - the settings file's `key=value` format and its defaults.
-- **GILB's update image is built in RECHO's image's shape.** `tools/make_fw1.py` takes the outer
-  header table and the end marker of RECHO 0.10.1's `HIFIEC90.IMG` as its template (`REF_IMG`):
-  RECHO's was the first image of its kind proven to boot, so the build needs your own copy of it.
-  No part of RECHO is in this repository.
+- **GILB's update image has RECHO's image's shape.** RECHO's was the first image of its kind
+  proven to boot, and ReChord's builds took its outer header as a template. Since 2026-11-25
+  `tools/make_fw1.py` writes that header field by field from the container's own format and GILB's
+  own layout (`docs/fw1-packing.md` §11), so no part of RECHO is in this repository or in GILB's
+  images.
 
 **Please support RECHO's creator:** <https://ko-fi.com/miauk>.
 

@@ -53,8 +53,11 @@ make cfw-ap BOARD=8g REVERSE_LISTS=1
 Build the image to flash (`build/HIFIEC90.IMG`):
 
 ```
-make cfw-img BOARD=8g REVERSE_LISTS=1 STOCK_IMG='stock/4.0.0/ECHO MINI V4.0.0/HIFIEC40.IMG' REF_IMG='community/refcfw/RECHO-0.10.1/HIFIEC90.IMG'
+make cfw-img BOARD=8g REVERSE_LISTS=1 STOCK_IMG='stock/4.0.0/ECHO MINI V4.0.0/HIFIEC40.IMG'
 ```
+
+No `REF_IMG` (since 2026-11-25): `tools/make_fw1.py` writes the update image's outer header itself
+(`write_outer_header`, `docs/fw1-packing.md` §11); it no longer copies RECHO's.
 
 No `FONT_IMG` (since 2026-11-25): it copied Snowsky's stock bitmap fonts (about 2.1 MB) into the image, and
 nothing in the firmware reads them; an image without them was tested on the device (all text as before).

@@ -351,3 +351,32 @@ Full non-zero field dump (stock vs reference):
 | 0x150 | 0x016069E8 | 0x00000000 |  |
 | 0x19C | 0x00000001 | 0x00000001 |  |
 | 0x1F4 | 0x01FC4000 | 0x0044C000 |  |
+
+## 11. The outer header, written by us (2026-11-25)
+
+`tools/make_fw1.py` (`write_outer_header`, `build_ref_shape_5m`) now writes the 5 MB update image's outer
+header (0x000..0x1F7) and its end marker itself. Until then it copied both from RECHO 0.10.1's
+`HIFIEC90.IMG` (`--ref`, the Makefile's `REF_IMG`) and patched a few fields. Compared word by word,
+stock 4.0.0 (`HIFIEC40.IMG`), RECHO 0.10.1 and GILB's image before the change:
+
+| Offset | Stock 4.0.0 | RECHO 0.10.1 | GILB now | What it is |
+|---|---|---|---|---|
+| 0x000 | date | date | the build date (BCD) | the boot ROM boots the slot with the newer date |
+| 0x004, 0x008 | 0, 0 | 0x00100000, 1 | 0, 0 | a version (RECHO's 0.10.1, RefCFW 0.9.2 had 0x00090000, 2); stock leaves it 0 |
+| 0x00C | 0x76543210 | 0x76543210 | 0x76543210 | magic |
+| 0x010 | "Rockchip" | "RECHO" | "GILB" | brand |
+| 0x030 | "RKnano SDK 1.0" | a commit | the build's commit (`git describe`) | build string |
+| 0x050..0x06C | 4, 0x200 x 4 | the same | the same | the part table's header |
+| 0x070..0x08C | its fw1 end, 2 parts: the two bitmap fonts (types 0x201C06, 0x211C06) | its fw1 end, 3 parts: the two fonts and its icons | our fw1 end, 0 parts | the part chain (section 10's "new facts" decode it) |
+| 0x0C8..0x150 | three optional part groups | 0 | 0 | stock's resources and section_3 |
+| 0x19C | 1 | 1 | 1 | (unknown; every image) |
+| 0x1F4 | 0x01FCC000 | 0x00450000 | 0x00450000 | fw_end: the header's copy is there, and the trailer CRC at (fw_end + 0x104000) & ~0xFFFFF = 0x500000 |
+
+The end marker at fw_end + 0x1F8 is "RKnanoFW" and zeros in all three.
+
+Before the change GILB's image still carried RECHO's version, and its part chain listing RECHO's fonts and
+icons at RECHO's offsets (parts GILB's image does not have: since 173aabe it carries no stock fonts
+either). Nothing reads them: GILB's updater (`firmware/services/fw_update.c`) and the boot (stock seg01
+`FUN_0307b2cc`) check "RKnanoFW" at 0x1F8, fw_end, the header's copy at fw_end and the trailer CRC; the
+stock updater's own checks on a first install are what a device test settles. The new image is byte for
+byte the old one outside the header and its copy (and the trailer).
