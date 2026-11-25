@@ -1,9 +1,11 @@
 /*
  * theme_store.c -- the themes the picker offers: the built-ins (themes_builtin.c), then each
- * RECHORD/THEMES/<name>.txt on Internal (theme_file.c's key=value format; Echo Library's theme
- * editor writes them). In the viz overlay with the built-in table and the parser (startup/ap_ovl.c
- * ap_theme_scan / ap_theme_load), so main memory keeps only the current theme and the names
- * (theme.c).
+ * GILB/THEMES/<name>.txt on Internal (theme_file.c's key=value format; Echo Library's theme
+ * editor writes them). Look: Retro has its own: the Retro built-ins (themes_builtin.c, three
+ * colours each), then GILB/THEMES/RETRO/<name>.txt, whose glass, ink and highlight (default:
+ * LCD's) make the whole theme (theme_retro_derive); any other key the file names still applies.
+ * In the viz overlay with the built-in table and the parser (startup/ap_ovl.c ap_theme_scan /
+ * ap_theme_load), so main memory keeps only the current theme and the names (theme.c).
  *
  * A file theme starts from Classic and overrides what the file names: a file of one line is a
  * whole theme, and a typo costs that line only. Its name is the file's (without .txt), cut to
@@ -55,29 +57,36 @@ static int found(const char *name, int is_dir)
     return 0;
 }
 
-int theme_store_scan(char (*names)[THEME_NAME_MAX], int max)
+int theme_store_scan(int retro, char (*names)[THEME_NAME_MAX], int max)
 {
     S.names = names;
     S.max = max;
     S.n = 0;
-    for (int i = 0; i < theme_builtin_count() && S.n < max; i++)
-        snprintf(names[S.n++], THEME_NAME_MAX, "%s", theme_builtin_get(i)->name);
+    for (int i = 0; i < (retro ? theme_retro_count() : theme_builtin_count()) && S.n < max; i++)
+        snprintf(names[S.n++], THEME_NAME_MAX, "%s", retro ? theme_retro_get(i)->name : theme_builtin_get(i)->name);
     S.builtins = S.n;
-    (void)fs_list_dir_each(THEME_DIR, found);   /* (no folder: the built-ins alone) */
+    (void)fs_list_dir_each(retro ? THEME_RETRO_DIR : THEME_DIR, found);   /* (no folder: the built-ins alone) */
     return S.n;
 }
 
-int theme_store_load(int i, const char *name, theme_t *out)
+int theme_store_load(int retro, int i, const char *name, theme_t *out)
 {
-    char path[64], text[1024];
+    char path[72], text[1024];
     fs_file_t *f;
     long n;
 
-    if (i < theme_builtin_count()) {
+    if (retro && i < theme_retro_count()) {
+        const theme_retro_t *b = theme_retro_get(i);
+
+        theme_retro_derive(b->glass, b->ink, b->highlight, out);
+        snprintf(out->name, sizeof out->name, "%s", b->name);
+        return 0;
+    }
+    if (!retro && i < theme_builtin_count()) {
         *out = *theme_builtin_get(i);
         return 0;
     }
-    snprintf(path, sizeof path, THEME_DIR "/%s.txt", name);
+    snprintf(path, sizeof path, "%s/%s.txt", retro ? THEME_RETRO_DIR : THEME_DIR, name);
     if (!(f = fs_open_read(path)))
         return -1;
     n = fs_read(f, text, sizeof text - 1);
@@ -85,7 +94,18 @@ int theme_store_load(int i, const char *name, theme_t *out)
     if (n < 0)
         return -1;
     text[n] = 0;                         /* (a longer file: its first 1023 bytes) */
-    *out = *theme_builtin_get(0);
+    if (retro) {                         /* its three colours (glass, ink, highlight: theme_file.c), the rest
+                                            worked out from them, then whatever else it names */
+        const theme_retro_t *b = theme_retro_get(0);
+
+        out->background = b->glass;
+        out->text = b->ink;
+        out->sel_bg = 0x0001u;           /* (not named: the ink; 0x0001, #000008, stands for that) */
+        (void)theme_file_parse(text, out);
+        theme_retro_derive(out->background, out->text, out->sel_bg == 0x0001u ? out->text : out->sel_bg, out);
+    } else {
+        *out = *theme_builtin_get(0);
+    }
     (void)theme_file_parse(text, out);
     snprintf(out->name, sizeof out->name, "%s", name);
     return 0;

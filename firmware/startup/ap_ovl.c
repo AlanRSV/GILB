@@ -435,8 +435,8 @@ OVL_HEADER(npx, OVL_NPX, &k_npx);
 void viz_draw(void), viz_tick(void), nav_grid_draw(void);
 typedef struct {
     void (*draw)(void); void (*tick)(void); void (*grid)(void);
-    int (*theme_scan)(char (*names)[THEME_NAME_MAX], int max);    /* theme/theme_store.c */
-    int (*theme_load)(int i, const char *name, theme_t *out);
+    int (*theme_scan)(int retro, char (*names)[THEME_NAME_MAX], int max);    /* theme/theme_store.c */
+    int (*theme_load)(int retro, int i, const char *name, theme_t *out);
     int (*gilb_move)(int vol);                                    /* services/gilb_move.c */
     int (*retro_np)(int part);                                    /* ui/retro.c: Look: Retro's Now Playing */
     int (*cpuclk_log)(void);                                      /* services/cpuclk.c: the self-test's log */
@@ -465,9 +465,9 @@ static int npx_ok(void);
 
 /* The themes (theme/theme.c): the built-in table, the folder's files and their parser are this
  * overlay's. Not while USB-C earphones hold the window (the theme stays as it is). */
-int ap_theme_scan(char (*names)[THEME_NAME_MAX], int max)
+int ap_theme_scan(int retro, char (*names)[THEME_NAME_MAX], int max)
 {
-    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, theme_scan(names, max)) : -1;
+    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, theme_scan(retro, names, max)) : -1;
 }
 
 /* RECHORD/ and RECHORD.CFG under the firmware's new name, GILB (services/gilb_move.c). */
@@ -491,9 +491,9 @@ int ap_gilb_move(int vol)
     return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, gilb_move(vol)) : -1;
 }
 
-int ap_theme_load(int i, const char *name, theme_t *out)
+int ap_theme_load(int retro, int i, const char *name, theme_t *out)
 {
-    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, theme_load(i, name, out)) : -1;
+    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, -1, theme_load(retro, i, name, out)) : -1;
 }
 
 /* Library > Albums' cover grid (ui/nav.c PK_GRID), drawn in this overlay: 0 = draw it as a list. */

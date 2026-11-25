@@ -138,6 +138,9 @@ static int apply_kv(theme_t *t, const char *k, int klen,
 
     MATCH_COLOR(background)
     MATCH_COLOR_AS("bg", background)
+    MATCH_COLOR_AS("glass", background)     /* (Look: Retro's three: theme_store.c) */
+    MATCH_COLOR_AS("ink", text)
+    MATCH_COLOR_AS("highlight", sel_bg)
     MATCH_COLOR(surface)
     MATCH_COLOR(text)
     MATCH_COLOR(text_dim)

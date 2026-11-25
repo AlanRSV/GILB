@@ -20,9 +20,14 @@
 #define THEME_NAME_MAX 24
 
 /* The picker's themes: the built-ins, then up to THEME_MAX in all from the
- * folder of theme files (RECHORD/THEMES/<name>.txt, theme_store.c). */
+ * folder of theme files (GILB/THEMES/<name>.txt, theme_store.c). Look: Retro has
+ * its own list: its built-ins (LCD, Amber, Green LCD, Mono), then THEME_RETRO_DIR's
+ * files, up to THEME_RETRO_MAX; a Retro file names three colours (glass, ink,
+ * highlight) and the store works out the rest (any other key still overrides). */
 #define THEME_MAX 16
+#define THEME_RETRO_MAX 10
 #define THEME_DIR "/Internal/GILB/THEMES"
+#define THEME_RETRO_DIR THEME_DIR "/RETRO"
 
 typedef struct theme
 {
@@ -94,6 +99,13 @@ const char   *theme_name(int i);
  */
 int           theme_load_index(int i);
 int           theme_index(const char *name);
+
+/* Which list the calls above use: Modern's (0, the default) or Retro's (1). The
+ * _look forms ask either list without switching (the settings file names both). */
+void          theme_set_look(int retro);
+int           theme_look(void);
+const char   *theme_name_look(int retro, int i);
+int           theme_index_look(int retro, const char *name);
 const theme_t *theme_builtin(int i);
 /* Read the theme folder again (the picker's Refresh themes): the names and the
  * count change, built-ins first. Returns the number of themes. A current file

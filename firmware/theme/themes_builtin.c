@@ -17,11 +17,19 @@
  *   Night    — very dim, for bedside use.
  *   Contrast — black, white and yellow, WCAG ratios 13..21.
  *   Pink     — deep plum with a rose accent (the user, 2026-11-24).
- *   LCD      — navy on pale blue-grey, an old LCD (Settings > Display > Look: Retro).
+ *
+ * Look: Retro's built-ins (theme_retro_get) are three colours each, glass (the background),
+ * ink (text and lines) and highlight (the cursor's row); theme_store.c works out the rest:
+ *   LCD       — navy on pale blue-grey, an old LCD (the user, 2026-11-24).
+ *   Amber     — dark brown on an amber backlight.
+ *   Green LCD — dark olive on pea-green glass.
+ *   Mono      — near-black on light grey, an unlit monochrome LCD.
  *
  * On the device this table is in the viz overlay with theme_store.c (main memory keeps only
  * the current theme: theme.c).
  */
+#include <string.h>
+
 #include "theme.h"
 #include "theme_priv.h"
 
@@ -172,35 +180,6 @@ static const theme_t builtin_themes[] =
         .scroll     = 0x6AAC,   /* 6E5560 */
         .spacing = 8, .radius = 6, .font_id = 0,
     },
-    {
-        .name = "LCD",          /* Settings > Display > Look: Retro (the user, 2026-11-24) */
-        .background = 0xC69C,   /* C5D0E2 */
-        .surface    = 0xBE3B,   /* BAC6DA */
-        .text       = 0x218F,   /* 23317F */
-        .text_dim   = 0x3A72,   /* 3F4D96 */
-        .accent     = 0x218F,   /* 23317F */
-        .danger     = 0x88E5,   /* 8C1F2E */
-        .success    = 0x1B47,   /* 1F6B3A */
-        .header_bg  = 0xC69C,   /* C5D0E2 */
-        .divider    = 0x29D0,   /* 2A3887 */
-        .text_off   = 0x8CB8,   /* 8A95C0 */
-        .on_accent  = 0xC69C,   /* C5D0E2 */
-        .sel_bg     = 0x218F,   /* 23317F */
-        .sel_text   = 0xC69C,   /* C5D0E2 */
-        .value      = 0x218F,   /* 23317F */
-        .keybar_bg  = 0xC69C,   /* C5D0E2 */
-        .key_text   = 0x218F,   /* 23317F */
-        .key_hold   = 0x3A72,   /* 3F4D96 */
-        .key_press  = 0x9D39,   /* 9AA6CC */
-        .bar_track  = 0xC69C,   /* C5D0E2 */
-        .bar_fill   = 0x218F,   /* 23317F */
-        .badge_bg   = 0x218F,   /* 23317F */
-        .badge_text = 0xC69C,   /* C5D0E2 */
-        .hires      = 0x218F,   /* 23317F */
-        .warn       = 0x7A80,   /* 7A5200 */
-        .scroll     = 0x29D0,   /* 2A3887 */
-        .spacing = 8, .radius = 0, .font_id = 0,
-    },
 };
 
 #define BUILTIN_COUNT ((int)(sizeof(builtin_themes) / sizeof(builtin_themes[0])))
@@ -220,4 +199,58 @@ const theme_t *theme_builtin_get(int i)
 const theme_t *theme_builtin(int i)
 {
     return theme_builtin_get(i);
+}
+
+static const theme_retro_t retro_themes[] = {
+    { "LCD",       0xC69C, 0x218F, 0x218F },   /* C5D0E2, 23317F */
+    { "Amber",     0xF547, 0x38E0, 0x38E0 },   /* F0A93A, 3B1D05 */
+    { "Green LCD", 0x9DE1, 0x09C1, 0x09C1 },   /* 9BBC0F, 0F380F */
+    { "Mono",      0xCE58, 0x1082, 0x1082 },   /* C8C8C0, 101010 */
+};
+
+int theme_retro_count(void)
+{
+    return (int)(sizeof retro_themes / sizeof retro_themes[0]);
+}
+
+const theme_retro_t *theme_retro_get(int i)
+{
+    return i >= 0 && i < theme_retro_count() ? &retro_themes[i] : 0;
+}
+
+/* a .. b, t/256 of the way (RGB565, rounded) */
+static uint16_t mix(uint16_t a, uint16_t b, unsigned t)
+{
+    unsigned r = ((a >> 11) * (256u - t) + (b >> 11) * t + 128u) >> 8,
+             g = (((a >> 5) & 63u) * (256u - t) + ((b >> 5) & 63u) * t + 128u) >> 8,
+             bl = ((a & 31u) * (256u - t) + (b & 31u) * t + 128u) >> 8;
+
+    return (uint16_t)(r << 11 | g << 5 | bl);
+}
+
+/* rough brightness of an RGB565 colour, 0..~1000 */
+static int luma(uint16_t c) { return (int)((c >> 11) * 2 * 299u + ((c >> 5) & 63u) * 587u + (c & 31u) * 2 * 114u) / 63; }
+
+/* Retro's colours from three: the glass everywhere a background goes, the ink for text, lines and bars,
+ * the highlight for the cursor's row; between them the dim text (17 % to the glass), the rules (5 %), the surface (7 %
+ * to the ink), the unlit segments (62 % to the glass); the cursor row's text the glass or the ink,
+ * whichever stands apart from the highlight. LCD's three give the LCD theme as it was. */
+void theme_retro_derive(uint16_t glass, uint16_t ink, uint16_t highlight, theme_t *out)
+{
+    int dg = luma(glass) - luma(highlight), di = luma(ink) - luma(highlight);
+
+    memset(out, 0, sizeof *out);
+    out->background = out->header_bg = out->keybar_bg = out->bar_track = out->on_accent = out->badge_text = glass;
+    out->sel_text = (dg < 0 ? -dg : dg) >= (di < 0 ? -di : di) ? glass : ink;
+    out->text = out->accent = out->value = out->key_text = out->bar_fill = out->badge_bg = out->hires = ink;
+    out->sel_bg = highlight;
+    out->surface = mix(glass, ink, 18);
+    out->text_dim = out->key_hold = mix(ink, glass, 44);
+    out->divider = out->scroll = mix(ink, glass, 12);
+    out->text_off = mix(ink, glass, 160);
+    out->key_press = mix(glass, highlight, 64);
+    out->danger = 0x88E5;                /* 8C1F2E */
+    out->success = 0x1B47;               /* 1F6B3A */
+    out->warn = 0x7A80;                  /* 7A5200 */
+    out->spacing = 8;
 }

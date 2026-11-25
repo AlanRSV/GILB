@@ -10,7 +10,8 @@
  *      to the file comes back unchanged, unknown/garbage lines are skipped,
  *      and a partial file overrides only the keys it contains;
  *   4. theme_set()/theme_get() identity;
- *   5. the DESIGN.md 5.1 tokens: six built-ins in order (Pink, then LCD), sample values,
+ *   5. the DESIGN.md 5.1 tokens: five Modern built-ins in order (Pink last), sample values; Look:
+ *      Retro's own list (LCD, Amber, Green LCD, Mono), LCD worked out from its three colours,
  *      readable pairs, selection by index and name, `#RRGGBB` and the
  *      `bg`/`ok` key aliases in files.
  *
@@ -27,22 +28,28 @@
 #include "../theme_priv.h"
 
 /* The device asks theme_store.c through an overlay (startup/ap_ovl.c); here the built-ins alone. */
-int ap_theme_scan(char (*names)[THEME_NAME_MAX], int max)
+int ap_theme_scan(int retro, char (*names)[THEME_NAME_MAX], int max)
 {
     int n = 0;
 
-    while (n < max && n < theme_builtin_count()) {
-        snprintf(names[n], THEME_NAME_MAX, "%s", theme_builtin_get(n)->name);
+    while (n < max && n < (retro ? theme_retro_count() : theme_builtin_count())) {
+        snprintf(names[n], THEME_NAME_MAX, "%s", retro ? theme_retro_get(n)->name : theme_builtin_get(n)->name);
         n++;
     }
     return n;
 }
 
-int ap_theme_load(int i, const char *name, theme_t *out)
+int ap_theme_load(int retro, int i, const char *name, theme_t *out)
 {
-    const theme_t *t = theme_builtin_get(i);
+    const theme_t *t = retro ? 0 : theme_builtin_get(i);
+    const theme_retro_t *rt = retro ? theme_retro_get(i) : 0;
 
     (void)name;
+    if (rt) {
+        theme_retro_derive(rt->glass, rt->ink, rt->highlight, out);
+        snprintf(out->name, sizeof out->name, "%s", rt->name);
+        return 0;
+    }
     if (!t)
         return -1;
     *out = *t;
@@ -207,19 +214,19 @@ int main(void)
 
     /* ---- 5. DESIGN.md 5.1 tokens and selection ---------------------- */
     {
-        static const char *const order[] = { "Classic", "Paper", "Night", "Contrast", "Pink", "LCD" };
+        static const char *const order[] = { "Classic", "Paper", "Night", "Contrast", "Pink" };
         theme_t t;
         int k;
 
-        CHECK(theme_count() == 6, "six built-in themes");
-        for (k = 0; k < 6; k++)
+        CHECK(theme_count() == 5, "five Modern built-ins");
+        for (k = 0; k < 5; k++)
             CHECK(theme_name(k) && strcmp(theme_name(k), order[k]) == 0, "built-in order");
         CHECK(theme_index("contrast") == 3 && theme_index("PAPER") == 1, "theme_index is case-insensitive");
         CHECK(theme_index("Sepia") < 0 && theme_index(0) < 0, "theme_index of an unknown name");
         CHECK(theme_load_index(3) == 0 && strcmp(theme_get()->name, "Contrast") == 0, "theme_load_index");
-        CHECK(theme_load_index(6) < 0 && theme_load_index(-1) < 0 &&
+        CHECK(theme_load_index(5) < 0 && theme_load_index(-1) < 0 &&
               strcmp(theme_get()->name, "Contrast") == 0, "out of range leaves the current theme");
-        CHECK(theme_builtin(0) && strcmp(theme_builtin(0)->name, "Classic") == 0 && theme_builtin(6) == 0,
+        CHECK(theme_builtin(0) && strcmp(theme_builtin(0)->name, "Classic") == 0 && theme_builtin(5) == 0,
               "theme_builtin");
         /* sample values (8-bit tokens quantised to RGB565) */
         CHECK(theme_builtin(0)->sel_bg == 0x2B37 && theme_builtin(0)->value == 0x6DBF &&
@@ -228,14 +235,29 @@ int main(void)
         CHECK(theme_builtin(2)->text == 0xAD56 && theme_builtin(2)->sel_bg == 0x1A6F, "Night tokens");
         CHECK(theme_builtin(3)->accent == 0xFEA0 && theme_builtin(3)->divider == 0xFFFF &&
               theme_builtin(3)->sel_text == 0x0000, "Contrast tokens");
-        for (k = 0; k < 6; k++) {
+        for (k = 0; k < 5; k++) {
             const theme_t *b = theme_builtin(k);
 
             CHECK(b->sel_text != b->sel_bg && b->key_text != b->keybar_bg && b->on_accent != b->accent &&
                   b->badge_text != b->badge_bg && b->text != b->header_bg && b->bar_fill != b->bar_track,
                   "readable token pairs");
         }
+        /* Look: Retro's own list; LCD from its three colours as the table had it */
+        theme_set_look(1);
+        CHECK(theme_count() == 4 && !strcmp(theme_name(0), "LCD") && !strcmp(theme_name(3), "Mono") &&
+              theme_index("green lcd") == 2 && theme_index("Classic") < 0, "Retro's list");
+        CHECK(theme_index_look(0, "Pink") == 4 && !strcmp(theme_name_look(0, 0), "Classic"), "Modern's, asked from Retro");
+        CHECK(theme_load_index(0) == 0 && theme_get()->background == 0xC69C && theme_get()->surface == 0xBE3B &&
+              theme_get()->text == 0x218F && theme_get()->sel_bg == 0x218F && theme_get()->sel_text == 0xC69C &&
+              theme_get()->text_off == 0x8CB7 && !strcmp(theme_get()->name, "LCD"), "LCD worked out");
+        theme_retro_derive(0xC69C, 0x218F, 0xFFFF, &t);
+        CHECK(t.sel_bg == 0xFFFF && t.sel_text == 0x218F, "a light highlight: the ink on it");
+        theme_set_look(0);
+        CHECK(theme_count() == 5 && theme_load_index(0) == 0, "back to Modern's");
         /* files: #RRGGBB, aliases, new keys */
+        t = *theme_builtin(0);
+        CHECK(theme_file_parse("glass=#9BBC0F\nink=#0F380F\nhighlight=#306230\n", &t) == 3 && t.background == 0x9DE1 &&
+              t.text == 0x09C1 && t.sel_bg == 0x3306, "Retro's three keys");
         t = *theme_builtin(0);
         CHECK(theme_file_parse("sel_bg = #2A66BE\nbg=#000000\nok = #00FF00\nscroll=0x1234\n"
                                "warn = #12345\nhires=#GG0000\n", &t) == 4,

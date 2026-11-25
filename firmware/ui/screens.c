@@ -1718,14 +1718,17 @@ static void apply_eq(void)
 static void apply_bright(void) { power_brightness_changed(); }
 static void restore_q(void);
 
-/* Display > Refresh themes: RECHORD/THEMES/ read again (a theme added or edited on the PC); the current
+/* Display > Refresh themes: GILB/THEMES/ (in Retro, GILB/THEMES/RETRO/) read again (a theme added or edited on the PC); the current
  * theme found again by its name and loaded again (its new colours), else Classic. */
-/* The colours the Look wants: Retro's LCD, else the Theme setting's (ui/retro.c). */
+/* The Theme setting of the Look that is on: Modern's and Retro's are two lists and two settings
+ * (theme/theme.h theme_set_look; theme=, retro_theme=). One that cannot be had: its list's first. */
+static uint8_t *theme_sel(void) { return g_cfg.look ? &g_cfg.retro_theme : &g_cfg.theme; }
+
 void theme_apply(void)
 {
-    int i = g_cfg.look ? theme_index("LCD") : -1;
-
-    theme_load_index(i >= 0 ? i : g_cfg.theme);
+    theme_set_look(g_cfg.look);
+    if (theme_load_index(*theme_sel()) != 0)
+        theme_load_index(0);
 }
 
 static void look_set(void)
@@ -1740,11 +1743,11 @@ static void theme_refresh(void)
     char nm[THEME_NAME_MAX];
     int n, i;
 
-    snprintf(nm, sizeof nm, "%s", theme_name(g_cfg.theme) ? theme_name(g_cfg.theme) : "");
+    snprintf(nm, sizeof nm, "%s", theme_name(*theme_sel()) ? theme_name(*theme_sel()) : "");
     n = theme_rescan();
     i = theme_index(nm);
 
-    g_cfg.theme = (uint8_t)(i < 0 ? 0 : i);
+    *theme_sel() = (uint8_t)(i < 0 ? 0 : i);
     theme_apply();
     config_save_later();
     nav_toast(ICON_CHECK, TOAST_TEXT, "Themes: %d", n);
@@ -1856,12 +1859,12 @@ static const char *set_value(const set_t *s, char *b, int cap)
         snprintf(b, (unsigned)cap, "%u / %u", *s->field, s->n);
         return b;
     case S_THEME:
-        return theme_name(*s->field) ? theme_name(*s->field) : "";
+        return theme_name(*theme_sel()) ? theme_name(*theme_sel()) : "";
     case S_INFO:
         return ap_keys_text();
     }
     if (s->open == &pg_set && s->arg == G_DISPLAY)
-        return theme_name(g_cfg.theme);
+        return theme_name(*theme_sel());
     if (s->open == &pg_set && s->arg == G_USB)
         return n_usb[g_cfg.usb & 3u];
     if (s->open == &pg_set && s->arg == G_POWER) {
@@ -1904,7 +1907,7 @@ static void set_act(int a, int i)
     if (a == A_OPEN_HOLD) {               /* DEFAULT */
         if (!s->field)
             return;
-        *s->field = s->def;
+        *(s->kind == S_THEME ? theme_sel() : s->field) = s->def;
         if (s->kind == S_THEME)
             theme_load_index(s->def), frame_invalidate(), ui_invalidate_all();
         if (s->fn)
@@ -1983,7 +1986,7 @@ static void ch_title(char *o, int cap) { snprintf(o, (unsigned)cap, "%s", s_edit
 static void ch_enter(int first)
 {
     if (first) {
-        s_orig = *s_edit->field;
+        s_orig = *(s_edit->kind == S_THEME ? theme_sel() : s_edit->field);
         s_preview = s_orig;
         nav_set_cursor(s_orig);
     }
@@ -2001,7 +2004,7 @@ static void ch_tick(void)
 static void ch_act(int a, int i)
 {
     if (a == A_OPEN) {
-        *s_edit->field = (uint8_t)i;
+        *(s_edit->kind == S_THEME ? theme_sel() : s_edit->field) = (uint8_t)i;
         if (s_edit->fn)
             s_edit->fn();
         config_save_later();

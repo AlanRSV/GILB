@@ -19,19 +19,34 @@
 
 static theme_t g_current;
 static int     g_have_current = 0;   /* lazy default to built-in 0 */
+/* Two lists of names: Modern's themes (index 0) and Retro's (1: Settings > Display > Look), each
+ * the built-ins then its folder's files. The current Look's is the one the picker and
+ * theme_load_index use (theme_set_look). */
 static char    s_names[THEME_MAX][THEME_NAME_MAX];
-static int     s_n = -1;             /* themes listed; -1: not yet (or the store was unavailable) */
+static char    s_rnames[THEME_RETRO_MAX][THEME_NAME_MAX];
+static int     s_cnt[2] = { -1, -1 };  /* themes listed; -1: not yet (or the store was unavailable) */
+static int     s_look;
+
+static char (*names_of(int r))[THEME_NAME_MAX] { return r ? s_rnames : s_names; }
+
+static int rescan_look(int r)
+{
+    s_cnt[r] = ap_theme_scan(r, names_of(r), r ? THEME_RETRO_MAX : THEME_MAX);
+    return s_cnt[r] < 0 ? 0 : s_cnt[r];
+}
 
 int theme_rescan(void)
 {
-    s_n = ap_theme_scan(s_names, THEME_MAX);
-    return s_n < 0 ? 0 : s_n;
+    return rescan_look(s_look);
 }
 
-static int listed(void)
+static int listed_look(int r)
 {
-    return s_n < 0 ? theme_rescan() : s_n;
+    return s_cnt[r] < 0 ? rescan_look(r) : s_cnt[r];
 }
+
+void theme_set_look(int retro) { s_look = retro ? 1 : 0; }
+int theme_look(void) { return s_look; }
 
 /* ASCII case-insensitive compare (theme names are ASCII by convention). */
 static int name_eq(const char *a, const char *b)
@@ -66,22 +81,34 @@ void theme_set(const theme_t *t)
 
 int theme_count(void)
 {
-    return listed();
+    return listed_look(s_look);
 }
 
 const char *theme_name(int i)
 {
-    return i >= 0 && i < listed() ? s_names[i] : 0;
+    return theme_name_look(s_look, i);
+}
+
+const char *theme_name_look(int retro, int i)
+{
+    int r = retro ? 1 : 0;
+
+    return i >= 0 && i < listed_look(r) ? names_of(r)[i] : 0;
 }
 
 int theme_index(const char *name)
 {
-    int i, n = listed();
+    return theme_index_look(s_look, name);
+}
+
+int theme_index_look(int retro, const char *name)
+{
+    int i, r = retro ? 1 : 0, n = listed_look(r);
 
     if (name == 0)
         return -1;
     for (i = 0; i < n; i++)
-        if (name_eq(s_names[i], name))
+        if (name_eq(names_of(r)[i], name))
             return i;
     return -2;
 }
@@ -90,9 +117,9 @@ int theme_load_index(int i)
 {
     theme_t t;
 
-    if (i < 0 || i >= listed())
+    if (i < 0 || i >= listed_look(s_look))
         return -1;
-    if (ap_theme_load(i, s_names[i], &t) != 0)
+    if (ap_theme_load(s_look, i, names_of(s_look)[i], &t) != 0)
         return -2;                   /* (the file went, or the store is unavailable: unchanged) */
     g_current = t;
     g_have_current = 1;
