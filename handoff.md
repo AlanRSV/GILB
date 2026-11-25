@@ -243,8 +243,10 @@ Still open:
      (checked: shows the release, its SHA-256 and the extra files). Release notes must not be
      hard-wrapped: GitHub keeps each line break (`release/NOTES.md` has one line per paragraph).
   - Next releases: commit, `sh release/build.sh` in WSL, fill `release/NOTES.md`'s placeholders into
-    `build/release/NOTES.md`, the user flashes it, then a new release. This PC has no `gh`: the release
-    was made in the browser pane (the user signs in and drags the files in; the notes go in by form fill).
+    `build/release/NOTES.md`, the user flashes it, then a new release with `gh release create <tag> --target <commit>
+    --title ... --notes-file build/release/NOTES.md build/release/{HIFIEC90.IMG,CJK.BIN,OFL.txt}` (the GitHub
+    CLI is installed and signed in since 2026-11-25; in Git Bash it may need
+    `PATH="$PATH:/c/Program Files/GitHub CLI"`). Publishing needs the user's yes.
 
 - **Second Echo Mini:** on GILB (941a0a0's image) since 2026-11-25; optional: run its self-test, copy
   `GILB/CJK.BIN` to it.
