@@ -91,14 +91,14 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 ## Memory: the main constraint
 
 - Core A's resident code must leave at least **3072 B free** (`AP_MIN_FREE`, lowered from 4096 on 2026-11-25,
-  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB build has **4488 B free** now,
-  1416 B above the floor (RAM: 948 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` builds need
+  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB build has **3988 B free** now,
+  916 B above the floor (RAM: 732 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` builds need
   `AP_MIN_FREE=0`.
 - New features go into **overlays**: swap-in code windows, opened through gates in `firmware/startup/ap_ovl.c`
   (`GATE`, `npx_ok()`). Files wholly in an overlay are placed by object name in `firmware/firmware_ap.ld`;
   mostly resident files tag their overlay functions `OVL_TEXT(<overlay>)` (`services/ovl.h`), so they can
   still use LTO. `NOCROSSREFS` stops resident code calling into an overlay. Room left:
-  - modes window (14 KB): viz about 2.8 KB free, npx about 0.8 KB, lay (layouts, and `config_load`) about 3.4 KB, usbdac 6.7 KB,
+  - modes window (14 KB): viz about 2.8 KB free, npx about 0.8 KB, lay (layouts, and `config_load`) about 1.7 KB, usbdac 6.7 KB,
     usbout 4.9 KB, dev 1 KB.
   - fonts window: about 3.6 KB, used as the CJK glyph cache.
   - lib window: about 390 B.
@@ -118,7 +118,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 | Fonts (blob `RCFONT2`) | `firmware/drivers/fonts/rechord_fonts.bin` and the generated `fonts_blob.c`; `drivers/text.c` (`F_PX`) |
 | GILB's own pixel font PX (ASCII, curly quotes, dashes) | `tools/gilb_pixfont.py`: edit a glyph's rows, then run `blob`; `look_font()` in `ui/frame.c` picks PX in Retro |
 | Japanese/Chinese/Korean glyphs | `tools/gilb_cjkfont.py` builds `GILB/CJK.BIN` (Fusion Pixel 12 px, Japanese style); `services/cjk_font.c`, cache in `drivers/text.c` |
-| Layouts (docs/LAYOUTS.md): Now Playing (`[np]`), list rows (`[list]`) and the header (`[header]`) from `GILB/LAYOUTS/*.txt`, Settings › Display › Layout per Look | `ui/layout.c` (lay overlay: parser, Now Playing's drawing, built-in Modern and Retro layouts, also `config_load`), `ui/layout.h`; parsed into `g_lay`, `g_lrow`, `g_lhdr` (`ui/screens.c`) by `ap_lay_load()`; rows drawn by `draw_row` in `ui/nav.c`, the header by `hdr_pass` in `ui/frame.c` (both resident); `GILB.CFG` `layout=`, `retro_layout=`; Echo Library `src/layouts.js` (a test checks its built-ins against `ui/layout.c`) and Themes › Layouts in `src/main.js` (Now Playing, Lists, Header) |
+| Layouts (docs/LAYOUTS.md): Now Playing (`[np]`), list rows (`[list]`), the header (`[header]`), questions, sliders and info pages (`[question]`, `[slider]`, `[info]`) from `GILB/LAYOUTS/*.txt`, Settings › Display › Layout per Look | `ui/layout.c` (lay overlay: parser, Now Playing's drawing, built-in Modern and Retro layouts, also `config_load`), `ui/layout.h`; parsed into `g_lay`, `g_lrow`, `g_lhdr` (`ui/screens.c`) by `ap_lay_load()`; rows drawn by `draw_row` in `ui/nav.c`, the header by `hdr_pass` in `ui/frame.c` (both resident); phase 3's screens parsed one at a time as shown (`lay_screen`, into `g_lscr`) and drawn by `lay_screen_draw` in `ui/nav.c` (resident); `GILB.CFG` `layout=`, `retro_layout=`; Echo Library `src/layouts.js` (a test checks its built-ins against `ui/layout.c`) and Themes › Layouts in `src/main.js` (Now Playing, Lists, Header, Question, Slider, Info page) |
 | Simulator screenshots | `sim/README.md`: `--headless --script FILE` presses keys and saves BMPs |
 | Library views (Albums grid, Years, ...) | `firmware/ui/nav.c`; index build in `lib_build.c` (index version 3) |
 | Self-test (Settings › System) | `firmware/services/selftest.c` (dev overlay) |
@@ -128,7 +128,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last firmware change is **2fc8d39**; Echo Library's is **13d227a**.
+Everything is committed and pushed. The last firmware change is **8194390**; Echo Library's is **08911af**.
 
 Done and confirmed on the device:
 
@@ -142,6 +142,7 @@ Done and confirmed on the device:
   (drag, resize, add); Echo Library's colours from a picture (0cb2e31)
 - Layouts phase 2 (2fc8d39; Echo Library 13d227a): every list's rows and the header drawn from layout files,
   edited in Echo Library; Retro's hand-written lists removed
+- Layouts phase 3a (8194390; Echo Library 08911af): questions, sliders and info pages from layout files
 - Retro's own themes (0b51e63; Echo Library 3d1156c): Settings › Display › Theme lists the current Look's
   themes, each Look remembers its own, and Echo Library's Themes page edits both
 - the self-test's audio step: 4 s a side, 2 s gap; its test feed now writes one 32-bit word a channel
@@ -158,9 +159,11 @@ Dropped or set aside:
 
 Still open:
 
-- **Layouts phase 3** (docs/LAYOUTS.md): questions, sliders, info pages, Lyrics, Up Next, Spectrum, the EQ
-  editor, Rename, the USB DAC screen. Resident code has 1416 B above the floor, so their drawing should stay
-  in overlays (lay has about 3.4 KB left) or replace the hand-drawn code it takes over.
+- **Layouts phase 3b** (docs/LAYOUTS.md): Lyrics, Up Next, Spectrum, the EQ editor, Rename, the USB DAC
+  screen. Resident code has 916 B above the floor and lay about 1.7 KB, mostly its built-in layouts' text:
+  move that out of lay first (a file, or packed). Lyrics, Up Next and Spectrum share the modes window with
+  lay, so parse their section (`ap_lay_screen`) before their own overlay loads; the DAC screen runs while
+  usbdac holds the window, so it needs a resident default (as `k_lq` in `ui/nav.c`).
 
 - **Second Echo Mini:** flash it (`docs/FLASHING.md`), run the self-test, copy `GILB/CJK.BIN` to it.
 
