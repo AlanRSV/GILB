@@ -231,7 +231,7 @@ Still open:
      Retro's themes, layouts, known limits, `THIRD_PARTY.md`.
   4. `release/build.sh` (run in WSL from the repo root: `sh release/build.sh`) does a clean 8 GB build
      with `REVERSE_LISTS=1` and no `FONT_IMG`, and puts `HIFIEC90.IMG`, `CJK.BIN` (from `build/CJK.BIN`),
-     `OFL.txt` and `SHA256SUMS.txt` in `build/release/`. The image's header carries `git describe`, so
+     `OFL.txt` and `SHA256SUMS.txt` in `build/release/`. The image's header carries the commit's short hash, so
      **rebuild after the release commit** and put that commit and the SHA-256s into `release/NOTES.md`
      (the draft notes: `COMMIT`, `SHA_IMG`, `SHA_CJK` placeholders). A trial build on 45a8a0f plus these
      uncommitted docs: 3992 B free; CJK.BIN's SHA-256 94AF030E060984F7582B92C83755B86653BD5E3B4EB378267D610455C83105E6

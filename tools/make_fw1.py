@@ -258,10 +258,11 @@ HDR_MAGIC = 0x76543210            # 0x00C
 
 
 def build_tag() -> bytes:
-    """The build's commit (git describe), as the header's build string (0x030, 16 bytes)."""
+    """The build's commit (its short hash), as the header's build string (0x030, 16 bytes). Not
+    `git describe`: after a tag it gives "v2026.11.25-3-g6d56408", which 15 bytes cut before the hash."""
     try:
-        r = subprocess.run(["git", "describe", "--always"], capture_output=True, text=True,   # (no --dirty:
-                           cwd=Path(__file__).resolve().parent, timeout=30)              # slow on /mnt/c)
+        r = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True,
+                           cwd=Path(__file__).resolve().parent, timeout=30)   # (no dirty check: slow on /mnt/c)
         tag = r.stdout.strip() if r.returncode == 0 else ""
     except (OSError, subprocess.SubprocessError):
         tag = ""

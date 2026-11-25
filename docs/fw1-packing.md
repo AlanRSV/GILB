@@ -365,7 +365,7 @@ stock 4.0.0 (`HIFIEC40.IMG`), RECHO 0.10.1 and GILB's image before the change:
 | 0x004, 0x008 | 0, 0 | 0x00100000, 1 | 0, 0 | a version (RECHO's 0.10.1, RefCFW 0.9.2 had 0x00090000, 2); stock leaves it 0 |
 | 0x00C | 0x76543210 | 0x76543210 | 0x76543210 | magic |
 | 0x010 | "Rockchip" | "RECHO" | "GILB" | brand |
-| 0x030 | "RKnano SDK 1.0" | a commit | the build's commit (`git describe`) | build string |
+| 0x030 | "RKnano SDK 1.0" | a commit | the build's commit (`git rev-parse --short=7 HEAD`) | build string |
 | 0x050..0x06C | 4, 0x200 x 4 | the same | the same | the part table's header |
 | 0x070..0x08C | its fw1 end, 2 parts: the two bitmap fonts (types 0x201C06, 0x211C06) | its fw1 end, 3 parts: the two fonts and its icons | our fw1 end, 0 parts | the part chain (section 10's "new facts" decode it) |
 | 0x0C8..0x150 | three optional part groups | 0 | 0 | stock's resources and section_3 |
