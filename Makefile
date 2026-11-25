@@ -210,6 +210,8 @@ TEXT_FONTS_MAX := 99840
 # the update file takes (tools/make_fw1.py --stock / --ref). Paths may contain spaces.
 STOCK_IMG ?= stock/3.7.0/ECHO MINI V3.7.0/HIFIEC37.IMG
 REF_IMG   ?= community/refcfw/HIFIEC90.IMG
+# FONT_IMG (optional): stock's bitmap fonts copied into the image. Nothing reads them since GILB's fonts
+# module; images shared with others leave them out (they are Snowsky's, 2026-11-25).
 cfw-img: $(CFW_ELF) $(COREB_BINS) $(TEXT_FONTS)
 	@test $$(wc -c < $(TEXT_FONTS)) -le $(TEXT_FONTS_MAX) || \
 	    { echo "$(TEXT_FONTS) is over the fonts window ($(TEXT_FONTS_MAX) B, firmware_ap.ld)"; exit 1; }

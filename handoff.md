@@ -53,8 +53,13 @@ make cfw-ap BOARD=8g REVERSE_LISTS=1
 Build the image to flash (`build/HIFIEC90.IMG`):
 
 ```
-make cfw-img BOARD=8g REVERSE_LISTS=1 STOCK_IMG='stock/4.0.0/ECHO MINI V4.0.0/HIFIEC40.IMG' REF_IMG='community/refcfw/RECHO-0.10.1/HIFIEC90.IMG' FONT_IMG='stock/4.0.0/ECHO MINI V4.0.0/HIFIEC40.IMG'
+make cfw-img BOARD=8g REVERSE_LISTS=1 STOCK_IMG='stock/4.0.0/ECHO MINI V4.0.0/HIFIEC40.IMG' REF_IMG='community/refcfw/RECHO-0.10.1/HIFIEC90.IMG'
 ```
+
+No `FONT_IMG` (since 2026-11-25): it copied Snowsky's stock bitmap fonts (about 2.1 MB) into the image, and
+nothing in the firmware reads them; an image without them was tested on the device (all text as before).
+Images for others (the download site, `site/`) must leave them out. Japanese, Chinese and Korean glyphs
+are `GILB/CJK.BIN` (Fusion Pixel, SIL OFL 1.1): attach it to a release as an optional file.
 
 Build the desktop simulator (`build/sim/rechord_sim_8g`), which runs the firmware's own UI code:
 

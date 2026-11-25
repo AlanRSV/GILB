@@ -196,8 +196,7 @@ Stock goes back the same way.
 ```bash
 export PATH=<arm-gnu-toolchain>/bin:$PATH
 make cfw-ap -j8                               # core A: build/cfw/rechord_ap.elf
-make cfw-img FONT_IMG=<stock MINIV390.IMG> \
-             REF_IMG=<RECHO 0.10.1 HIFIEC90.IMG>   # + core-B codec images and the fonts module
+make cfw-img REF_IMG=<RECHO 0.10.1 HIFIEC90.IMG>   # + core-B codec images and the fonts module
 # -> build/MINIV900.IMG (512 MB board); BOARD=8g -> build/HIFIEC90.IMG
 # REF_IMG: RECHO's image, the template of the update image's outer table (see Credits)
 # REVERSE_LISTS=1 (cfw-ap, cfw-img, sim): VOL- moves up in lists, VOL+ down
