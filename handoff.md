@@ -91,13 +91,14 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 ## Memory: the main constraint
 
 - Core A's resident code must leave at least **4096 B free** (`AP_MIN_FREE`); otherwise the link fails.
-  The 8 GB build has **4644 B free** now (RAM: 2512 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` builds need
+  The 8 GB build has **4120 B free** now, 24 B above the floor (RAM: 1520 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` builds need
   `AP_MIN_FREE=0` (about 1.9 KB free without LTO).
 - New features go into **overlays**: swap-in code windows, opened through gates in `firmware/startup/ap_ovl.c`
   (`GATE`, `npx_ok()`). Files wholly in an overlay are placed by object name in `firmware/firmware_ap.ld`;
   mostly resident files tag their overlay functions `OVL_TEXT(<overlay>)` (`services/ovl.h`), so they can
   still use LTO. `NOCROSSREFS` stops resident code calling into an overlay. Room left:
-  - modes window (14 KB): viz about 1.3 KB free, npx about 0.8 KB, usbdac 6.7 KB, usbout 4.9 KB, dev 1 KB.
+  - modes window (14 KB): viz about 2.8 KB free, npx about 0.8 KB, lay (layouts) about 7.4 KB, usbdac 6.7 KB,
+    usbout 4.9 KB, dev 1 KB.
   - fonts window: about 3.6 KB, used as the CJK glyph cache.
   - lib window: about 390 B.
 - LTO: the link compiles each function apart (`-flto-partition=max`) so a string shared by resident and
@@ -112,10 +113,11 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 | Settings file (`GILB.CFG`) | `firmware/services/config.c/.h`, `g_cfg` |
 | One-time move of `RECHORD/`, `RECHORD.CFG` to `GILB/` | `firmware/services/gilb_move.c` |
 | Themes: Modern built-ins Classic, Paper, Night, Contrast, Pink plus `GILB/THEMES/*.txt`; Retro's own built-ins LCD, Amber, Green LCD, Mono plus `GILB/THEMES/RETRO/*.txt` (three colours: glass, ink, highlight) | `firmware/theme/theme_store.c`, `theme.c` (two name lists, `theme_set_look`), `themes_builtin.c` (`theme_retro_derive`); `GILB.CFG` `theme=` and `retro_theme=`; Echo Library `src/themes.js` (`retroDerive`), `src/themepreview.js`, the Themes page's Modern / Retro switch in `src/main.js` |
-| Look: Modern or Retro (Settings › Display › Look) | `g_cfg.look`, `theme_apply()`; Retro Now Playing in `ui/retro.c`; year lookup in `ui/retro_tags.c`; header in `ui/frame.c` (`hdr_pass`); lists in `ui/nav.c` (`nav_retro_list`); grid in `nav_grid_draw` |
+| Look: Modern or Retro (Settings › Display › Look) | `g_cfg.look`, `theme_apply()`; Now Playing from layouts (below); year lookup in `ui/retro_tags.c` (lay overlay); header in `ui/frame.c` (`hdr_pass`); lists in `ui/nav.c` (`nav_retro_list`); grid in `nav_grid_draw` |
 | Fonts (blob `RCFONT2`) | `firmware/drivers/fonts/rechord_fonts.bin` and the generated `fonts_blob.c`; `drivers/text.c` (`F_PX`) |
 | GILB's own pixel font PX (ASCII, curly quotes, dashes) | `tools/gilb_pixfont.py`: edit a glyph's rows, then run `blob`; `look_font()` in `ui/frame.c` picks PX in Retro |
 | Japanese/Chinese/Korean glyphs | `tools/gilb_cjkfont.py` builds `GILB/CJK.BIN` (Fusion Pixel 12 px, Japanese style); `services/cjk_font.c`, cache in `drivers/text.c` |
+| Layouts (docs/LAYOUTS.md): Now Playing from `GILB/LAYOUTS/*.txt`, Settings › Display › Layout per Look | `ui/layout.c` (lay overlay: parser, drawing, built-in Modern and Retro layouts), `ui/layout.h`; `g_lay` and `lay_inval` in `ui/screens.c`; `GILB.CFG` `layout=`, `retro_layout=`; Echo Library `src/layouts.js` and Themes › Layouts in `src/main.js` |
 | Simulator screenshots | `sim/README.md`: `--headless --script FILE` presses keys and saves BMPs |
 | Library views (Albums grid, Years, ...) | `firmware/ui/nav.c`; index build in `lib_build.c` (index version 3) |
 | Self-test (Settings › System) | `firmware/services/selftest.c` (dev overlay) |
@@ -125,7 +127,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last firmware change is **0b51e63**; Echo Library's is **3d1156c**.
+Everything is committed and pushed. The last firmware change is **30eefd3**; Echo Library's is **fe358c2**.
 
 Done and confirmed on the device:
 
@@ -135,6 +137,8 @@ Done and confirmed on the device:
 - Retro look on every screen: lists, menus, grid, header, Now Playing and its Lyrics / Up Next / Spectrum
   views, questions, sliders, info pages, Custom EQ, Rename, USB DAC (a24b054, c2c37fc, f3f2562), and Now
   Playing's darker panel in a light rim (9764150)
+- Layouts phase 1 (30eefd3; Echo Library fe358c2): Now Playing drawn from layout files, edited in Echo Library
+  (drag, resize, add); Echo Library's colours from a picture (0cb2e31)
 - Retro's own themes (0b51e63; Echo Library 3d1156c): Settings › Display › Theme lists the current Look's
   themes, each Look remembers its own, and Echo Library's Themes page edits both
 - the self-test's audio step: 4 s a side, 2 s gap; its test feed now writes one 32-bit word a channel
@@ -150,6 +154,11 @@ Dropped or set aside:
 - **Hardware decoding:** closed. The FFT output can't be read back. The FLAC block stays on.
 
 Still open:
+
+- **Layouts phase 2** (docs/LAYOUTS.md): the header and the list rows from layouts. Resident code has only 24 B
+  above the floor, so the engine must move into main memory paid for by removing the hand-drawn header and
+  list code it replaces (`ui/frame.c` `hdr_pass`, `ui/nav.c` rows and `nav_retro_list`). Phase 3: the remaining
+  screens.
 
 - **Second Echo Mini:** flash it (`docs/FLASHING.md`), run the self-test, copy `GILB/CJK.BIN` to it.
 
