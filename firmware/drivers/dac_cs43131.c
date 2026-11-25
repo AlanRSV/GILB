@@ -832,13 +832,13 @@ phase1:
     dac_map_write(0x00040019, 0x0A);
     dac_map_write(0x00050000, 0x00);
     dac_map_write(0x00050001, 0x00);
-    /* Per-chip output channel (ref FUN_03055ecc writes 7 to chip 0, 15 to chip 1): swapped here, chip 0
-     * 15 and chip 1 7, as below. With the ref's values every source came out mirrored on this player:
-     * music too (a left-only test track was heard in the right ear; 2026-11-24). */
-    dac_map_write_chan(0, 0x0005000A, 0x0F);
-    dac_map_write_chan(0, 0x0005000B, 0x0F);
-    dac_map_write_chan(1, 0x0005000A, 0x07);
-    dac_map_write_chan(1, 0x0005000B, 0x07);
+    /* Per-chip output channel (ref FUN_03055ecc): chip 0 (left) 7, chip 1 (right) 15. Right as it is:
+     * a left-only test track plays in the left ear (2026-11-24; a swap here, b741491, was reverted:
+     * the earphones in that test were in backwards). */
+    dac_map_write_chan(0, 0x0005000A, 0x07);
+    dac_map_write_chan(0, 0x0005000B, 0x07);
+    dac_map_write_chan(1, 0x0005000A, 0x0F);
+    dac_map_write_chan(1, 0x0005000B, 0x0F);
     dac_map_write(0x00090000, 0x02);
     dac_map_write(0x00010009, 0xFF);   /* ref FUN_03056a98(255): mute/max  */
     dac_map_write(0x00090003, 0xEC);
@@ -896,10 +896,10 @@ phase2:
     dac_gpio_out(1, 4, 1);            /* amp enable again (ref)           */
     dac_map_write(0x00010009, 0x00);   /* unmute                          */
     /* Ref FUN_03055ecc again right before the feed. */
-    dac_map_write_chan(0, 0x0005000A, 0x0F);
-    dac_map_write_chan(0, 0x0005000B, 0x0F);
-    dac_map_write_chan(1, 0x0005000A, 0x07);
-    dac_map_write_chan(1, 0x0005000B, 0x07);
+    dac_map_write_chan(0, 0x0005000A, 0x07);
+    dac_map_write_chan(0, 0x0005000B, 0x07);
+    dac_map_write_chan(1, 0x0005000A, 0x0F);
+    dac_map_write_chan(1, 0x0005000B, 0x0F);
     dac_delay_ms(10);
 
     STEP(DAC_STEP_DONE);
