@@ -91,17 +91,18 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 ## Memory: the main constraint
 
 - Core A's resident code must leave at least **3072 B free** (`AP_MIN_FREE`, lowered from 4096 on 2026-11-25,
-  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB build has **3988 B free** now,
-  916 B above the floor (RAM: 732 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` builds need
+  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB build has **3448 B free** now,
+  376 B above the floor (RAM: 604 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` builds need
   `AP_MIN_FREE=0`.
 - New features go into **overlays**: swap-in code windows, opened through gates in `firmware/startup/ap_ovl.c`
   (`GATE`, `npx_ok()`). Files wholly in an overlay are placed by object name in `firmware/firmware_ap.ld`;
   mostly resident files tag their overlay functions `OVL_TEXT(<overlay>)` (`services/ovl.h`), so they can
   still use LTO. `NOCROSSREFS` stops resident code calling into an overlay. Room left:
-  - modes window (14 KB): viz about 2.8 KB free, npx about 0.8 KB, lay (layouts, and `config_load`) about 1.7 KB, usbdac 6.7 KB,
+  - modes window (14 KB): viz about 3.1 KB free, npx about 2.1 KB, lay (layouts, and `config_load`) about 3.7 KB, usbdac 6.7 KB,
     usbout 4.9 KB, dev 1 KB.
+  - library phase window (12 KB): lwalk and lbuild by turns, and layb (the built-in layouts' text, 7.2 KB).
   - fonts window: about 3.6 KB, used as the CJK glyph cache.
-  - lib window: about 390 B.
+  - lib window: about 630 B.
 - LTO: the link compiles each function apart (`-flto-partition=max`) so a string shared by resident and
   overlay code stays resident. `ap_startup.o`, `watchdog.o` and `bootguard.o` stay out of LTO (inline asm;
   the `.noinit` crash record at `0x0302FFC8`).
@@ -118,7 +119,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 | Fonts (blob `RCFONT2`) | `firmware/drivers/fonts/rechord_fonts.bin` and the generated `fonts_blob.c`; `drivers/text.c` (`F_PX`) |
 | GILB's own pixel font PX (ASCII, curly quotes, dashes) | `tools/gilb_pixfont.py`: edit a glyph's rows, then run `blob`; `look_font()` in `ui/frame.c` picks PX in Retro |
 | Japanese/Chinese/Korean glyphs | `tools/gilb_cjkfont.py` builds `GILB/CJK.BIN` (Fusion Pixel 12 px, Japanese style); `services/cjk_font.c`, cache in `drivers/text.c` |
-| Layouts (docs/LAYOUTS.md): Now Playing (`[np]`), list rows (`[list]`), the header (`[header]`), questions, sliders and info pages (`[question]`, `[slider]`, `[info]`) from `GILB/LAYOUTS/*.txt`, Settings › Display › Layout per Look | `ui/layout.c` (lay overlay: parser, Now Playing's drawing, built-in Modern and Retro layouts, also `config_load`), `ui/layout.h`; parsed into `g_lay`, `g_lrow`, `g_lhdr` (`ui/screens.c`) by `ap_lay_load()`; rows drawn by `draw_row` in `ui/nav.c`, the header by `hdr_pass` in `ui/frame.c` (both resident); phase 3's screens parsed one at a time as shown (`lay_screen`, into `g_lscr`) and drawn by `lay_screen_draw` in `ui/nav.c` (resident); `GILB.CFG` `layout=`, `retro_layout=`; Echo Library `src/layouts.js` (a test checks its built-ins against `ui/layout.c`) and Themes › Layouts in `src/main.js` (Now Playing, Lists, Header, Question, Slider, Info page) |
+| Layouts (docs/LAYOUTS.md): Now Playing (`[np]`), list rows (`[list]`), the header (`[header]`), questions, sliders, info pages, Lyrics, Up Next, Spectrum, the EQ editor, the name entry (`[question]`, `[slider]`, `[info]`, `[lyrics]`, `[next]`, `[spectrum]`, `[eq]`, `[rename]`) from `GILB/LAYOUTS/*.txt`, Settings › Display › Layout per Look | `ui/layout.c` (lay overlay: parser, Now Playing's drawing, also `config_load`), `ui/layout_text.c` (the built-in Modern and Retro layouts: the layb overlay, `ap_lay_builtin`), `ui/layout.h`; parsed into `g_lay`, `g_lrow`, `g_lhdr` (`ui/screens.c`) by `ap_lay_load()`; rows drawn by `draw_row` in `ui/nav.c`, the header by `hdr_pass` in `ui/frame.c` (both resident); phase 3's screens parsed one at a time as shown (`lay_screen`, into `g_lscr`) and drawn by `lay_screen_draw` in `ui/nav.c` (resident); the views' and the EQ's sections parsed before their overlay loads (`ap_npx_draw`, `ap_eq` in `startup/ap_ovl.c`); Spectrum's and the EQ's bars drawn by `ui/spectrum.c`, `ui/eq_page.c`; the USB DAC screen stays hand-drawn (`dac_draw`); `GILB.CFG` `layout=`, `retro_layout=`; Echo Library `src/layouts.js` (a test checks its built-ins against `ui/layout_text.c`) and Themes › Layouts in `src/main.js` (every screen above) |
 | Simulator screenshots | `sim/README.md`: `--headless --script FILE` presses keys and saves BMPs |
 | Library views (Albums grid, Years, ...) | `firmware/ui/nav.c`; index build in `lib_build.c` (index version 3) |
 | Self-test (Settings › System) | `firmware/services/selftest.c` (dev overlay) |
@@ -128,7 +129,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last firmware change is **8194390**; Echo Library's is **08911af**.
+Everything is committed and pushed. The last firmware change is **891844f**; Echo Library's is **738be7b**.
 
 Done and confirmed on the device:
 
@@ -143,6 +144,9 @@ Done and confirmed on the device:
 - Layouts phase 2 (2fc8d39; Echo Library 13d227a): every list's rows and the header drawn from layout files,
   edited in Echo Library; Retro's hand-written lists removed
 - Layouts phase 3a (8194390; Echo Library 08911af): questions, sliders and info pages from layout files
+- Layouts phase 3b (891844f; Echo Library 738be7b): Lyrics, Up Next, Spectrum, the EQ editor and the name
+  entry from layout files; the built-ins moved to the layb overlay. A too-wide pixel-font line switches to
+  its alt font only with `wide=alt` (Retro's questions); without it the line is cut, as before
 - Retro's own themes (0b51e63; Echo Library 3d1156c): Settings › Display › Theme lists the current Look's
   themes, each Look remembers its own, and Echo Library's Themes page edits both
 - the self-test's audio step: 4 s a side, 2 s gap; its test feed now writes one 32-bit word a channel
@@ -159,11 +163,9 @@ Dropped or set aside:
 
 Still open:
 
-- **Layouts phase 3b** (docs/LAYOUTS.md): Lyrics, Up Next, Spectrum, the EQ editor, Rename, the USB DAC
-  screen. Resident code has 916 B above the floor and lay about 1.7 KB, mostly its built-in layouts' text:
-  move that out of lay first (a file, or packed). Lyrics, Up Next and Spectrum share the modes window with
-  lay, so parse their section (`ap_lay_screen`) before their own overlay loads; the DAC screen runs while
-  usbdac holds the window, so it needs a resident default (as `k_lq` in `ui/nav.c`).
+- **Layouts:** done but for the USB DAC screen, which stays hand-drawn (its overlay holds the window, and
+  it needs covers and badges the resident drawer lacks). Resident code has only 376 B above the floor:
+  anything new must go into an overlay or replace resident code.
 
 - **Second Echo Mini:** flash it (`docs/FLASHING.md`), run the self-test, copy `GILB/CJK.BIN` to it.
 
