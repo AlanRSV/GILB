@@ -233,7 +233,9 @@ AP_OVL_WRAP := $(addprefix -Wl$(comma)--wrap=,usb_uac_key \
 # be resident (boot, recovery, a driver). Measured over main's last 60 commits (2026-10-15..18):
 # resident code grew 96.9 KB, per commit median 880 B, 75th percentile 2552 B, 90th 6956 B; 4 KiB
 # lets any ordinary change land and stops a feature-sized one that belongs in an overlay.
-AP_MIN_FREE ?= 4096
+# 3 KiB since 2026-11-25 (the user's choice): layouts phase 2 (docs/LAYOUTS.md) draws the header and the
+# lists, which every screen shows, so its engine cannot be an overlay; 3 KiB still holds an urgent fix.
+AP_MIN_FREE ?= 3072
 
 # Link: no toolchain libc/startup -- the firmware provides its own libc
 # sources (AP_LIBC_SRCS); -lgcc supplies the compiler runtime

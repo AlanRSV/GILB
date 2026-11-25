@@ -24,6 +24,7 @@
 #include "services/screenshot.h"
 #include "player.h"
 #include "services/ovl.h"              /* OVL_TEXT: functions in overlays */
+#include "ui/layout.h"
 
 const input_event_t *g_ev;
 int g_locked;
@@ -39,8 +40,11 @@ static int s_n;
 typedef struct { uint16_t id, num; uint8_t icon, flags; char t[160]; char v[48]; } rc_t;
 static struct {                           /* the visible rows, fitted */
     int n, y0, nr;
-    rc_t c[NROWS];
+    rc_t c[NROWS_MAX];
 } L;
+
+/* a list row's height: its layout's (ui/layout.h g_lrow_h), but the grid's and a question's */
+#define RH (nav_top() && nav_top()->kind != PK_LIST ? ROW_H : g_lrow_h)
 
 static ent_t *top(void) { return s_n ? &s_nav[s_n - 1] : NULL; }
 const page_t *nav_top(void) { return s_n ? s_nav[s_n - 1].p : NULL; }
@@ -57,7 +61,7 @@ static void entered(int first)
 
     if (is_list(p)) {
         L.y0 = p->kind == PK_QUESTION ? 64 : LIST_Y;
-        L.nr = p->kind == PK_QUESTION || p->kind == PK_GRID ? 4 : NROWS;
+        L.nr = p->kind == PK_QUESTION || p->kind == PK_GRID ? 4 : NROWS * ROW_H / g_lrow_h;   /* (147 px of rows) */
     }
     s_force = 1;
     if (p && p->enter)
@@ -164,12 +168,12 @@ static void inval_slot(int s)
     if (s >= 0 && s < L.nr && nav_top() && nav_top()->kind == PK_GRID)
         ui_invalidate((s & 1) * 160, LIST_Y + (s >> 1) * 73, (s & 1) * 160 + 159, LIST_Y + (s >> 1) * 73 + 72);
     else if (s >= 0 && s < L.nr)
-        ui_invalidate(0, L.y0 + s * ROW_H, 315, L.y0 + s * ROW_H + ROW_H - 1);
+        ui_invalidate(0, L.y0 + s * RH, 315, L.y0 + s * RH + RH - 1);
 }
 
 static void inval_list(void)
 {
-    ui_invalidate(0, L.y0, DISPLAY_W - 1, L.y0 + (nav_top() && nav_top()->kind == PK_GRID ? 2 * 73 : L.nr * ROW_H) - 1);
+    ui_invalidate(0, L.y0, DISPLAY_W - 1, L.y0 + (nav_top() && nav_top()->kind == PK_GRID ? 2 * 73 : L.nr * RH) - 1);
 }
 
 static void clamp_view(ent_t *e)
@@ -257,140 +261,194 @@ void list_move(int d, int wrap)
     nav_keys_changed();
 }
 
+/* ---- the rows, from the Look's layout (ui/layout.h g_lrow, docs/LAYOUTS.md [list]) ------------------
+ * The layout says where a row's parts go: the cursor's highlight (select), its mark (the section icon,
+ * the playing speaker, the radio, the track number), the value at the right, the label before it, the
+ * chevron, boxes and frames, the scrollbar; the lay overlay parses it, this draws it (every mode shows
+ * lists). Until a layout is parsed (or when it cannot be): Modern's row, k_row. */
+static const lay_el_t k_row[] = {
+    { LK_SELECT, 0, 0, 0, 0, 0, 316, 21, 0xFF, 0xFF, 0, 0 },
+    { LK_MARK, 0, LFN_S8, 0, 6, 5, 2, 18, 0xFF, 0xFF, 15, 0 },
+    { LK_VALUE, 0, LFN_B13, 0, 24, 15, 286, 0, 0xFF, 0xFF, 8, 0 },
+    { LK_LABEL, 0, LFN_B13, 0, 24, 15, 286, 0, 0xFF, 0xFF, LFN_M13 + 1, 0 },
+    { LK_CHEV, 0, 0, 0, 304, 5, 0, 0, 0xFF, 0xFF, 10, 0 },
+    { LK_SCROLL, 0, 0, 0, 316, 0, 0, 0, 0xFF, 0xFF, 0, 0 },
+};
+
+static const lay_el_t *row_els(int *n)
+{
+    if (!g_lrow_n) {
+        *n = (int)(sizeof k_row / sizeof k_row[0]);
+        return k_row;
+    }
+    *n = g_lrow_n;
+    return g_lrow;
+}
+
+static const font_t *const k_lfont[] = { &font_s8, &font_b13, &font_m13, &font_t17, &font_d28, &font_px };
+
+const struct font *lay_font(unsigned f, unsigned alt, const char *s)
+{
+    const font_t *ft = k_lfont[f < 6u ? f : 1u];
+
+    if (ft == &font_px && !text_has_all(&font_px, s))
+        return k_lfont[alt && alt <= 6u ? alt - 1u : 1u];
+    return ft;
+}
+
+/* An element's font for s: px falls back to b13 (one row higher) for what it lacks. */
+static const font_t *row_font(unsigned f, const char *s, int *y)
+{
+    const font_t *ft = k_lfont[f < 6u ? f : 1u];
+
+    if (ft == &font_px && !text_has_all(&font_px, s)) {
+        (*y)--;
+        return &font_b13;
+    }
+    return ft;
+}
+
 static void draw_row(int s, int y, int sel)
 {
     const theme_t *t = T;
     const rc_t *c = &L.c[s];
-    int off = c->flags & R_OFF, right = 310, vw = 0;
-    uint16_t fg = sel ? t->sel_text : off ? t->text_off : t->text;
-    uint16_t dim = sel ? t->sel_text : t->text_dim;
-    uint16_t ic = sel ? t->sel_text : c->flags & R_PLAYING ? t->accent : off ? t->text_off : t->text_dim;
+    int n, off = c->flags & R_OFF, take = 0, vleft = 0x7FFF, mark_r = -1;
+    const lay_el_t *els = row_els(&n), *val = NULL;
 
-    ui_fill(0, y, 316, ROW_H, sel ? t->sel_bg : t->background);
-    if (c->flags & R_PLAYING) {
-        ui_icon(ICON_SPEAKER, 6, y + 5, ic);
-    } else if (c->flags & R_RADIO) {
-        ui_icon(c->flags & R_ON ? ICON_RADIO_ON : ICON_RADIO_OFF, 6, y + 5,
-                sel ? t->sel_text : c->flags & R_ON ? t->accent : t->text_dim);
-    } else if (c->flags & R_NUM) {
-        char n[8];
+    for (int i = 0; i < n; i++)          /* the chevron's room and the value's place, for the label */
+        if (els[i].kind == LK_CHEV && (c->flags & R_CHEV))
+            take = els[i].a;
+        else if (els[i].kind == LK_VALUE)
+            val = &els[i];
+    if (val && c->v[0]) {
+        int yv = y + val->y, w = text_width(row_font(val->font, c->v, &yv), c->v, -1);
 
-        snprintf(n, sizeof n, "%u", c->num);
-        ui_text(&font_s8, 2, y + 15, 18, 2, n, dim, y, y + ROW_H - 1);
-    } else if (c->icon != NO_ICON) {
-        ui_icon(c->icon, 6, y + 5, ic);
+        w = val->b && w > val->b ? val->b : w;
+        vleft = val->x + val->w - take - w - val->a;
     }
-    if (c->flags & R_CHEV) {
-        ui_icon(ICON_CHEV, right - 6, y + 5, dim);
-        right -= 10;
+    for (int i = 0; i < n; i++) {
+        const lay_el_t *e = &els[i];
+        int x = e->x, yb = y + e->y;
+        const font_t *f;
+
+        switch (e->kind) {
+        case LK_SELECT:
+            if (sel)
+                ui_fill(x, y + e->y, e->w, e->h, lay_color(e->color, t->sel_bg));
+            break;
+        case LK_BOX:
+            ui_fill(x, y + e->y, e->w, e->h, lay_color(e->color, t->divider));
+            break;
+        case LK_FRAME:
+            ui_frame_rect(x, y + e->y, e->w, e->h, lay_color(e->color, t->divider));
+            break;
+        case LK_MARK: {
+            uint16_t base = sel ? t->sel_text : off && e->color == LCOL_DEF ? t->text_off : lay_color(e->color, t->text_dim),
+                     on = sel ? t->sel_text : lay_color(e->color2, t->accent);
+
+            if (c->flags & R_PLAYING) {
+                ui_icon(ICON_SPEAKER, x, yb, on);
+                mark_r = x + 12;
+            } else if (c->flags & R_RADIO) {
+                ui_icon(c->flags & R_ON ? ICON_RADIO_ON : ICON_RADIO_OFF, x, yb, c->flags & R_ON ? on : base);
+                mark_r = x + 12;
+            } else if (c->flags & R_NUM) {
+                char nb[8];
+                int ny = y + e->a;
+
+                snprintf(nb, sizeof nb, "%u", c->num);
+                f = row_font(e->font, nb, &ny);
+                ui_text(f, e->w, ny, e->h, 2, nb, sel ? t->sel_text : lay_color(e->color, t->text_dim), y, y + RH - 1);
+                mark_r = e->w + e->h;
+            } else if (c->icon != NO_ICON && !(e->flags & LG_SOLID)) {
+                ui_icon(c->icon, x, yb, base);
+            }
+            break;
+        }
+        case LK_VALUE:
+            if (c->v[0]) {
+                int w;
+
+                f = row_font(e->font, c->v, &yb);
+                w = vleft + e->a;
+                ui_text(f, w, yb, e->x + e->w - take - w, 0, c->v,
+                        sel ? t->sel_text : off ? t->text_off : lay_color(e->color, t->value), y, y + RH - 1);
+            }
+            break;
+        case LK_LABEL: {
+            int r = e->x + e->w - take;
+
+            if (e->b && mark_r >= 0 && x < mark_r + e->b)
+                x = mark_r + e->b;
+            if (vleft < r)
+                r = vleft;
+            f = (c->flags & R_BOLD) && e->a ? k_lfont[e->a - 1u < 6u ? e->a - 1u : 1u] : row_font(e->font, c->t, &yb);
+            ui_text(f, x, yb, r - x, 0, c->t, sel ? t->sel_text : off ? t->text_off : lay_color(e->color, t->text),
+                    y, y + RH - 1);
+            break;
+        }
+        case LK_CHEV:
+            if (c->flags & R_CHEV) {
+                uint16_t cc = sel ? t->sel_text : lay_color(e->color, t->text_dim);
+
+                if (e->flags & LG_ALT)
+                    ui_text(k_lfont[e->font < 6u ? e->font : 1u], x, yb, 9, 0, ">", cc, y, y + RH - 1);
+                else
+                    ui_icon(ICON_CHEV, x, yb, cc);
+            }
+            break;
+        }
     }
-    if (c->v[0]) {
-        vw = text_width(&font_b13, c->v, -1);
-        ui_text(&font_b13, right - vw, y + 15, vw, 0, c->v, sel ? t->sel_text : off ? t->text_off : t->value,
-                y, y + ROW_H - 1);
-        vw += 8;
-    }
-    ui_text(c->flags & R_BOLD ? &font_m13 : &font_b13, 24, y + 15, right - vw - 24, 0, c->t, fg, y, y + ROW_H - 1);
 }
 
 int ap_grid_draw(void);                   /* startup/ap_ovl.c: nav_grid_draw in the viz overlay */
-int ap_retro_list(void);                  /* startup/ap_ovl.c: nav_retro_list in the viz overlay; 0: not now */
+
+/* the scrollbar: line (a 1 px track, a 3 px thumb) or outline (a frame, a 2 px thumb in it), at x */
+static void scrollbar(const lay_el_t *e, int h)
+{
+    const theme_t *t = T;
+    const ent_t *en = top();
+    int o = e->flags & LG_ALT, in = o ? 6 : 4, th = (h - in) * L.nr / L.n, y;
+
+    th = th < 8 ? 8 : th;
+    y = L.y0 + in / 2 + (h - in - th) * en->top / (L.n - L.nr);
+    if (o) {
+        ui_frame_rect(e->x, L.y0 + 1, 6, h - 2, lay_color(e->color2, t->text));
+        ui_fill(e->x + 2, y, 2, th, lay_color(e->color, t->text));
+    } else {
+        ui_fill(e->x + 1, L.y0 + 2, 1, h - 4, lay_color(e->color2, t->divider));
+        ui_fill(e->x, y, 3, th, lay_color(e->color, t->scroll));
+    }
+}
 
 static void list_draw(void)
 {
     const theme_t *t = T;
     const ent_t *e = top();
-    int h = L.nr * ROW_H;
+    int h = L.nr * RH, n;
+    const lay_el_t *els;
 
+    if (g_lay_key < 0 && ap_lay_load() && nav_top()->kind == PK_LIST && L.nr != NROWS * ROW_H / g_lrow_h) {
+        L.nr = NROWS * ROW_H / g_lrow_h;  /* (a layout with another row height: the rows refitted, drawn again) */
+        list_reload();
+        ui_invalidate_all();
+        return;
+    }
     if (nav_top()->kind == PK_GRID && ap_grid_draw())
-        return;                           /* (else as a list of four) */
-    if (g_cfg.look && nav_top()->kind != PK_GRID && ap_retro_list())
-        return;                           /* Look: Retro (nav_retro_list, the viz overlay) */
-
+        return;                           /* (else as a list of four; the layout parsed first: its overlay is
+                                             the grid's window, which must be the last to load) */
     ui_fill(0, L.y0, DISPLAY_W, h, t->background);
     if (!L.n) {
-        ui_text(&font_b13, 0, L.y0 + 50, DISPLAY_W, 1, "Nothing here", t->text_dim, L.y0, L.y0 + h - 1);
+        ui_text(g_cfg.look ? &font_px : &font_b13, 0, L.y0 + 50, DISPLAY_W, 1, "Nothing here",
+                g_cfg.look ? t->text : t->text_dim, L.y0, L.y0 + h - 1);
         return;
     }
     for (int s = 0; s < L.nr && e->top + s < L.n; s++)
-        draw_row(s, L.y0 + s * ROW_H, e->top + s == e->cur);
-    if (L.n > L.nr) {
-        int th = (h - 4) * L.nr / L.n, y;
-
-        th = th < 8 ? 8 : th;
-        y = L.y0 + 2 + (h - 4 - th) * e->top / (L.n - L.nr);
-        ui_fill(317, L.y0 + 2, 1, h - 4, t->divider);
-        ui_fill(316, y, 3, th, t->scroll);
-    }
-}
-
-/* ---- Look: Retro's lists (the viz overlay, by section: firmware_ap.ld; through ap_retro_list) -------
- * An old LCD player's list: the rows in GILB's pixel font (PX), no section icons (the playing mark,
- * the radio and the track number stay: they say something), a pixel ">" for the rows that open,
- * the cursor's row inverted, an outlined scrollbar with a solid thumb (as Retro's progress bar).
- * A row's text was fitted for B13 (fill): fitted again for PX here. A text PX lacks (accents, a
- * "·") keeps B13. Same rows and places as Modern's, so its redraw rectangles hold. */
-OVL_TEXT(viz) static int nav_retro_px(const char *s)    /* PX holds it all (drivers/text.h text_has_all) */
-{
-    return text_has_all(&font_px, s);
-}
-
-OVL_TEXT(viz) static void nav_retro_row(int s, int y, int sel)
-{
-    const theme_t *t = T;
-    const rc_t *c = &L.c[s];
-    int off = c->flags & R_OFF, x = 8, right = 306, vw = 0;
-    uint16_t fg = sel ? t->sel_text : off ? t->text_off : t->text;
-    const font_t *f;
-    char b[160];
-
-    ui_fill(0, y, 312, ROW_H, sel ? t->sel_bg : t->background);
-    if (c->flags & (R_PLAYING | R_RADIO)) {
-        ui_icon(c->flags & R_PLAYING ? ICON_SPEAKER : c->flags & R_ON ? ICON_RADIO_ON : ICON_RADIO_OFF, 6, y + 5, fg);
-        x = 24;
-    } else if (c->flags & R_NUM) {
-        snprintf(b, sizeof b, "%u", c->num);
-        ui_text(&font_px, 0, y + 16, 24, 2, b, fg, y, y + ROW_H - 1);
-        x = 30;
-    }
-    if (c->flags & R_CHEV) {
-        ui_text(&font_px, right - 7, y + 16, 9, 0, ">", fg, y, y + ROW_H - 1);
-        right -= 14;
-    }
-    if (c->v[0]) {
-        f = nav_retro_px(c->v) ? &font_px : &font_b13;
-        text_fit(f, c->v, -1, 140, b, sizeof b);
-        vw = text_width(f, b, -1);
-        ui_text(f, right - vw, f == &font_px ? y + 16 : y + 15, vw, 0, b, fg, y, y + ROW_H - 1);
-        vw += 10;
-    }
-    f = nav_retro_px(c->t) ? &font_px : &font_b13;
-    text_fit(f, c->t, -1, right - vw - x, b, sizeof b);
-    ui_text(f, x, f == &font_px ? y + 16 : y + 15, right - vw - x, 0, b, fg, y, y + ROW_H - 1);
-}
-
-OVL_TEXT(viz) int nav_retro_list(void)
-{
-    const theme_t *t = T;
-    const ent_t *e = top();
-    int h = L.nr * ROW_H;
-
-    ui_fill(0, L.y0, DISPLAY_W, h, t->background);
-    if (!L.n) {
-        ui_text(&font_px, 0, L.y0 + 50, DISPLAY_W, 1, "Nothing here", t->text, L.y0, L.y0 + h - 1);
-        return 1;
-    }
-    for (int s = 0; s < L.nr && e->top + s < L.n; s++)
-        nav_retro_row(s, L.y0 + s * ROW_H, e->top + s == e->cur);
-    if (L.n > L.nr) {
-        int th = (h - 6) * L.nr / L.n, y;
-
-        th = th < 8 ? 8 : th;
-        y = L.y0 + 3 + (h - 6 - th) * e->top / (L.n - L.nr);
-        ui_frame_rect(313, L.y0 + 1, 6, h - 2, t->text);
-        ui_fill(315, y, 2, th, t->text);
-    }
-    return 1;
+        draw_row(s, L.y0 + s * RH, e->top + s == e->cur);
+    els = row_els(&n);
+    for (int i = 0; L.n > L.nr && i < n; i++)
+        if (els[i].kind == LK_SCROLL)
+            scrollbar(&els[i], h);
 }
 
 /* ---- PK_GRID: a list as a 2 x 2 grid of covers (Library > Albums) -----------------------------------
@@ -451,7 +509,7 @@ OVL_TEXT(viz) void nav_grid_draw(void)
         int x = (s & 1) * GRID_CW, y = GRID_Y0 + (s >> 1) * GRID_CH, sel = e->top + s == e->cur;
         int cy0 = y, cy1 = y + GRID_CH - 1, ty;
         text_line_t ln[2];
-        const font_t *fn = r && nav_retro_px(c->t) ? &font_px : &font_b13, *fv = r ? &font_px : &font_b13;
+        const font_t *fn = r && text_has_all(&font_px, c->t) ? &font_px : &font_b13, *fv = r ? &font_px : &font_b13;
         int nl = text_wrap(fn, c->t, -1, 84, 2, ln);
         char b[100];
         const fs_ref_t *cv = &g_grid_cover[(e->top + s) & 3];

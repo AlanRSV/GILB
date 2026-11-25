@@ -36,6 +36,7 @@
 #include "services/fs_target.h"
 #include "ui/np_extra.h"
 #include "ui/layout.h"
+#include "services/config.h"
 #include "ui/ui.h"
 #include "theme/theme.h"
 #include "theme/theme_priv.h"
@@ -441,14 +442,13 @@ typedef struct {
     int (*theme_load)(int retro, int i, const char *name, theme_t *out);
     int (*gilb_move)(int vol);                                    /* services/gilb_move.c */
     int (*cpuclk_log)(void);                                      /* services/cpuclk.c: the self-test's log */
-    int (*retro_list)(void);                                      /* ui/nav.c: Look: Retro's lists */
     void (*sd_test)(void);                                        /* services/sd_selftest.c */
     void (*clock)(void);                                          /* services/clock_set.c: the time of day */
 } viz_api_t;
-int gilb_move(int vol), cpuclk_log_selftest(void), nav_retro_list(void);
+int gilb_move(int vol), cpuclk_log_selftest(void);
 void sd_selftest(void);
 static const viz_api_t k_viz OVL_API(viz) = { viz_draw, viz_tick, nav_grid_draw, theme_store_scan, theme_store_load,
-                                              gilb_move, cpuclk_log_selftest, nav_retro_list,
+                                              gilb_move, cpuclk_log_selftest,
                                               sd_selftest, npx_clock };
 
 /* Settings > Developer > SD card test: here rather than with the other tests (the dev overlay is full);
@@ -472,11 +472,6 @@ int ap_theme_scan(int retro, char (*names)[THEME_NAME_MAX], int max)
 }
 
 /* RECHORD/ and RECHORD.CFG under the firmware's new name, GILB (services/gilb_move.c). */
-
-int ap_retro_list(void)
-{
-    return npx_ok() ? GATE(ovl_get, OVL_VIZ, viz_api_t, 0, retro_list()) : 0;
-}
 
 int ap_cpuclk_log(void)
 {
@@ -508,8 +503,10 @@ OVL_HEADER(viz, OVL_VIZ, &k_viz);
 typedef struct {
     int (*np)(int band);
     int (*scan)(char (*names)[LAY_NAME], int max);
+    int (*load)(void);
+    int (*cfg)(void);                    /* services/config.c config_load */
 } lay_api_t;
-static const lay_api_t k_lay OVL_API(lay) = { lay_np, lay_scan };
+static const lay_api_t k_lay OVL_API(lay) = { lay_np, lay_scan, lay_load, config_load };
 OVL_HEADER(lay, OVL_LAY, &k_lay);
 
 /* Now Playing's cover view from its layout; 0 when the overlay cannot be had (Modern's hand-made one
@@ -519,6 +516,19 @@ static int npx_ok(void);
 int ap_lay_np(int band)
 {
     return npx_ok() ? GATE(ovl_get, OVL_LAY, lay_api_t, 0, np(band)) : 0;
+}
+
+/* The Look's layout parsed (ui/nav.c, before a list: the lists are drawn from it by main memory's code).
+ * Not while the window is busy (a mode's code runs in it): the lists keep the layout they have. */
+int ap_lay_load(void)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_LAY, lay_api_t, 0, load()) : 0;
+}
+
+/* GILB.CFG read (services/config.c: boot, and after a USB disk session). */
+int ap_config_load(void)
+{
+    return npx_ok() ? GATE(ovl_get, OVL_LAY, lay_api_t, -1, cfg()) : -1;
 }
 
 int ap_lay_scan(char (*names)[LAY_NAME], int max)

@@ -70,7 +70,9 @@ extern const char *const g_eq_names[8];   /* eq= values, as the Settings list sh
 
 void config_defaults(void);      /* RECHO's defaults; browse/track/volume kept unless all */
 void config_reset(void);         /* everything to defaults */
-int config_load(void);           /* 0, or < 0 (defaults stay) */
+int config_load(void);           /* 0, or < 0 (defaults stay); the lay overlay's: */
+int ap_config_load(void);        /* its gate (startup/ap_ovl.c): < 0 also when the overlay cannot be
+                                  * had (then nothing is saved over the file: s_ready stays 0) */
 int config_reload_if_changed(void);   /* after a USB disk session: 1 = the PC changed the file, read again */
 /* Writes the file when its text changed since the last load/save. 0, or < 0. */
 int config_save(void);

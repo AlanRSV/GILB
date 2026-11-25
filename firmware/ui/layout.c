@@ -45,7 +45,24 @@ static const char k_modern[] =
     "bar 8 142 304 4 kind=progress style=line\n"
     "text 8 163 62 field=elapsed font=b13\n"
     "text 232 163 80 field=remaining font=b13 align=r color=text_dim\n"
-    "text 72 161 156 field=next font=s8 align=c color=text_dim\n";
+    "text 72 161 156 field=next font=s8 align=c color=text_dim\n"
+    "[list]\n"
+    "row 21\n"
+    "select 0 0 316 21 color=sel_bg\n"
+    "mark 6 5 numx=2 numw=18 numy=15 numfont=s8\n"
+    "value 24 15 286 font=b13 color=value gap=8\n"
+    "label 24 15 286 font=b13 bold=m13\n"
+    "chev 304 5 take=10\n"
+    "scroll 316\n"
+    "[header]\n"
+    "part battery\n"
+    "part percent font=s8 y=13 gap=3\n"
+    "part clock font=s8 y=13 gap=8\n"
+    "part volume font=b13 y=14 gap=8 color=text\n"
+    "part output gap=13\n"
+    "part lock gap=15 color=warn\n"
+    "part play font=b13 y=14 gap=8\n"
+    "title font=m13 y=14\n";
 
 static const char k_retro[] =
     "[np]\n"
@@ -59,11 +76,31 @@ static const char k_retro[] =
     "bar 8 139 304 10 kind=progress style=outline color=bar_fill track=text\n"
     "text 8 167 62 field=elapsed font=px\n"
     "text 232 167 80 field=remaining font=px align=r\n"
-    "text 72 164 158 field=kbps font=s8 align=c\n";
+    "text 72 164 158 field=kbps font=s8 align=c\n"
+    "[list]\n"
+    "row 21\n"
+    "select 0 0 312 21 color=sel_bg\n"
+    "mark 6 5 numx=0 numw=24 numy=16 numfont=px icons=0 color=text on=text\n"
+    "value 8 16 298 font=px color=text gap=10 max=140\n"
+    "label 8 16 298 font=px after=6\n"
+    "chev 299 16 style=text take=14 font=px color=text\n"
+    "scroll 313 style=outline\n"
+    "[header]\n"
+    "part battery\n"
+    "part percent font=px alt=s8 y=15 gap=3\n"
+    "part clock font=s8 y=13 gap=8\n"
+    "part volume font=b13 y=14 gap=8 color=text\n"
+    "part output gap=13\n"
+    "part lock gap=15 color=warn\n"
+    "part play font=b13 y=14 gap=8\n"
+    "title font=px alt=m13 y=15 np=volume\n";
 
 /* ---- names ------------------------------------------------------------------------------------- */
 
-static const char *const k_kinds[] = { "", "text", "cover", "box", "frame", "bar", "badge" };
+static const char *const k_kinds[] = { "", "text", "cover", "box", "frame", "bar", "badge",
+                                       "mark", "label", "value", "chev", "select", "scroll", "part", "title" };
+static const uint8_t k_need[] = { 0, 3, 3, 4, 4, 4, 2, 2, 3, 3, 2, 4, 1, 0, 0 };   /* its numbers */
+static const char *const k_parts[] = { "battery", "percent", "clock", "volume", "output", "lock", "play" };
 static const char *const k_fields[] = { "", "title", "artist", "album", "year", "queue", "elapsed", "remaining",
                                         "total", "kbps", "facts", "next", "codec", "format", "progress", "volume" };
 static const char *const k_fonts[] = { "s8", "b13", "m13", "t17", "d28", "px" };
@@ -77,21 +114,12 @@ static const struct { const char *name; uint8_t off; } k_roles[] = {
     { "surface", TOFF(surface) }, { "divider", TOFF(divider) }, { "sel_bg", TOFF(sel_bg) },
     { "sel_text", TOFF(sel_text) }, { "bar_fill", TOFF(bar_fill) }, { "bar_track", TOFF(bar_track) },
     { "badge_bg", TOFF(badge_bg) }, { "badge_text", TOFF(badge_text) }, { "hires", TOFF(hires) },
-    { "danger", TOFF(danger) }, { "success", TOFF(success) }, { "warn", TOFF(warn) }, { "panel", 0xFE },
+    { "danger", TOFF(danger) }, { "success", TOFF(success) }, { "warn", TOFF(warn) }, { "value", TOFF(value) },
+    { "scroll", TOFF(scroll) }, { "panel", LCOL_PANEL },
 };
 #define NROLES ((int)(sizeof k_roles / sizeof k_roles[0]))
-#define DEF 0xFFu
-
-static uint16_t role(unsigned r, uint16_t dflt)
-{
-    const theme_t *t = T;
-
-    if (r >= (unsigned)NROLES)
-        return dflt;
-    if (k_roles[r].off == 0xFE)
-        return ui_mix(t->background, t->text, 36);
-    return ((const uint16_t *)t)[k_roles[r].off];
-}
+#define DEF LCOL_DEF
+#define role lay_color                   /* (main memory's: the lists use it too) */
 
 /* ---- the parser -------------------------------------------------------------------------------- */
 
@@ -103,35 +131,54 @@ static int pick(const char *s, int n, const char *const *names, int count)
     return -1;
 }
 
-static int pick_role(const char *s, int n)
+static int pick_role(const char *s, int n)   /* its place in theme_t (layout.h LCOL_*), -1 */
 {
     for (int i = 0; i < NROLES; i++)
         if ((int)strlen(k_roles[i].name) == n && !memcmp(s, k_roles[i].name, (size_t)n))
-            return i;
+            return k_roles[i].off;
     return -1;
 }
 
 static unsigned s_strn;                  /* bytes of g_lay_str used */
 
-/* One line into g_lay (ignored when it is not an element this build knows). */
-static void parse_line(const char *p)
+/* One line into g_lay ([np]) or g_lrow ([list]) (ignored when it is not an element this build knows). */
+static void parse_line(const char *p, int list)   /* list: 0 [np], 1 [list], 2 [header] */
 {
     lay_el_t e;
-    int num[4], nn = 0, need, k;
+    int num[4] = { 0 }, nn = 0, need, k, i0;
     const char *q;
 
     while (*p == ' ' || *p == '\t')
         p++;
     for (q = p; *q && *q != ' ' && *q != '\t'; q++)
         ;
-    if ((k = pick(p, (int)(q - p), k_kinds, 7)) <= 0 || g_lay_n >= LAY_MAX)
+    if (list == 1 && q - p == 3 && !memcmp(p, "row", 3)) {   /* a list row's height */
+        int h = atoi(q);
+
+        g_lrow_h = (uint8_t)(h < LROW_MIN ? LROW_MIN : h > LROW_MAXH ? LROW_MAXH : h);
         return;
+    }
+    if ((k = pick(p, (int)(q - p), k_kinds, 15)) <= 0 ||
+        (list == 2 ? k < LK_PART || g_lhdr_n >= LHDR_MAX :
+         k >= LK_PART || (k >= LK_MARK ? !list : list && k != LK_BOX && k != LK_FRAME)) ||
+        (list == 1 ? g_lrow_n >= LROW_MAX : !list && g_lay_n >= LAY_MAX))
+        return;                          /* (boxes and frames: [np]'s and [list]'s) */
     memset(&e, 0, sizeof e);
     e.kind = (uint8_t)k;
-    e.font = 1;                          /* b13 */
+    e.font = LFN_B13;
     e.color = e.color2 = DEF;
-    need = k == LK_TEXT || k == LK_COVER ? 3 : k == LK_BADGE ? 2 : 4;
+    need = k_need[k];
     p = q;
+    if (k == LK_PART) {                  /* part <name> */
+        while (*p == ' ')
+            p++;
+        for (q = p; *q && *q != ' '; q++)
+            ;
+        if ((i0 = pick(p, (int)(q - p), k_parts, 7)) < 0)
+            return;
+        e.field = (uint8_t)i0;
+        p = q;
+    }
     while (*p) {
         while (*p == ' ' || *p == '\t')
             p++;
@@ -201,8 +248,33 @@ static void parse_line(const char *p)
                 e.flags |= LG_PAUSE;
             else if (KEY("noart") && VAL("solid"))
                 e.flags |= LG_SOLID;
-            else if ((KEY("style") && VAL("outline")) || (KEY("alt") && VAL("t17")))
+            else if (KEY("alt") && k >= LK_PART && (i = pick(v, vn, k_fonts, 6)) >= 0)
+                e.b = (uint8_t)(i + 1);  /* (a header part's font when px lacks a letter) */
+            else if ((KEY("style") && (VAL("outline") || VAL("text"))) || (KEY("alt") && VAL("t17")) ||
+                     (KEY("np") && VAL("volume")))
                 e.flags |= LG_ALT;
+            else if (KEY("y") && k >= LK_PART)
+                num[1] = atoi(v), nn = nn > 1 ? nn : 2;
+            else if (KEY("gap") && k >= LK_PART)
+                e.a = (uint8_t)atoi(v);
+            else if (KEY("on") && (i = pick_role(v, vn)) >= 0)
+                e.color2 = (uint8_t)i;
+            else if (KEY("numx"))
+                e.w = (int16_t)atoi(v);  /* (mark: its number's box) */
+            else if (KEY("numw"))
+                e.h = (int16_t)atoi(v);
+            else if (KEY("numy"))
+                e.a = (uint8_t)atoi(v);  /* (mark: its number's baseline) */
+            else if (KEY("bold") && (i = pick(v, vn, k_fonts, 6)) >= 0)
+                e.a = (uint8_t)(i + 1);  /* (label: a bold row's font) */
+            else if (KEY("numfont") && (i = pick(v, vn, k_fonts, 6)) >= 0)
+                e.font = (uint8_t)i;
+            else if (KEY("icons") && VAL("0"))
+                e.flags |= LG_SOLID;
+            else if (KEY("gap") || KEY("take"))
+                e.a = (uint8_t)atoi(v);
+            else if (KEY("after") || KEY("max"))
+                e.b = (uint8_t)atoi(v);
             else if (KEY("hires") && VAL("1"))
                 e.color2 = 0xFE;         /* (badges: the hi-res colours when the track is) */
 #undef KEY
@@ -212,12 +284,21 @@ static void parse_line(const char *p)
     if (nn < need)
         return;
     e.x = (int16_t)num[0];
-    e.y = (int16_t)num[1];
-    e.w = (int16_t)(nn > 2 ? num[2] : 0);
-    e.h = (int16_t)(nn > 3 ? num[3] : k == LK_COVER ? num[2] : 0);
+    e.y = (int16_t)(nn > 1 ? num[1] : 0);
+    if (nn > 2)
+        e.w = (int16_t)num[2];
+    if (nn > 3 || k == LK_COVER)
+        e.h = (int16_t)(nn > 3 ? num[3] : num[2]);
     if (k == LK_BAR && !e.field)
         e.field = LF_PROGRESS;
-    g_lay[g_lay_n++] = e;
+    if (k >= LK_PART && !num[1])
+        e.y = 14;                        /* (the header's baseline) */
+    if (list == 2)
+        g_lhdr[g_lhdr_n++] = e;
+    else if (list)
+        g_lrow[g_lrow_n++] = e;
+    else
+        g_lay[g_lay_n++] = e;
 }
 
 /* A layout's [np] section, its text from get(): one line at a time. */
@@ -257,25 +338,35 @@ static int src_line(src_t *s, char *line, int cap)
     return any;
 }
 
-static void parse(src_t *s)
+/* The sections of s (but those in skip: 1 [np], 2 [list], 4 [header]) into g_lay / g_lrow / g_lhdr;
+ * returns the ones it had. */
+static int parse(src_t *s, int skip)
 {
     char line[160];
-    int in_np = 0;
+    int sec = 0, had = 0;
 
-    g_lay_n = 0;
-    s_strn = 0;
     while (src_line(s, line, sizeof line)) {
         char *h = strchr(line, '#');
 
         if (h && (h == line || h[-1] == ' ' || h[-1] == '\t') && !(h > line && strchr(line, '"') && strchr(line, '"') < h))
             *h = 0;                      /* (a comment: # at the start or after a space, not in quotes) */
         if (line[0] == '[') {
-            in_np = !strncmp(line, "[np]", 4);
+            sec = !strncmp(line, "[np]", 4) ? 1 : !strncmp(line, "[list]", 6) ? 2 : !strncmp(line, "[header]", 8) ? 4 : 0;
+            if (sec & skip)
+                sec = 0;
+            else if (sec == 1)
+                g_lay_n = 0, s_strn = 0;
+            else if (sec == 2)
+                g_lrow_n = 0, g_lrow_h = 21;
+            else if (sec == 4)
+                g_lhdr_n = 0;
+            had |= sec;
             continue;
         }
-        if (in_np)
-            parse_line(line);
+        if (sec)
+            parse_line(line, sec == 4 ? 2 : sec == 2);
     }
+    return had;
 }
 
 static uint32_t hash(const char *s)
@@ -287,16 +378,17 @@ static uint32_t hash(const char *s)
     return h & 0xFFFFu;
 }
 
-/* Now Playing's layout for the Look that is on, parsed into g_lay if it is not already. */
-static void load(void)
+/* The Look's layout parsed into g_lay and g_lrow if it is not already: the file's sections, the
+ * built-in's for those it does not have. */
+int lay_load(void)
 {
-    int look = g_cfg.look ? 1 : 0;
+    int look = g_cfg.look ? 1 : 0, had = 0;
     const char *name = g_cfg.layout[look];
     int32_t key = (int32_t)((uint32_t)look << 16 | hash(name));
     src_t s;
 
     if (g_lay_key == key && g_lay_n)
-        return;
+        return 1;
     g_lay_key = key;
     memset(&s, 0, sizeof s);
     if (name[0]) {
@@ -304,15 +396,14 @@ static void load(void)
 
         snprintf(path, sizeof path, LAY_DIR "/%s.txt", name);
         if ((s.f = fs_open_read(path)) != NULL) {
-            parse(&s);
+            had = parse(&s, 0);
             fs_close(s.f);
-            if (g_lay_n)
-                return;                  /* (a file with no [np]: the built-in's) */
         }
     }
     memset(&s, 0, sizeof s);
     s.mem = look ? k_retro : k_modern;
-    parse(&s);
+    parse(&s, had);
+    return 1;
 }
 
 /* ---- the drawing ------------------------------------------------------------------------------- */
@@ -539,7 +630,7 @@ int lay_np(int mode)
 {
     int starting = g_np.seq == 0xFFFFFFFFu;
 
-    load();
+    lay_load();
     s_grow = 0;
     s_badge_x = 0;
     if (mode < 2)

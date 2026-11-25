@@ -10,6 +10,8 @@
 #include "ui.h"
 #include "services/input.h"
 #include "services/config.h"
+#include "ui/layout.h"
+#include <stddef.h>
 
 /* ---- drawing helpers ---------------------------------------------------------------------------- */
 
@@ -239,80 +241,92 @@ const font_t *look_font(const char *s, const font_t *modern)
     return text_has_all(&font_px, s) ? &font_px : modern;
 }
 
-/* Lay the header out right to left (and draw it when draw): each field's span and signature. */
+/* The header from the Look's layout ([header], docs/LAYOUTS.md: its parts packed from the right in their
+ * lines' order, each with its font, colour, baseline and the gap before it; the title in what is left),
+ * or k_hdr (Modern's) until one is parsed. Each part's span and signature, and drawn when draw. */
+static const lay_el_t k_hdr[] = {
+    { LK_PART, HP_BATTERY, LFN_B13, 0, 0, 14, 0, 0, 0xFF, 0xFF, 0, 0 },
+    { LK_PART, HP_PERCENT, LFN_S8, 0, 0, 13, 0, 0, 0xFF, 0xFF, 3, 0 },
+    { LK_PART, HP_CLOCK, LFN_S8, 0, 0, 13, 0, 0, 0xFF, 0xFF, 8, 0 },
+    { LK_PART, HP_VOLUME, LFN_B13, 0, 0, 14, 0, 0, (uint8_t)(offsetof(theme_t, text) / 2u), 0xFF, 8, 0 },
+    { LK_PART, HP_OUTPUT, LFN_B13, 0, 0, 14, 0, 0, 0xFF, 0xFF, 13, 0 },
+    { LK_PART, HP_LOCK, LFN_B13, 0, 0, 14, 0, 0, (uint8_t)(offsetof(theme_t, warn) / 2u), 0xFF, 15, 0 },
+    { LK_PART, HP_PLAY, LFN_B13, 0, 0, 14, 0, 0, 0xFF, 0xFF, 8, 0 },
+    { LK_TITLE, 0, LFN_M13, 0, 0, 14, 0, 0, 0xFF, 0xFF, 0, 0 },
+};
+
 static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
 {
     const theme_t *t = T;
+    const lay_el_t *els = g_lhdr_n ? g_lhdr : k_hdr, *ti = &k_hdr[7];
+    int n = g_lhdr_n ? g_lhdr_n : (int)(sizeof k_hdr / sizeof k_hdr[0]), x = 312, w, tx, rnp;
     char pct[8];
-    int x = 312 - 19, w, tx, rnp = g_cfg.look && h->np, hb = g_cfg.look ? HB + 1 : HB;
-    const font_t *fs;
 
     memset(f, 0, NFD * sizeof *f);
     for (int i = 0; i < NFD; i++)
         f[i].x0 = 1, f[i].x1 = 0;          /* (empty) */
+    for (int i = 0; i < n; i++)
+        if (els[i].kind == LK_TITLE)
+            ti = &els[i];
+    rnp = (ti->flags & LG_ALT) && h->np;  /* (np=volume: the play state and the volume as Now Playing's title) */
     snprintf(pct, sizeof pct, "%u%%", h->batt);
-    fs = look_font(pct, &font_s8);
-    w = text_width(fs, pct, -1);
-    f[FD_BATT].x0 = (int16_t)(x - w - 3);
-    f[FD_BATT].x1 = 312;
-    f[FD_BATT].sig = h->batt | (uint32_t)h->charging << 8 | 1u << 16;
-    if (draw) {
-        battery(x, 5, h->batt, h->charging);
-        ui_text(fs, x - w - 3, g_cfg.look ? hb : 13, w, 0, pct, t->text_dim, HY0, HY1);
-    }
-    x -= w + 3;
-    if (h->clock[0]) {                     /* the time, left of the battery */
-        fs = &font_s8;                     /* (the compact fonts here: Retro's pixel font is wide) */
-        w = text_width(fs, h->clock, -1);
-        x -= w + 8;
-        f[FD_CLOCK].x0 = (int16_t)x;
-        f[FD_CLOCK].x1 = (int16_t)(x + w - 1);
-        f[FD_CLOCK].sig = hs(2166136261u, h->clock);
-        if (draw)
-            ui_text(fs, x, 13, w, 0, h->clock, t->text_dim, HY0, HY1);
-    }
-    if (!rnp) {                            /* (Retro's Now Playing: at the left, below) */
-        fs = &font_b13;
-        w = text_width(fs, h->vol, -1);
-        x -= w + 8;
-        f[FD_VOL].x0 = (int16_t)x;
-        f[FD_VOL].x1 = (int16_t)(x + w - 1);
-        f[FD_VOL].sig = hs(2166136261u, h->vol);
-        if (draw)
-            ui_text(fs, x, HB, w, 0, h->vol, t->text, HY0, HY1);
-    }
-    x -= 13;
-    f[FD_OUT].x0 = (int16_t)x;
-    f[FD_OUT].x1 = (int16_t)(x + 11);
-    f[FD_OUT].sig = h->out | 1u << 8;
-    if (draw)
-        ui_icon(h->out, x, 4, h->out != ICON_SPEAKER ? t->accent : t->text_dim);
-    if (h->lock) {
-        x -= 15;
-        f[FD_LOCK].x0 = (int16_t)x;
-        f[FD_LOCK].x1 = (int16_t)(x + 11);
-        f[FD_LOCK].sig = 1;
-        if (draw)
-            ui_icon(ICON_LOCK, x, 4, t->warn);
-    }
-    if (!h->np && h->play) {
-        fs = &font_b13;
-        w = text_width(fs, h->elapsed, -1);
-        x -= w + 8;
-        if (draw)
-            ui_text(fs, x, HB, w, 0, h->elapsed, t->text_dim, HY0, HY1);
-        x -= 13;
-        f[FD_PLAY].x0 = (int16_t)x;
-        f[FD_PLAY].x1 = (int16_t)(x + 13 + w);
-        f[FD_PLAY].sig = hs(h->play, h->elapsed);
-        if (draw)
-            ui_icon(h->play == 1 ? ICON_PLAY : ICON_PAUSE, x, 4, t->text_dim);
+    for (int i = 0; i < n; i++) {
+        const lay_el_t *e = &els[i];
+        const char *s = e->field == HP_PERCENT ? pct : e->field == HP_CLOCK ? h->clock : e->field == HP_VOLUME ? h->vol :
+                        e->field == HP_PLAY ? h->elapsed : "";
+        const struct font *fn = lay_font(e->font, e->b, s);
+        uint16_t c = lay_color(e->color, t->text_dim);
+        fld_t *d;
+
+        if (e->kind != LK_PART || (e->field == HP_CLOCK && !h->clock[0]) || (e->field == HP_VOLUME && rnp) ||
+            (e->field == HP_LOCK && !h->lock) || (e->field == HP_PLAY && (h->np || !h->play)))
+            continue;
+        w = s[0] ? text_width(fn, s, -1) : 0;
+        switch (e->field) {
+        case HP_BATTERY:
+            x -= 19;
+            d = &f[FD_BATT];
+            d->x0 = (int16_t)x;
+            d->x1 = 312;
+            d->sig = h->batt | (uint32_t)h->charging << 8 | 1u << 16;
+            if (draw)
+                battery(x, 5, h->batt, h->charging);
+            break;
+        case HP_OUTPUT:
+        case HP_LOCK:
+            x -= e->a;
+            d = &f[e->field == HP_LOCK ? FD_LOCK : FD_OUT];
+            d->x0 = (int16_t)x;
+            d->x1 = (int16_t)(x + 11);
+            d->sig = e->field == HP_LOCK ? 1u : h->out | 1u << 8;
+            if (draw)
+                ui_icon(e->field == HP_LOCK ? ICON_LOCK : h->out, x, 4, e->field == HP_LOCK ? c :
+                        h->out != ICON_SPEAKER ? lay_color(e->color2, t->accent) : c);
+            break;
+        default:                           /* the words: the percentage, the clock, the volume, the elapsed time */
+            x -= w + e->a;
+            d = &f[e->field == HP_PERCENT ? FD_BATT : e->field == HP_CLOCK ? FD_CLOCK : e->field == HP_VOLUME ? FD_VOL : FD_PLAY];
+            if (e->field != HP_PERCENT || d->x1 < d->x0)
+                d->x1 = (int16_t)(x + w - 1);
+            d->x0 = (int16_t)x;
+            d->sig ^= hs(e->field == HP_PERCENT ? h->batt : 2166136261u, s);
+            if (draw)
+                ui_text(fn, x, e->y, w, 0, s, e->field == HP_VOLUME ? lay_color(e->color, t->text) : c, HY0, HY1);
+            if (e->field == HP_PLAY) {     /* (and its play / pause mark before it) */
+                x -= 13;
+                d->x0 = (int16_t)x;
+                d->sig = hs(h->play, h->elapsed);
+                if (draw)
+                    ui_icon(h->play == 1 ? ICON_PLAY : ICON_PAUSE, x, 4, c);
+            }
+            break;
+        }
     }
     x -= 6;                                /* the title's right edge */
     f[FD_TITLE].x0 = 0;
     f[FD_TITLE].x1 = (int16_t)x;
     f[FD_TITLE].sig = hs(h->icon | (uint32_t)h->np << 8 | (uint32_t)h->mode_icon << 16 | (uint32_t)x << 24, h->title);
-    if (rnp)                               /* (Retro: the play state and the volume are its title) */
+    if (rnp)
         f[FD_TITLE].sig = hs(f[FD_TITLE].sig ^ h->play, h->vol);
     if (!draw)
         return;
@@ -321,29 +335,29 @@ static void hdr_pass(const hdr_t *h, fld_t *f, int draw)
         char v[20], *o = v;
 
         if (h->play)
-            ui_icon(h->play == 1 ? ICON_PLAY : ICON_PAUSE, 5, 4, t->text);
-
+            ui_icon(h->play == 1 ? ICON_PLAY : ICON_PAUSE, 5, 4, lay_color(ti->color, t->text));
         for (const char *s = h->vol; *s && o < v + sizeof v - 3; s++)
             if ((unsigned char)s[0] == 0xE2u && (unsigned char)s[1] == 0x88u && (unsigned char)s[2] == 0x92u)
                 *o++ = '-', s += 2;       /* (U+2212, the minus PX lacks: a hyphen) */
             else
                 *o++ = *s;
         memcpy(o, "dB", 3);
-        ui_text(look_font(v, &font_m13), 22, hb, x - 22, 0, v, t->text, HY0, HY1);
+        ui_text(lay_font(ti->font, ti->b, v), 22, ti->y, x - 22, 0, v, lay_color(ti->color, t->text), HY0, HY1);
         return;
     }
     if (h->np) {
-        ui_icon(ICON_NOTE, 5, 4, t->text_dim);
-        tx = 22 + ui_text(&font_m13, 22, HB, x - 22, 0, h->title, t->text, HY0, HY1) + 6;
+        ui_icon(ICON_NOTE, 5, 4, lay_color(ti->color2, t->text_dim));
+        tx = 22 + ui_text(lay_font(ti->font, ti->b, h->title), 22, ti->y, x - 22, 0, h->title, lay_color(ti->color, t->text),
+                          HY0, HY1) + 6;
         if (h->mode_icon != NO_ICON)
             ui_icon(h->mode_icon, tx, 4, t->accent);
         return;
     }
     if (h->icon != NO_ICON) {
-        ui_icon(h->icon, 5, 4, t->text_dim);
+        ui_icon(h->icon, 5, 4, lay_color(ti->color2, t->text_dim));
         tx = 22;
     }
-    ui_text(look_font(h->title, &font_m13), tx, hb, x - tx, 0, h->title, t->text, HY0, HY1);
+    ui_text(lay_font(ti->font, ti->b, h->title), tx, ti->y, x - tx, 0, h->title, lay_color(ti->color, t->text), HY0, HY1);
 }
 
 void frame_status(const hdr_t *h)

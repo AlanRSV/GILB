@@ -675,7 +675,20 @@ lay_el_t g_lay[LAY_MAX];
 uint8_t g_lay_n;
 char g_lay_str[LAY_STR];
 int32_t g_lay_key = -1;
+lay_el_t g_lrow[LROW_MAX];
+uint8_t g_lrow_n, g_lrow_h = ROW_H;
+lay_el_t g_lhdr[LHDR_MAX];
+uint8_t g_lhdr_n;
 static uint8_t s_lay_on;
+
+uint16_t lay_color(unsigned c, uint16_t dflt)
+{
+    const theme_t *t = T;
+
+    if (c == LCOL_PANEL)
+        return ui_mix(t->background, t->text, 36);
+    return c < sizeof(theme_t) / 2u ? ((const uint16_t *)t)[c] : dflt;
+}
 
 /* What changes on the layout's screen: each second its times and progress bars; a pause, its covers'
  * marks (the rows a text's font may reach, generously). */
@@ -1747,6 +1760,8 @@ static uint8_t *theme_sel(void) { return g_cfg.look ? &g_cfg.retro_theme : &g_cf
 
 void theme_apply(void)
 {
+    g_lay_key = -1;                       /* the Look's layout parsed again (or before the next list) */
+    ap_lay_load();
     theme_set_look(g_cfg.look);
     if (theme_load_index(*theme_sel()) != 0)
         theme_load_index(0);
@@ -1779,7 +1794,9 @@ static void lay_apply(void)
     cur[0] = 0;
     if (s_lay_pick && s_lay_pick < s_lay_cnt)
         memcpy(cur, s_lay_names[s_lay_pick], LAY_NAME);
-    g_lay_key = -1;                       /* (parsed again at the next draw) */
+    g_lay_key = -1;
+    ap_lay_load();
+    frame_invalidate();                       /* (parsed again at the next draw) */
 }
 
 static void theme_refresh(void)

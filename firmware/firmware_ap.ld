@@ -187,6 +187,9 @@ SECTIONS
             *(.ovl.lay.*)
             *layout.o(.text* .rodata*)
             *retro_tags.o(.text* .rodata*)
+            /* tagged OVL_TEXT(lay): GILB.CFG's reading (services/config.c config_load and its key parser:
+               at boot and after a USB disk session; saving stays resident) */
+            *(.text.ovl_lay .ovl_text_lay .rodata.ovl_lay .rodata.ovl_lay.*)
             . = ALIGN(4);
         }
         /* the Developer tests (Settings > Developer) */

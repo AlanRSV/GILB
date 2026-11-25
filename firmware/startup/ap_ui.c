@@ -1413,7 +1413,7 @@ void ap_ui_loop(void)
     bootcrumb(BC_PLAYER);
     player_init();       /* register wav/mp3/flac codecs (registry) */
     bootcrumb(BC_CONFIG);
-    config_load();
+    ap_config_load();
     queue_set_mode(g_cfg.play);
     audio_set_volume_db(g_cfg.volume == CFG_VOLUME_MUTE ? -90 : g_cfg.volume);
     log_printf("cfg: play %s, volume %d, resume %u", queue_mode_name(g_cfg.play), g_cfg.volume, g_cfg.resume);

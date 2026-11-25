@@ -31,6 +31,7 @@ const char *theme_name(int i) { return i == 0 ? "Classic" : NULL; }
 int theme_index(const char *name) { return strcmp(name, "Classic") ? -1 : 0; }
 const char *theme_name_look(int retro, int i) { return i == 0 ? (retro ? "LCD" : "Classic") : NULL; }
 int theme_index_look(int retro, const char *name) { return strcmp(name, retro ? "LCD" : "Classic") ? -1 : 0; }
+int ap_config_load(void) { return config_load(); }   /* (the player: through the lay overlay) */
 
 #define FILE_ON_HOST ".work/Internal/GILB.CFG"
 

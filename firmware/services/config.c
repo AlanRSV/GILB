@@ -12,6 +12,7 @@
 #include "queue.h"
 #include "drivers/clock.h"
 #include "theme/theme.h"
+#include "services/ovl.h"              /* OVL_TEXT: config_load is the lay overlay's */
 
 config_t g_cfg;
 
@@ -95,7 +96,7 @@ static int hexval(char c)
     return c >= '0' && c <= '9' ? c - '0' : c >= 'A' && c <= 'F' ? c - 'A' + 10 : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
 }
 
-static void set(const char *k, const char *v)
+OVL_TEXT(lay) static void set(const char *k, const char *v)
 {
     int i;
 
@@ -210,7 +211,9 @@ static uint32_t fnv(const char *s, unsigned long n)
     return h;
 }
 
-int config_load(void)
+/* In the lay overlay (resident code is short, 2026-11-25): read at boot and after a USB disk session,
+ * through ap_config_load (startup/ap_ovl.c); saving stays resident. */
+OVL_TEXT(lay) int config_load(void)
 {
     s_ready = 1;
     char text[1024], *p, *e;
@@ -266,7 +269,7 @@ int config_reload_if_changed(void)
 {
     if (!s_ready || !file_changed())
         return 0;
-    config_load();
+    ap_config_load();
     s_save_at = 0;                        /* (a save asked for before the session: the file is newer) */
     return 1;
 }

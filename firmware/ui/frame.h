@@ -25,6 +25,7 @@
 #define LIST_Y   21               /* list rows: 7 of 21 px from row 21 */
 #define ROW_H    21
 #define NROWS    7
+#define NROWS_MAX 8              /* rows a layout's height may give (ui/layout.h LROW_MIN) */
 #define NO_ICON  0xFF
 
 #define T        (theme_get())
