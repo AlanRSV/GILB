@@ -230,7 +230,9 @@ SECTIONS
             *(.ovl.lwalk.*)
             *lib_scan.o(.text* .rodata*)
             *lib_dir.o(.text* .rodata*)
-            *ap_ovl.o(.text.ap_lib_tags .text.ap_lib_tags_ok)   /* (only the walk calls them) */
+            *(.text.ap_lib_tags .text.ap_lib_tags_ok)   /* startup/ap_ovl.c's: only the walk calls them (by
+                                                           section, not ap_ovl.o: so LTO optimises the
+                                                           gates too, 2026-11-25: +288 B resident) */
             *lib_io.o(.text.lr_get .text.lw_open_at .text.lw_u8 .text.lw_u16 .text.lw_u32)   /* (the walk's only) */
             *lib_coll.o(.text.lib_fnv)
             *(.text.ovl_lwalk .ovl_text_lwalk .rodata.ovl_lwalk .rodata.ovl_lwalk.*)   /* fs_open_append_at: the walk's only */

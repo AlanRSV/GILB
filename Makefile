@@ -61,8 +61,10 @@ CFW_OBJS := $(patsubst %.c,$(CFW_BUILD_DIR)/objs/%.o,$(AP_SRCS))
 # emitted once per unit, in the section of the first function there to use it, so one shared by a
 # resident and an overlay function would otherwise land in the overlay (the link fails: NOCROSSREFS);
 # the linker still merges the resident copies. Make does not see a flag change: switching LTO on or
-# off needs a clean build (rm -rf build/cfw). LTO=0 is for ruling LTO out of a fault: its code leaves
-# under AP_MIN_FREE (1948 B free, 2026-11-24), so build it with AP_MIN_FREE=0.
+# off needs a clean build (rm -rf build/cfw). LTO=0 is for ruling LTO out of a fault: its code left
+# under AP_MIN_FREE (1948 B free, 2026-11-24); since the layouts it does not fit FW_CODE at all (2026-11-25:
+# 964 B over even with AP_MIN_FREE=0), so ruling LTO out now needs a feature left out. -flto=auto compiles the
+# link's units on every core (2026-11-25: a clean core-A build 32 s -> 13 s, the same code).
 LTO ?= 1
 ifeq ($(LTO),1)
 LD_NAMED := $(shell grep -oE '\*[a-z_0-9/]+\.o' $(AP_LDSCRIPT) | sed 's|.*[*/]||' | sort -u)
@@ -70,7 +72,7 @@ LD_NAMED := $(shell grep -oE '\*[a-z_0-9/]+\.o' $(AP_LDSCRIPT) | sed 's|.*[*/]||
 # bootguard.o, so the .noinit crash record keeps its place across an update)
 LTO_OBJS := $(foreach o,$(filter-out $(addprefix %/,$(LD_NAMED) watchdog.o bootguard.o),$(CFW_OBJS)),$(if $(findstring /lib_,$(o)),,$(o)))
 $(LTO_OBJS): AP_CFLAGS += -flto
-AP_LDFLAGS += -flto -flto-partition=max -Os -ffunction-sections -fdata-sections
+AP_LDFLAGS += -flto=auto -flto-partition=max -Os -ffunction-sections -fdata-sections
 else
 $(CFW_OBJS): AP_CFLAGS += -DOVL_STR_RESIDENT
 endif
@@ -397,6 +399,9 @@ host-tests:
 	$(HOSTCC) -O2 -Wall -Ifirmware -o build/host/test_fw_powercut firmware/services/test_fw_powercut.c \
 	  firmware/services/fw_update.c firmware/services/scratch.c
 	build/host/test_fw_powercut
+	$(HOSTCC) -O2 -Wall -Werror -D__udivmoddi4=my_udivmoddi4 -o build/host/test_udiv64 \
+	  firmware/libc/tests/test_udiv64.c firmware/libc/udiv64.c
+	build/host/test_udiv64
 
 # Tag reader (firmware/services/tags.c): fixtures, expected fields, rd() cost,
 # fuzz under ASan/UBSan. FUZZ=<iterations> SEED=<n> GAPLESS=<dir> optional.

@@ -155,7 +155,9 @@ AP_THEME_SRCS := \
 AP_LIBC_SRCS := \
   firmware/libc/mem.c \
   firmware/libc/str.c \
-  firmware/libc/stdio_min.c
+  firmware/libc/stdio_min.c \
+  firmware/libc/udiv64.c
+# (udiv64.c: core A's only, its 64-bit division in place of libgcc's 754-byte one)
 # (libc/math_min.c: nothing on core A calls it until the EQ is built; core A's code space is full)
 
 # Player module (audio path): linked from milestone 2a. Includes the
