@@ -220,21 +220,26 @@ Still open:
   anything sizeable must still go into an overlay or replace resident code.
 
 - **First public release** (the user's current goal). Done: no stock fonts in the image (173aabe), our own
-  header (941a0a0), a clean first install through the stock updater (second player). Left, in order:
-  1. Which boards: suggested 8 GB only (`HIFIEC90.IMG`); this fork never ran on a 512 MB unit.
-  2. Licenses and credits for the release: GPL-3.0 (the repo is the source; name the commit), `OFL.txt`
-     (Fusion Pixel's license) shipped beside `CJK.BIN` (`tools/gilb_cjkfont.py` builds it; a copy is in
-     `build/CJK.BIN`, git-ignored), the decoders' licenses (libmad, FAAD2 GPL; Tremor, Opus, WavPack BSD;
-     ALAC Apache) in the notes or a `THIRD_PARTY.md`.
-  3. README read-through: ReChord-era claims (e.g. "Every change is proven first in a QEMU machine of the
-     player": that suite is ReChord's, unpublished; GILB tests in the simulator and on the device), and a
-     pointer to the download site.
-  4. The release files from the final commit: `HIFIEC90.IMG` (no `FONT_IMG`), its SHA-256, `CJK.BIN` +
-     `OFL.txt`, and draft release notes (what GILB is, install, known limits: 512 MB untested, Bluetooth
-     is SBC through the module, credits, the risk note).
-  5. The user flashes the final image once; then the user publishes (GitHub › Releases › a tag such as
-     `v2026.11.25`) and deploys `site/` on Railway (`site/README.md`: Root Directory `site`, Watch Paths
-     `/site/**`, Generate Domain). Publishing is the user's own step.
+  header (941a0a0), a clean first install through the stock updater (second player). Prepared
+  2026-11-25 (not yet committed when written; check `git log`):
+  1. Boards: **8 GB only** (`HIFIEC90.IMG`); the README and notes say 512 MB is untested and not released.
+  2. Licenses: `THIRD_PARTY.md` (every decoder and font, its license and license file);
+     `release/OFL.txt` (Fusion Pixel's header + SIL OFL 1.1, shipped beside `CJK.BIN`). Fusion Pixel's
+     header is from its repo's `LICENSE-OFL` (no Reserved Font Name).
+  3. README: 8 GB releases, a Download pointer (GitHub Releases, `site/`), the QEMU suite described as
+     ReChord's and unpublished (GILB tests with host tests, the simulator and the players), CJK.BIN,
+     Retro's themes, layouts, known limits, `THIRD_PARTY.md`.
+  4. `release/build.sh` (run in WSL from the repo root: `sh release/build.sh`) does a clean 8 GB build
+     with `REVERSE_LISTS=1` and no `FONT_IMG`, and puts `HIFIEC90.IMG`, `CJK.BIN` (from `build/CJK.BIN`),
+     `OFL.txt` and `SHA256SUMS.txt` in `build/release/`. The image's header carries `git describe`, so
+     **rebuild after the release commit** and put that commit and the SHA-256s into `release/NOTES.md`
+     (the draft notes: `COMMIT`, `SHA_IMG`, `SHA_CJK` placeholders). A trial build on 45a8a0f plus these
+     uncommitted docs: 3992 B free; CJK.BIN's SHA-256 94AF030E060984F7582B92C83755B86653BD5E3B4EB378267D610455C83105E6
+     (it doesn't change between builds).
+  5. Left: the user commits, the release files are rebuilt, the user flashes that image once; then the
+     user publishes (GitHub › Releases › a tag such as `v2026.11.25`, notes from `release/NOTES.md`,
+     attach the three files) and deploys `site/` on Railway (`site/README.md`: Root Directory `site`,
+     Watch Paths `/site/**`, Generate Domain). Publishing is the user's own step.
 
 - **Second Echo Mini:** on GILB (941a0a0's image) since 2026-11-25; optional: run its self-test, copy
   `GILB/CJK.BIN` to it.

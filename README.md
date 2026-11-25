@@ -1,9 +1,13 @@
 # GILB
 
 **GILB** is a free, from-source custom firmware for the **SNOWSKY (FiiO) Echo Mini**, a fork of
-**ReChord**: its own code on both of the player's cores, from boot to the screen you see. It runs on
-both boards: ReChord's 512 MB line is its author's daily firmware on a **512 MB** unit, and this fork
-runs on an **8 GB** unit since 2026-11-23. It was renamed from ReChord to GILB on 2026-11-24.
+**ReChord**: its own code on both of the player's cores, from boot to the screen you see. GILB is
+made and tested on the **8 GB** board (two units), and its releases are for that board only. The
+code still builds for the 512 MB board (ReChord's own line), but this fork has never run on one.
+It was renamed from ReChord to GILB on 2026-11-24.
+
+**Download:** the newest image is on [GitHub Releases](https://github.com/AlanRSV/GILB/releases)
+and on GILB's download site (`site/` in this repository). How to install: [Install](#install).
 
 The first custom firmware for the Echo Mini is [**RECHO**](https://recho.atzkey.workers.dev), by
 its creator **miauk** ([Ko-fi](https://ko-fi.com/miauk)): it proved what this player can do, and
@@ -85,8 +89,10 @@ is 320×170), with a demo library of invented artists and albums.*
   title is in the pixel font too. Lists and menus are in the pixel font as well, without section
   icons, with a pixel ">" for rows that open, the cursor's row inverted and an outlined scrollbar;
   Library > Albums' grid has the pixel font, covers in the screen's two colours and the same scrollbar.
-  The Theme setting
-  stays Modern's.
+  Each Look keeps its own theme (Settings > Display > Theme lists the current Look's themes).
+- **Layouts** (Settings > Display > Layout, per Look): Now Playing, list rows, the header and most
+  other screens are drawn from layout files in `GILB/LAYOUTS/`, which Echo Library's editor makes
+  (move, resize, add). See [docs/LAYOUTS.md](docs/LAYOUTS.md).
 - **Now Playing:** shows the cover tile, title, artist and album, format and rate badges, bit
   rate, progress, and the next track. Tap BACK to switch views:
   - **Lyrics:** the line being sung, large, with the one before and after. Read from the song's
@@ -109,11 +115,13 @@ is 320×170), with a demo library of invented artists and albums.*
     - On Now Playing: tap BACK to switch views (MENU goes back to the list, as before).
   - MENU switches between Now Playing and the library; hold MENU for Options.
   - A `REVERSE_LISTS=1` build swaps the list keys: VOL− moves up, VOL+ down.
-- **Text and themes:** Noto Sans in five sizes, with Latin, curly quotes and Devanagari, and
-  six built-in themes: Classic, Paper, Night, Contrast, Pink and LCD. More come as files in
-  `GILB/THEMES/<name>.txt` (one `key=#RRGGBB` a line; Echo Library's Themes page makes them with a
-  live preview): Settings > Display > Refresh themes reads the folder again, and they are listed
-  under Theme after the built-ins.
+- **Text and themes:** Noto Sans in five sizes, with Latin, curly quotes and Devanagari.
+  Japanese, Chinese and Korean text (and Greek and Cyrillic) need the optional file
+  `GILB/CJK.BIN` on the internal storage (Fusion Pixel 12 px, attached to each release).
+  Built-in themes: Classic, Paper, Night, Contrast and Pink for Modern; LCD, Amber, Green LCD and
+  Mono for Retro. More come as files in `GILB/THEMES/<name>.txt` (Retro's in `GILB/THEMES/RETRO/`;
+  Echo Library's Themes page makes them with a live preview): Settings > Display > Refresh themes
+  reads the folder again, and they are listed under Theme after the built-ins.
 - **Fast:** keys are sampled every 10 ms on a timer and timed in milliseconds. Each key press
   repaints only what changed. On the device, a key reaches the screen in about 8 ms (median).
 
@@ -143,8 +151,10 @@ is 320×170), with a demo library of invented artists and albums.*
 
 ## Status
 
-"Device" means verified on a real unit (the 512 MB one unless it says 8 GB) and recorded in its
-own log; "QEMU" means covered by the emulator test suite. The full table is in
+"Device" means verified on a real unit (ReChord's 512 MB one unless it says 8 GB) and recorded in
+its own log. "QEMU" means covered by ReChord's emulator test suite, from before this fork; that
+suite is not published, and GILB doesn't run it. GILB's own changes are tested in the desktop
+simulator, by the host tests and on the 8 GB players. The full table is in
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
 | Area | Verified |
@@ -160,6 +170,8 @@ own log; "QEMU" means covered by the emulator test suite. The full table is in
 | Lyrics, Up Next and Spectrum views, boot splash, ReplayGain, the clock, the queue kept across power-off | device, 8 GB (2026-11-23) |
 | Boot: first screen at 0.48 s, a resumed track playing at 0.6 s; the USB wake in steps (no freeze); the microSD card (exFAT, 4-bit) | device, 8 GB (2026-11-23) |
 | Library > Years, the album grid's year (and its Album grid setting), hold-to-boot, the Self-test, the Pink theme and theme files (GILB/THEMES, Refresh themes); the HIFI probe (FLAC block kept, FFT unusable) | device, 8 GB (2026-11-24) |
+| Japanese / Chinese / Korean text (CJK.BIN), the Retro look on every screen, layouts, Bluetooth fixed volume | device, 8 GB (2026-11-25) |
+| First install through the stock 4.0.0 updater on a player that never had GILB | device, 8 GB (2026-11-25) |
 
 **Both boards.** The differences between the 512 MB and 8 GB boards come from comparing the stock
 firmware of both. They're documented in [docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md) and
@@ -167,9 +179,12 @@ selected at build time (`BOARD=512m | 8g`). The factory 8 GB unit runs its eMMC 
 bus, as stock does; if a wide bus ever fails, the 8 GB build falls back to 1 bit and logs why (see
 that document). Keep maskrom recovery at hand.
 
-**Next:**
-- nothing planned: the HIFI probe (2026-11-24) showed the block's FFT output cannot be read, so
-  AAC, Vorbis and WMA stay in software (docs/HIFI_PLAN.md §4.5)
+**Known limits:**
+- 512 MB board: not tested in this fork, and no image is released for it.
+- Bluetooth: the JieLi module takes the DAC's analog output and sends SBC; no better codec is
+  possible without replacing the module ([docs/BT_DEVICE_NOTES.md](docs/BT_DEVICE_NOTES.md)).
+- AAC, Vorbis and WMA decode in software: the chip's FFT block can't be read back
+  (docs/HIFI_PLAN.md §4.5).
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -177,9 +192,13 @@ See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 > Keep the stock firmware at hand. Flashing modified firmware is at your own risk.
 
-- **Updater:** copy `MINIV900.IMG` (512 MB board) or `HIFIEC90.IMG` (8 GB board) to the player's
-  root, eject, and confirm on the player. Stock's updater takes it the first time; after that
-  GILB's own does it (it shows the file's SHA-256; PLAY installs).
+- **Updater (8 GB board):** download `HIFIEC90.IMG` from the
+  [newest release](https://github.com/AlanRSV/GILB/releases) and check its SHA-256 against the
+  release notes. Copy it to the player's root, eject, and confirm on the player. Stock's updater
+  takes it the first time; after that GILB's own does it (it shows the file's SHA-256; PLAY
+  installs). For Japanese, Chinese and Korean text, also copy the release's `CJK.BIN` to
+  `GILB/CJK.BIN` on the internal storage.
+- **512 MB board:** no image is released; `BOARD=512m` builds `MINIV900.IMG`, untested in this fork.
 - **Maskrom:**
   1. Unplug USB, press RST with a paperclip, hold every key except power, and plug USB in.
   2. Pad the image to 512-byte sectors and write it with `rkdeveloptool wl` to both firmware
@@ -195,13 +214,14 @@ Stock goes back the same way.
 
 ```bash
 export PATH=<arm-gnu-toolchain>/bin:$PATH
-make cfw-ap -j8                               # core A: build/cfw/rechord_ap.elf
-make cfw-img STOCK_IMG=<a stock HIFIEC/MINIV IMG>  # + core-B codec images and the fonts module
-# -> build/MINIV900.IMG (512 MB board); BOARD=8g -> build/HIFIEC90.IMG
+make cfw-ap BOARD=8g -j8                      # core A: build/cfw/rechord_ap.elf
+make cfw-img BOARD=8g STOCK_IMG=<a stock HIFIEC IMG>  # + core-B codec images and GILB's fonts
+# -> build/HIFIEC90.IMG (8 GB board); BOARD=512m -> build/MINIV900.IMG
 # STOCK_IMG: a stock image the build packs our fw1 into on the way; none of it is in the update file
-# REVERSE_LISTS=1 (cfw-ap, cfw-img, sim): VOL- moves up in lists, VOL+ down
+# REVERSE_LISTS=1 (cfw-ap, cfw-img, sim): VOL- moves up in lists, VOL+ down (the releases use it)
 make host-tests                               # host unit tests
-make sim                                      # desktop simulator: build/sim/rechord_sim
+make sim BOARD=8g                             # desktop simulator: build/sim/rechord_sim_8g
+python3 tools/gilb_cjkfont.py build fusion-pixel-12px-proportional-ja.bdf CJK.BIN  # optional CJK.BIN
 ```
 
 The **simulator** runs the firmware's own UI, library and player code in a window on a PC (Linux or
@@ -242,15 +262,11 @@ firmware/
 docs/        ROADMAP (start here), BT_DEVICE_NOTES, BOARD_DIFF_512M, hardware and RE notes
 ```
 
-Every change is proven first in a QEMU machine of the player:
-- **Strict models:** the panel, VOP/DMA, eMMC/SD NAND, USB, the JieLi module, the DACs and the
-  boot ROM's handoff.
-- **Checkers:** any hardware misuse fails the run as a "VIOLATION".
-- **Mutants:** deliberately broken builds prove each checker fires.
-- **A milestone suite:** boot, audio bit-exactness, every codec, USB, Bluetooth, keys, the UI's
-  screenshots, recovery.
-
-That machine and the suite live in a separate repository, not published yet.
+**Testing.** ReChord's authors proved their changes in a QEMU machine of the player (strict
+hardware models, checkers, a milestone suite); that machine is in a separate repository, not
+published, and GILB doesn't have it. GILB tests each change with the host tests (`make host-tests`),
+in the desktop simulator (`sim/`, which runs the firmware's own UI, library and player code) and
+on its 8 GB players; Settings > System > Self-test checks a player's hardware.
 
 ## Credits
 
@@ -301,8 +317,9 @@ ReChord, and so GILB, owe RECHO directly:
 2026-11-24) brings ReChord to the 8 GB board (the storage layout, the 8-bit eMMC bus) and adds
 ReplayGain, the clock, the queue kept across power-off, Now Playing's Lyrics, Up Next and Spectrum
 views, the album cover grid, Library > Years, the boot splash, hold-to-boot, the Self-test, the Pink
-theme and theme files, the Retro look and its pixel font, high-speed USB disk, the reversed list
-keys and the desktop simulator, and ran the HIFI probe on the device. Written with Claude
+theme and theme files, the Retro look and its pixel font and themes, layouts, Japanese / Chinese /
+Korean text, Bluetooth's fixed volume, high-speed USB disk, the reversed list keys, the desktop
+simulator and its own update-image header, and ran the HIFI probe on the device. Written with Claude
 (Anthropic), as the commits' co-author lines say.
 
 ### Sources
@@ -315,8 +332,9 @@ keys and the desktop simulator, and ran the HIFI probe on the device. Written wi
 
 ### Fonts and libraries
 
-- **Fonts:** Noto Sans (SIL OFL 1.1, `firmware/drivers/fonts/OFL.txt`); the Retro look's pixel font
-  PX is GILB's own (`tools/gilb_pixfont.py`).
+- **Fonts:** Noto Sans (SIL OFL 1.1, `firmware/drivers/fonts/OFL.txt`); Fusion Pixel by TakWolf
+  for `CJK.BIN` (SIL OFL 1.1, `release/OFL.txt`); the Retro look's pixel font PX is GILB's own
+  (`tools/gilb_pixfont.py`).
 - **Decoders:**
   - Rockbox (libdemac, libwma, libwmapro)
   - FFmpeg (WMA Lossless)
@@ -326,11 +344,14 @@ keys and the desktop simulator, and ran the HIFI probe on the device. Written wi
   - libopus and opusfile
   - WavPack
   - Apple ALAC (Apache 2.0)
+  - dr_flac (public domain or MIT-0)
 
-  Their licenses are in their directories.
+  Their licenses are in their directories; [THIRD_PARTY.md](THIRD_PARTY.md) lists each one.
 
 ## License and disclaimer
 
-GPL-3.0 (see `LICENSE`); bundled libraries keep their own licenses. GILB, like ReChord, is independent: it
+GPL-3.0 (see `LICENSE`); bundled libraries and fonts keep their own licenses
+([THIRD_PARTY.md](THIRD_PARTY.md)). Each release names the commit it was built from: that commit
+of this repository is its source. GILB, like ReChord, is independent: it
 is not affiliated with FiiO, SNOWSKY, Rockchip or RECHO's creator. No firmware images
 (stock or RECHO) are distributed here.
