@@ -98,8 +98,8 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 ## Memory: the main constraint
 
 - Core A's resident code must leave at least **3072 B free** (`AP_MIN_FREE`, lowered from 4096 on 2026-11-25,
-  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB build has **4332 B free** now,
-  1260 B above the floor (RAM: 604 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` no longer
+  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB build has **3992 B free** now,
+  920 B above the floor (RAM: 592 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` no longer
   fits at all (964 B over even with `AP_MIN_FREE=0`).
 - New features go into **overlays**: swap-in code windows, opened through gates in `firmware/startup/ap_ovl.c`
   (`GATE`, `npx_ok()`). Files wholly in an overlay are placed by object name in `firmware/firmware_ap.ld`;
@@ -145,7 +145,7 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last firmware change is **9be3351**; Echo Library's is **738be7b**.
+Everything is committed and pushed. The last firmware change is **f121933**; Echo Library's is **738be7b**.
 
 Done and confirmed on the device:
 
@@ -165,6 +165,10 @@ Done and confirmed on the device:
   its alt font only with `wide=alt` (Retro's questions); without it the line is cut, as before
 - Core A size (9be3351): LTO for the overlay gates and a compact 64-bit division: 3448 -> 4332 B free;
   LTO builds in parallel
+- Bluetooth › Volume (f121933): Player, Fixed -6 dB or Fixed 0 dB (`bt_fixed=` in `GILB.CFG`). The JieLi
+  module re-digitizes the DAC's analog output and sends SBC (`docs/BT_DEVICE_NOTES.md`), so a turned-down
+  DAC raised its noise; fixed holds the DAC at that level while connected (volume keys change nothing).
+  No better codec is possible without replacing the module (its firmware is its own)
 - Retro's own themes (0b51e63; Echo Library 3d1156c): Settings › Display › Theme lists the current Look's
   themes, each Look remembers its own, and Echo Library's Themes page edits both
 - the self-test's audio step: 4 s a side, 2 s gap; its test feed now writes one 32-bit word a channel
@@ -182,7 +186,7 @@ Dropped or set aside:
 Still open:
 
 - **Layouts:** done but for the USB DAC screen, which stays hand-drawn (its overlay holds the window, and
-  it needs covers and badges the resident drawer lacks). Resident code has 1260 B above the floor:
+  it needs covers and badges the resident drawer lacks). Resident code has 920 B above the floor:
   anything sizeable must still go into an overlay or replace resident code.
 
 - **Second Echo Mini:** flash it (`docs/FLASHING.md`), run the self-test, copy `GILB/CJK.BIN` to it.
