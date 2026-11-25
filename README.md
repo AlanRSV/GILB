@@ -268,6 +268,14 @@ published, and GILB doesn't have it. GILB tests each change with the host tests 
 in the desktop simulator (`sim/`, which runs the firmware's own UI, library and player code) and
 on its 8 GB players; Settings > System > Self-test checks a player's hardware.
 
+## Support
+
+GILB is free. If it's useful to you, these are the people to thank:
+
+- **miauk**, creator of RECHO, the first custom firmware for the Echo Mini, which made all of this
+  possible: [ko-fi.com/miauk](https://ko-fi.com/miauk)
+<!-- GILB's own Ko-fi goes here, e.g.: - **AlanRSV**, GILB: [ko-fi.com/NAME](https://ko-fi.com/NAME) -->
+
 ## Credits
 
 GILB stands on three projects, in this order. Each one made the next possible.
