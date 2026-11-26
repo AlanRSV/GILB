@@ -32,8 +32,9 @@
 /* OVL_VIZ: Now Playing's Spectrum view (ui/spectrum.c), the modes' window */
 /* OVL_LAY: layouts (ui/layout.c, docs/LAYOUTS.md): Now Playing's cover view, the modes' window */
 /* OVL_LAYB: the built-in layouts' text (ui/layout_text.c), in the library job's phase window */
+/* OVL_PRG: the program loader (services/programs.c, docs/PROGRAMS.md), in the library job's phase window */
 enum { OVL_NONE = 0, OVL_USBDAC, OVL_USBOUT, OVL_DEV, OVL_FSW, OVL_LIB, OVL_LIBTAG, OVL_LWALK, OVL_LBUILD, OVL_NPX,
-       OVL_VIZ, OVL_LAY, OVL_LAYB, OVL_COUNT };
+       OVL_VIZ, OVL_LAY, OVL_LAYB, OVL_PRG, OVL_COUNT };
 
 #define OVL_MAGIC 0x314C564Fu        /* "OVL1" */
 
@@ -97,6 +98,11 @@ const char *ovl_why(unsigned id);    /* why ovl_get(id) last refused ("damaged (
  * file system's windows have one overlay each, never replaced: their calls need no hold. */
 void ovl_hold(int d);
 
+/* A program (services/programs.c) takes the modes', the library's and the file system's windows
+ * (on = 1): the overlays in them leave (stop hooks, hooks cleared) and no overlay is loaded into
+ * them until on = 0 (ovl_get refuses: "busy"). Then they load again on demand (the library: its
+ * caller's ovl_get). Never from code in those windows. */
+void ovl_take(int on);
 /* The CRC the headers carry: services/fw_update.c's (poly 0x04C10DB7, MSB first, init 0). */
 uint32_t ovl_crc(const void *p, uint32_t n);
 

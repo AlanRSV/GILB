@@ -257,6 +257,15 @@ SECTIONS
             *(.rodata.ovl_layb .rodata.ovl_layb.*)
             . = ALIGN(4);
         }
+        /* the program loader (services/programs.c, docs/PROGRAMS.md): here because a program takes
+           every other window (ovl_take), and this one, its API table in it, stays while it runs */
+        .ovl_prg
+        {
+            KEEP(*(.ovl_hdr.prg))
+            *(.ovl.prg.*)
+            *programs.o(.text* .rodata*)
+            . = ALIGN(4);
+        }
     }
 
     /* the music library (services/lib.h, docs/LIBRARY.md): the index job, the views, the lists,
@@ -403,6 +412,18 @@ ASSERT(SIZEOF(.ovl_lwalk) <= LENGTH(OVL_LPH), "the walk overlay is over the phas
 ASSERT(SIZEOF(.ovl_lbuild) <= LENGTH(OVL_LPH), "the build overlay is over the phase window")
 ASSERT(ovl_hdr_layb == ORIGIN(OVL_LPH), "layb must start with its header")
 ASSERT(SIZEOF(.ovl_layb) <= LENGTH(OVL_LPH), "the layb overlay is over the phase window")
+/* prg calls resident code only; a program gets 0x03030000..0x0304C000 (sdk/include/gilb_app.h
+   GILB_APP_BASE..GILB_APP_END): the input ring and the windows below this one, never this one */
+NOCROSSREFS_TO(.ovl_prg .vectors .text .data .ovl_fsw .ovl_lib .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx .ovl_viz .ovl_lay)
+/* ... and prg calls no overlay: a resident file's OVL_TEXT function lives in one (fs_list_dir_each is
+   viz's; calling it from here once jumped into whatever the modes' window held, 2026-11-26) */
+NOCROSSREFS(.ovl_prg .ovl_usbdac .ovl_usbout .ovl_dev .ovl_libtag .ovl_npx .ovl_viz .ovl_lay)
+NOCROSSREFS(.ovl_prg .ovl_lib)
+NOCROSSREFS(.ovl_prg .ovl_fsw)
+ASSERT(ovl_hdr_prg == ORIGIN(OVL_LPH), "prg must start with its header")
+ASSERT(SIZEOF(.ovl_prg) <= LENGTH(OVL_LPH), "the prg overlay is over the phase window")
+ASSERT(ORIGIN(OVL_LPH) >= 0x0304C000 && ORIGIN(OVL_WIN) >= 0x03030000 && ORIGIN(OVL_LIB) + LENGTH(OVL_LIB) <= 0x0304C000,
+       "a program's memory (0x03030000..0x0304C000) must be the input ring and the windows below the phase window")
 __ovl_fs_start = ORIGIN(OVL_FS);
 __ovl_fs_end   = ORIGIN(OVL_FS) + LENGTH(OVL_FS);
 ASSERT(__ovl_fs_start >= ORIGIN(OVL_WIN) + LENGTH(OVL_WIN), "the file system's window must not overlap the modes' window")

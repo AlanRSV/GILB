@@ -44,6 +44,7 @@ static uint8_t *const s_end[4] = { __ovl_win_end, __ovl_lib_end, __ovl_fs_end, _
 
 static unsigned s_cur[4];              /* OVL_NONE or the overlay in each window */
 static unsigned s_hold;                /* calls running in the modes' window now (ovl_hold) */
+static unsigned s_taken;               /* windows a program holds: bit per window (ovl_take) */
 static uint32_t s_bad;                 /* refused for good this boot: bit per id */
 static const char *s_why[OVL_COUNT];
 
@@ -157,6 +158,10 @@ const void *ovl_get(unsigned id)
         return HDR(w)->api;
     if (s_bad >> id & 1u)
         return NULL;
+    if (s_taken >> w & 1u) {           /* a program holds the window (ovl_take) */
+        s_why[id] = "busy";
+        return NULL;
+    }
     if (s_hold && w == 0) {            /* code in the window is running: it stays */
         log_printf("ovl: %s wanted while %s runs: refused", ovl_desc[id].module,
                    s_cur[0] ? ovl_desc[s_cur[0]].module : "-");
@@ -181,6 +186,16 @@ const void *ovl_get(unsigned id)
     s_cur[w] = id;
     log_printf("ovl: %s %d B %u.%u ms", ovl_desc[id].module, n, (unsigned)(us / 1000u), (unsigned)(us % 1000u / 100u));
     return HDR(w)->api;
+}
+
+void ovl_take(int on)
+{
+    if (on)
+        for (unsigned w = 0; w < 3u; w++) {
+            evict(w);
+            HDR(w)->magic = 0;         /* (what the program writes there never counts as loaded) */
+        }
+    s_taken = on ? 7u : 0u;
 }
 
 void ovl_run(unsigned id, unsigned n)

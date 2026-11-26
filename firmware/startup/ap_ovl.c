@@ -71,6 +71,7 @@ const ovl_desc_t ovl_desc[OVL_COUNT] = {
     [OVL_VIZ]    = { "ov_viz", "Spectrum", NULL, 0 },
     [OVL_LAY]    = { "ov_lay", "Layout", NULL, 0 },
     [OVL_LAYB]   = { "ov_layb", "Layout", NULL, 3 },
+    [OVL_PRG]    = { "ov_prg", "Programs", NULL, 3 },
 };
 
 /* The USB interrupt goes wherever usb_irq_hook points (drivers/usb_msc_rknanoc.c): the USB DAC's
@@ -283,6 +284,21 @@ void ap_bt_listen(void) { dev_run(DEV_BT_LISTEN); }
 void ap_te_probe(void) { dev_run(DEV_TE_PROBE); }
 void ap_hifi_probe(void) { dev_run(DEV_HIFI_PROBE); }
 void ap_self_test(void) { dev_run(DEV_SELFTEST); }
+
+/* ---- prg: the program loader (services/programs.c, docs/PROGRAMS.md), in the phase window ------ */
+
+void programs_run(void);
+static void (*const k_prg[])(void) OVL_API(prg) = { programs_run };
+OVL_HEADER(prg, OVL_PRG, k_prg);
+
+void ap_programs(void)               /* Settings > System > Programs */
+{
+    if (!ovl_get(OVL_PRG)) {
+        refused(OVL_PRG);
+        return;
+    }
+    ovl_run(OVL_PRG, 0);
+}
 
 /* ---- fsw: the file-system writer's cold half (services/fs_write_ext.c), its own window ------ */
 
