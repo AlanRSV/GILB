@@ -31,6 +31,8 @@ int audio_play(int pos);
 void audio_stop(void);
 /* Developer > HIFI probe: the player stopped, a fresh core-B main image at PLL / div (1, 2, 4, 8). */
 int audio_b_fresh(unsigned div);
+/* A program borrows core B's RAM: the music stopped, B held in reset; the next play reloads it. */
+void audio_b_free(void);
 /* Call once per tick (10 ms): file -> input ring, output start/stop, B clock. */
 void audio_poll(void);
 int audio_status(audio_status_t *st);

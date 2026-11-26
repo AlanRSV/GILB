@@ -95,3 +95,16 @@ display trial.
   - Library opens
   - lyrics or the spectrum load (the modes' window)
   - a new long-named playlist saves (fsw)
+
+## API version 2 (2026-11-26): more memory
+
+`more_mem` stops the music, parks core B and holds it in reset (`audio_b_free`, which follows the
+USB DAC's path), then lends its RAM in two ranges around the shared block at 0x01020000:
+
+- 0x01000000, 128 KiB
+- 0x01021000, 252 KiB
+
+The next play loads core B again (device-checked). `sdk/examples/memtest` measured it: data is
+1.6x slower to read there and code runs 4.8x slower there (docs/DOOM_PLAN.md). That makes it
+right for big data and for code that runs rarely. `sdk/app.ld` gathers `.movable` sections between
+`__movable_start` and `__movable_end`, for a program that copies code there itself.

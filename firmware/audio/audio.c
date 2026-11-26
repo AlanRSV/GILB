@@ -1385,6 +1385,24 @@ OVL_TEXT(usbdac) int32_t *audio_ext_ring(void)
     return (int32_t *)AS_PCM_RING;
 }
 
+/* A program takes core B's RAM (services/programs.c, docs/PROGRAMS.md): the music stopped, B parked
+ * and held in reset as for the USB DAC (audio_ext_start); the next play loads B's image again. */
+void audio_b_free(void)
+{
+    if (s_playing || s_b_up)
+        halt();
+    if (s_b_up) {
+        uint32_t t0 = time_ms();
+
+        AS->cmd = AS_CMD_PARK;
+        while (AS->state != AS_B_PARKED && time_ms() - t0 < 100u)
+            cpu_wait_tick();
+    }
+    REG(CRU_SOFTRST3) = (CAL_CORE_RST << 16) | CAL_CORE_RST;
+    s_b_up = 0;
+    s_b_image = NULL;
+}
+
 OVL_TEXT(usbdac) int audio_ext_start(uint32_t rate)
 {
     if (s_playing || s_b_up)

@@ -13,6 +13,11 @@ SECTIONS
     .text :
     {
         KEEP(*(.gilb_hdr))
+        . = ALIGN(4);
+        __movable_start = .;             /* code a program copies elsewhere itself (more_mem) */
+        KEEP(*(.movable .movable.*))
+        . = ALIGN(4);
+        __movable_end = .;
         *(.text .text.*)
         *(.rodata .rodata.*)
         . = ALIGN(4);

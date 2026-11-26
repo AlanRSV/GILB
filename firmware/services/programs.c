@@ -24,6 +24,8 @@
 #include "drivers/display.h"
 #include "drivers/font.h"
 #include "drivers/panel_io.h"
+#include "audio/audio.h"
+#include "audio/audio_shared.h"
 #include "player/player.h"
 #include "services/fs.h"
 #include "services/fw_update.h"
@@ -139,13 +141,28 @@ static int a_close(void *f) { return f ? fs_close(f) : -1; }
 static int a_exists(const char *path) { return path ? fs_exists(path) : 0; }
 static void a_log(const char *s) { log_printf("app: %s", s ? s : ""); }
 
+/* Core B's RAM around the shared block (audio/audio_shared.h: AS_B_RAM, AS_SHARED 4 KiB, AS_B_TOP). */
+static int a_more_mem(gilb_mem_t *out, int max)
+{
+    static const gilb_mem_t k[2] = {
+        { AS_B_RAM, AS_SHARED - AS_B_RAM }, { AS_SHARED + 0x1000u, AS_B_TOP - AS_SHARED - 0x1000u },
+    };
+    int n = 0;
+
+    audio_b_free();
+    log_printf("programs: core B held, its RAM lent");
+    for (; out && n < max && n < 2; n++)
+        out[n] = k[n];
+    return n;
+}
+
 static const gilb_api_t k_api = {
     .version = GILB_API_VERSION, .api_size = sizeof(gilb_api_t),
     .board = BOARD == BOARD_512M, .screen_w = DISPLAY_W, .screen_h = DISPLAY_H,
     .blit = a_blit, .sync = panel_io_sync, .backlight = a_backlight, .glyph = a_glyph,
     .key = a_key, .poll = a_poll, .ms = a_ms, .sleep_ms = a_sleep,
     .open = a_open, .read = a_read, .write = a_write, .seek = a_seek, .size = a_size, .close = a_close,
-    .exists = a_exists, .log = a_log, .dir = GILB_APP_DIR,
+    .exists = a_exists, .log = a_log, .dir = GILB_APP_DIR, .more_mem = a_more_mem,
 };
 
 /* ---- the screens -------------------------------------------------------------------------------- */

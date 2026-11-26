@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #define GILB_APP_MAGIC   0x50504147u    /* "GAPP" */
-#define GILB_API_VERSION 1u
+#define GILB_API_VERSION 2u
 #define GILB_APP_BASE    0x03030000u    /* where a program is loaded and runs */
 #define GILB_APP_END     0x0304C000u    /* 112 KiB: code, data, .bss, heap */
 #define GILB_APP_DIR     "/Internal/GILB/APPS"
@@ -56,6 +56,11 @@ typedef struct {
     uint8_t steps;
     uint32_t t_ms;           /* when (api->ms() time) */
 } gilb_key_t;
+
+/* A range of memory (more_mem) */
+typedef struct {
+    uint32_t base, size;
+} gilb_mem_t;
 
 /* open() modes */
 enum { GF_READ = 0, GF_WRITE = 1 /* create or empty */, GF_APPEND = 2 };
@@ -99,6 +104,14 @@ typedef struct gilb_api {
     /* ---- the rest ---- */
     void (*log)(const char *line);       /* a line in GILB's log (ECHOLOG.TXT on the internal storage) */
     const char *dir;                     /* GILB_APP_DIR: where the program's file is */
+
+    /* ---- version 2 ---- */
+    /* More memory: the audio core's RAM, which is free while a program runs (the audio core is held
+     * and loads again at the next play). Fills up to max ranges into out and returns how many: two
+     * today, 0x01000000 (128 KiB) and 0x01021000 (252 KiB), around the shared block GILB keeps at
+     * 0x01020000 (never write there). Memory only: its contents are undefined and code copied there
+     * is not yet known to run (sdk/examples/memtest finds out). */
+    int (*more_mem)(gilb_mem_t *out, int max);
 } gilb_api_t;
 
 #endif
