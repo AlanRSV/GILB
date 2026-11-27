@@ -31,7 +31,8 @@ leaves any program.
 3. Build it with `make -C sdk APP=<name> NAME="Shown name"`. The file's name is the folder's
    name: 8 characters at most, in capitals, plus `.APP`.
 
-[`include/gilb_app.h`](include/gilb_app.h) lists everything `api` offers:
+[`API.md`](API.md) is the full reference: every function, what it returns and its limits. In short
+([`include/gilb_app.h`](include/gilb_app.h) is the source):
 
 - **Screen:** `blit` (RGB565 pixels to any rectangle), `sync`, `backlight`, and `glyph` (GILB's
   8×8 font). The screen is 320 × 170.
@@ -59,8 +60,8 @@ leaves any program.
   the player is a COM port on the PC. `tools/gilb_keys.ps1` sends a PC's keys that way: one byte a
   change, the Windows key code, bit 7 set for a release.
 - **Sound** isn't in the API yet. It's next, for the Doom port.
-- **Compatibility:** a program states the API version it needs (`APP_API_MIN`, default 1). GILB
-  refuses a program that needs a newer one. Newer GILBs only add functions at the end of
+- **Compatibility:** a program states the API version it needs (`API_MIN=` when building, default 1).
+  GILB refuses a program that needs a newer one. Newer GILBs only add functions at the end of
   `gilb_api_t`, so older programs keep working.
 
 [`docs/PROGRAMS.md`](../docs/PROGRAMS.md) has how the loader works inside the firmware.
