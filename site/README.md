@@ -4,9 +4,10 @@ A one-page site where people download the newest GILB firmware. It never stores 
 shows the newest **GitHub release** of this repository and links its files, so publishing a release
 updates the site with no redeploy.
 
-- `server.js`: a dependency-free Node server (Node 18+). It serves `public/` and `/api/latest`, the
-  newest release (its name, date, notes, files, sizes and SHA-256), cached for 10 minutes so visitors
-  never meet GitHub's API limit (60 requests an hour without a token).
+- `server.js`: a dependency-free Node server (Node 18+). It serves `public/`, `/api/latest`, the
+  newest release (its name, date, notes, files, sizes and SHA-256), and `/api/betas`, the newest
+  pre-releases (3 by default), each cached for 10 minutes so visitors never meet GitHub's API limit
+  (60 requests an hour without a token).
 - `public/`: the page (`index.html`, `style.css`, `app.js`) and four screenshots from `docs/images/`.
 
 The page offers the files by name: `HIFIEC90.IMG` (8 GB board) and `MINIV900.IMG` (512 MB board). Any
@@ -20,6 +21,13 @@ other file attached to a release is listed under them.
    the site under "What's new"), attach the `.IMG` files, **Publish release**.
 3. The site shows it within 10 minutes (the cache), or at once after a restart.
 
+## Publishing a beta
+
+A beta is a GitHub **pre-release**: draft the release as above, tick **Set as a pre-release**, publish.
+It shows under **Beta builds**, with a warning that it is for testing, and never as the main download
+(GitHub's "latest" release is never a pre-release). The section stays hidden while there is none.
+Betas with Settings › System › Programs are built with `PROGRAMS=1` (`docs/PROGRAMS.md`).
+
 ## Hosting on Railway
 
 1. **New Project › Deploy from GitHub repo**, pick this repository.
@@ -27,7 +35,7 @@ other file attached to a release is listed under them.
    `npm start` (no install step needed: there are no dependencies).
 3. **Settings › Networking › Generate Domain** (or add your own). Railway sets `PORT`; the server uses it.
 4. Optional **Variables**: `GITHUB_TOKEN` (a fine-grained token with no permissions: public repos only
-   need it for a higher API limit), `REPO` (default `AlanRSV/GILB`), `CACHE_MINUTES` (default 10).
+   need it for a higher API limit), `REPO` (default `AlanRSV/GILB`), `CACHE_MINUTES` (default 10), `BETAS` (how many betas to list, default 3).
    Health check path: `/healthz`.
 
 ## Running it locally
@@ -37,5 +45,5 @@ cd site
 node server.js            # http://localhost:3000
 ```
 
-`MOCK_RELEASE=test/release.json node server.js` serves a made-up release from a file instead of GitHub
-(to try the page before a real release exists).
+`MOCK_RELEASE=test/release.json MOCK_BETAS=test/betas.json node server.js` serves a made-up release
+and two made-up betas from files instead of GitHub (to try the page before a real release exists).

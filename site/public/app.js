@@ -8,12 +8,12 @@
   const mb = (n) => (n / 1048576).toFixed(1) + ' MB';
   const day = (iso) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
-  function fileCard(f) {
+  function fileCard(f, beta) {
     return `<div class="file">
       <span class="board">${esc(f.board)} board</span>
       <span class="name">${esc(f.name)}</span>
       <span class="meta">${mb(f.size)}${f.downloads ? ` · ${f.downloads.toLocaleString()} downloads` : ''}</span>
-      <a class="btn primary" href="${esc(f.url)}" download>Download for ${esc(f.board)}</a>
+      <a class="btn${beta ? '' : ' primary'}" href="${esc(f.url)}" download>Download ${beta ? 'beta ' : ''}for ${esc(f.board)}</a>
       ${f.sha256 ? `<span class="sha">SHA-256 ${esc(f.sha256)}<button type="button" data-copy="${esc(f.sha256)}">copy</button></span>` : ''}
     </div>`;
   }
@@ -35,7 +35,7 @@
     const rest = r.files.filter((f) => !f.board);
     box.innerHTML = `<div class="rel-head"><h3>${esc(r.name)}</h3><span class="tag">${esc(r.tag)}</span>
         <span class="muted">${day(r.date)}</span></div>
-      ${boards.length ? `<div class="files">${boards.map(fileCard).join('')}</div>`
+      ${boards.length ? `<div class="files">${boards.map((f) => fileCard(f)).join('')}</div>`
         : `<p>This release has no board images attached. <a href="${esc(r.url)}" rel="noopener">See it on GitHub</a>.</p>`}
       ${rest.length ? `<p class="others">Also in this release: ${rest.map((f) => `<a href="${esc(f.url)}">${esc(f.name)}</a>`).join(', ')}</p>` : ''}
       <p class="others"><a href="${esc(r.url)}" rel="noopener">This release on GitHub</a> ·
@@ -54,4 +54,34 @@
 
   fetch('/api/latest').then((r) => r.json()).then(show)
     .catch(() => show({ repo: 'AlanRSV/GILB', error: 'offline' }));
+
+  // Beta builds: the newest pre-releases (/api/betas). The section stays hidden when there are none.
+  const betaSec = document.getElementById('beta');
+  const betaBox = document.getElementById('betas');
+
+  function betaCard(r) {
+    const boards = r.files.filter((f) => f.board);
+    const rest = r.files.filter((f) => !f.board);
+    return `<div class="card beta">
+      <div class="rel-head"><span class="badge">Beta</span><h3>${esc(r.name)}</h3><span class="tag">${esc(r.tag)}</span>
+        <span class="muted">${day(r.date)}</span></div>
+      ${boards.length ? `<div class="files">${boards.map((f) => fileCard(f, true)).join('')}</div>`
+        : `<p>No board images attached. <a href="${esc(r.url)}" rel="noopener">See it on GitHub</a>.</p>`}
+      ${rest.length ? `<p class="others">Also: ${rest.map((f) => `<a href="${esc(f.url)}">${esc(f.name)}</a>`).join(', ')}</p>` : ''}
+      ${r.notes ? `<details class="beta-notes"><summary>What's in this beta</summary><div class="prose">${r.notes}</div></details>` : ''}
+      <p class="others"><a href="${esc(r.url)}" rel="noopener">This beta on GitHub</a></p>
+    </div>`;
+  }
+
+  betaBox.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-copy]');
+    if (!b) return;
+    navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = 'copied'; setTimeout(() => { b.textContent = 'copy'; }, 1500); });
+  });
+
+  fetch('/api/betas').then((r) => r.json()).then((d) => {
+    if (!d.betas || !d.betas.length) return;     // (none, or GitHub unreachable: no section)
+    betaBox.innerHTML = d.betas.map(betaCard).join('');   // (notes: GitHub's own sanitized rendering)
+    betaSec.hidden = false;
+  }).catch(() => {});
 })();
