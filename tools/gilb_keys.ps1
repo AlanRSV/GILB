@@ -13,9 +13,11 @@ window has the focus, each key press and release goes to the player as one byte,
 The window shows the keys held (green), the keys Doom uses (outlined, with what they do), whether the
 player is connected, and what Doom is being told to do. Close the window to stop.
 
+    -Demo                 for filming: a bigger window, titles saying what it shows, and the last key
+                          presses in a strip that fades out
     -Snapshot file.png    draws the window into a picture and exits (to check its look)
 #>
-param([string]$Snapshot)
+param([string]$Snapshot, [switch]$Demo)
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -57,6 +59,13 @@ public class GilbKeyboard : Control
     readonly Dictionary<int, string[]> doom = new Dictionary<int, string[]>();
     readonly int[] order = { 0x57, 0x26, 0x53, 0x28, 0x25, 0x27, 0x41, 0x44, 0x10, 0x11, 0x0D, 0x20, 0x51, 0x45, 0x09, 0x1B };
     bool connected; string portName = ""; bool active = true; int sent;
+
+    // -Demo (for filming): its own titles, and the last key presses, fading out over FadeMs.
+    bool demo;
+    readonly List<string> recentName = new List<string>();
+    readonly List<DateTime> recentAt = new List<DateTime>();
+    Timer fade;
+    const double FadeMs = 4000;
 
     static readonly Color Bg = Color.FromArgb(13, 14, 24);
     static readonly Color Face = Color.FromArgb(27, 30, 46);
@@ -126,7 +135,41 @@ public class GilbKeyboard : Control
     void Add(ref float x, float y, float w, string label, int vk) { keys.Add(new Key(x, y, w, label, vk)); x += w; }
     void Letters(ref float x, float y, string s) { foreach (char c in s) Add(ref x, y, 1, c.ToString(), c); }
 
-    public void Press(int vk) { if (held.Add(vk)) Invalidate(); }
+    public void Press(int vk)
+    {
+        if (!held.Add(vk))
+            return;
+        if (demo) {
+            string name = null;
+            string[] act;
+            foreach (Key k in keys)
+                if (k.Vk == vk) { name = k.Label; break; }
+            if (name == null) name = "#" + vk;
+            if (doom.TryGetValue(vk, out act)) name += "  " + act[1];
+            recentName.Insert(0, name);
+            recentAt.Insert(0, DateTime.Now);
+            if (recentName.Count > 8) { recentName.RemoveAt(8); recentAt.RemoveAt(8); }
+        }
+        Invalidate();
+    }
+
+    public void SetDemo()
+    {
+        demo = true;
+        fade = new Timer();
+        fade.Interval = 80;
+        fade.Tick += delegate {
+            if (recentAt.Count > 0) {
+                while (recentAt.Count > 0 && (DateTime.Now - recentAt[recentAt.Count - 1]).TotalMilliseconds > FadeMs) {
+                    recentAt.RemoveAt(recentAt.Count - 1);
+                    recentName.RemoveAt(recentName.Count - 1);
+                }
+                Invalidate();
+            }
+        };
+        fade.Start();
+        Invalidate();
+    }
     public void Release(int vk) { if (held.Remove(vk)) Invalidate(); }
     public void ReleaseAll() { held.Clear(); Invalidate(); }
     public void CountSent() { sent++; Invalidate(); }
@@ -173,8 +216,9 @@ public class GilbKeyboard : Control
         using (Font pill = new Font("Segoe UI Semibold", 13f, FontStyle.Regular, GraphicsUnit.Pixel))
         using (SolidBrush tb = new SolidBrush(Ink))
         using (SolidBrush db = new SolidBrush(Dim)) {
-            g.DrawString("GILB Keys", title, tb, pad, 18);
-            g.DrawString("A PC keyboard for programs on the player", small, db, pad + 1, 44);
+            g.DrawString(demo ? "Doom on the SNOWSKY Echo Mini" : "GILB Keys", title, tb, pad, 18);
+            g.DrawString(demo ? "GILB firmware \u00B7 Programs (early beta) \u00B7 PC keyboard over USB"
+                              : "A PC keyboard for programs on the player", small, db, pad + 1, 44);
 
             string st = connected ? "Connected \u00B7 " + portName : "Waiting for the player";
             Color sc = connected ? Green : Amber;
@@ -274,8 +318,37 @@ public class GilbKeyboard : Control
             string cnt = sent + (sent == 1 ? " key change sent" : " key changes sent");
             SizeF cs = g.MeasureString(cnt, lab);
             g.DrawString(cnt, lab, db, w - pad - cs.Width, fy + 1);
-            g.DrawString("Keep this window in front while you play. On the player, hold POWER for 2 s to leave the program.",
-                         lab, db, pad, fy + 26);
+            if (!demo) {
+                g.DrawString("Keep this window in front while you play. On the player, hold POWER for 2 s to leave the program.",
+                             lab, db, pad, fy + 26);
+            } else {
+                // The last presses, newest first, fading out.
+                float cx = pad + 52, cy = fy + 26;
+                g.DrawString("KEYS", lab, new SolidBrush(Cyan), pad, cy + 2);
+                string link = "github.com/AlanRSV/GILB";
+                SizeF ls = g.MeasureString(link, lab);
+                g.DrawString(link, lab, db, w - pad - ls.Width, cy + 2);
+                using (Font chip = new Font("Segoe UI Semibold", 12f, FontStyle.Regular, GraphicsUnit.Pixel)) {
+                    for (int i = 0; i < recentName.Count; i++) {
+                        double age = (DateTime.Now - recentAt[i]).TotalMilliseconds;
+                        int a = (int)Math.Max(0, Math.Min(255, 255 * (1 - age / FadeMs)));
+                        if (a == 0) continue;
+                        SizeF cs2 = g.MeasureString(recentName[i], chip);
+                        RectangleF cr = new RectangleF(cx, cy, cs2.Width + 14, 22);
+                        if (cr.Right > w - pad - ls.Width - 12) break;
+                        Color cc = i == 0 ? Green : Cyan;
+                        using (GraphicsPath cp = Round(cr, 11))
+                        using (SolidBrush cb = new SolidBrush(Color.FromArgb(a * 40 / 255, cc)))
+                        using (Pen cpen = new Pen(Color.FromArgb(a * 170 / 255, cc), 1.2f)) {
+                            g.FillPath(cb, cp);
+                            g.DrawPath(cpen, cp);
+                        }
+                        using (SolidBrush tb2 = new SolidBrush(Color.FromArgb(a, Ink)))
+                            g.DrawString(recentName[i], chip, tb2, cx + 7, cy + 3);
+                        cx = cr.Right + 8;
+                    }
+                }
+            }
         }
     }
 }
@@ -367,9 +440,17 @@ $form.TopMost = $true
 $kb = New-Object GilbKeyboard
 $kb.Dock = 'Fill'
 $form.Controls.Add($kb)
+if ($Demo) {
+    $kb.SetDemo()
+    $form.Text = 'GILB Keys - Doom on the Echo Mini'
+    $form.ClientSize = New-Object System.Drawing.Size(1280, 600)
+}
 
 if ($Snapshot) {                        # (a picture of the window, with a few keys held)
     $kb.SetStatus($true, 'COM5')
+    if ($Demo) {                        # (a few presses before, for the strip)
+        foreach ($vk in 0x20, 0x45, 0x27, 0x26) { $kb.Press($vk); $kb.Release($vk) }
+    }
     foreach ($vk in 0x57, 0x10, 0x11, 0x25) { $kb.Press($vk) }
     $bmp = New-Object System.Drawing.Bitmap $form.ClientSize.Width, $form.ClientSize.Height
     $kb.Size = $form.ClientSize
