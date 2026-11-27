@@ -7,12 +7,14 @@
 //   - one request (the list of releases) serves both endpoints
 //   - it is asked again only after CACHE_MINUTES, with the last answer's ETag: an unchanged list comes
 //     back as 304, which GitHub does not count against the limit
+//   - every FULL_MINUTES it is asked without the ETag: a 304 after a release was deleted kept the
+//     deleted one on the page (2026-11-26), so the list is never trusted for longer than that
 //   - a refusal keeps the last good answer, and the next try waits RETRY_MINUTES (not every visitor)
 //   - GITHUB_TOKEN (any token, no permissions needed for a public repo) raises the limit to 5000 an hour
 //
 // Env: PORT (default 3000), REPO (default AlanRSV/GILB), GITHUB_TOKEN (optional, recommended),
-// CACHE_MINUTES (default 10), RETRY_MINUTES (default 2), BETAS (how many pre-releases, default 3),
-// MOCK_RELEASE / MOCK_BETAS (testing: the answers from files instead of GitHub).
+// CACHE_MINUTES (default 10), FULL_MINUTES (default 60), RETRY_MINUTES (default 2), BETAS (how many
+// pre-releases, default 3), MOCK_RELEASE / MOCK_BETAS (testing: the answers from files instead of GitHub).
 'use strict';
 
 const http = require('node:http');
@@ -22,6 +24,7 @@ const path = require('node:path');
 const PORT = Number(process.env.PORT) || 3000;
 const REPO = process.env.REPO || 'AlanRSV/GILB';
 const CACHE_MS = (Number(process.env.CACHE_MINUTES) || 10) * 60 * 1000;
+const FULL_MS = (Number(process.env.FULL_MINUTES) || 60) * 60 * 1000;
 const RETRY_MS = (Number(process.env.RETRY_MINUTES) || 2) * 60 * 1000;
 const BETAS = Number(process.env.BETAS) || 3;
 const PUBLIC = path.join(__dirname, 'public');
@@ -48,14 +51,14 @@ function shape(j) {
   return { tag: j.tag_name, name: j.name || j.tag_name, date: j.published_at, url: j.html_url, notes: j.body_html || '', files };
 }
 
-// The list of releases, newest first: { list, etag, at, error, tryAt }.
-let gh = { list: null, etag: null, at: 0, error: null, tryAt: 0 };
+// The list of releases, newest first: { list, etag, at, full, error, tryAt } (full: the last 200).
+let gh = { list: null, etag: null, at: 0, full: 0, error: null, tryAt: 0 };
 let pending = null;                          // (one request at a time, however many visitors wait)
 
 async function refresh() {
   const headers = { Accept: 'application/vnd.github.html+json', 'User-Agent': 'gilb-download-site' };
   if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  if (gh.etag && gh.list) headers['If-None-Match'] = gh.etag;
+  if (gh.etag && gh.list && Date.now() - gh.full < FULL_MS) headers['If-None-Match'] = gh.etag;
   try {
     const r = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=30`, { headers });
     if (r.status === 304) {
@@ -68,7 +71,7 @@ async function refresh() {
     }
     const list = (await r.json()).filter((j) => !j.draft)
       .sort((a, b) => String(b.published_at).localeCompare(String(a.published_at)));
-    gh = { list, etag: r.headers.get('etag'), at: Date.now(), error: null, tryAt: 0 };
+    gh = { list, etag: r.headers.get('etag'), at: Date.now(), full: Date.now(), error: null, tryAt: 0 };
   } catch (e) {
     gh = { ...gh, error: String(e.message || e), tryAt: Date.now() + RETRY_MS };
     console.log(`releases: ${gh.error}${gh.list ? ' (keeping the last answer)' : ''}`);

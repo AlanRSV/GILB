@@ -40,8 +40,9 @@ Betas with Settings › System › Programs are built with `PROGRAMS=1` (`docs/P
    asked once (2026-11-26). The page then still offers the 8 GB image through GitHub's direct link,
    without its size, checksum or notes. A fine-grained token with no permissions is enough (a public
    repo only needs it for the higher limit: 5000 an hour). Optional: `REPO` (default `AlanRSV/GILB`),
-   `CACHE_MINUTES` (default 10), `RETRY_MINUTES` (after a refusal, default 2), `BETAS` (how many
-   betas to list, default 3).
+   `CACHE_MINUTES` (default 10), `FULL_MINUTES` (a full read of the list, not trusting GitHub's
+   "unchanged": default 60), `RETRY_MINUTES` (after a refusal, default 2), `BETAS` (how many betas to
+   list, default 3).
    Health check path: `/healthz`.
 
 ## Running it locally
