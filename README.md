@@ -185,6 +185,23 @@ that document). Keep maskrom recovery at hand.
   possible without replacing the module ([docs/BT_DEVICE_NOTES.md](docs/BT_DEVICE_NOTES.md)).
 - AAC, Vorbis and WMA decode in software: the chip's FFT block can't be read back
   (docs/HIFI_PLAN.md §4.5).
+- USB-C earphones: tested only in the emulator. It's not known yet whether the player can power
+  them (see below).
+
+**Help wanted: does the Echo Mini put out 5 V on USB-C?** USB-C earphones, dongle DACs and
+flash drives need the player to power them. The player was built to receive power over USB-C, so
+nobody knows yet whether it can also send it ([docs/BOARD_DIFF_512M.md](docs/BOARD_DIFF_512M.md),
+"USB audio out"). If you have the gear, you can check in a minute:
+1. Turn the player on (stock firmware or GILB).
+2. Plug in a USB-C to USB-A OTG adapter, the kind used for a flash drive on a phone. It has to be
+   an OTG adapter or USB-C earphones, not a plain cable: the player only switches power on when it
+   sees one.
+3. Plug a USB power meter, a USB LED lamp or a flash drive with a light into the adapter, or
+   measure the outer two pins of the USB-A socket with a multimeter.
+
+About 5 V or a light means the hardware can do it. Nothing means the firmware doesn't switch it
+on; the board may still have a way to, so say which firmware you tried. Please open an issue with
+what you saw (photos of the board near the USB-C port help too).
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 
