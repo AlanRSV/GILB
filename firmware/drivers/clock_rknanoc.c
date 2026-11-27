@@ -585,7 +585,7 @@ int clock_periph_check(uint32_t pll_hz)
  * Gated here, as stock: SFC (8, hclk 111), TIMER0/1 (11, 12; pclk 142: opened around a switch), I2S0
  * (src 20, pclk 129), EBC (23, hclk 109), SPI0/1 (26, 27; pclk 134, 135), UART2 (30, 138; stock
  * gates it too, then opens it for its debug UART, which ReChord has not), UART3-5 (32-34; 139-141),
- * TEST (31), PVTM (90), SYNTH (110), IMDCT (126), I2C1/2 (pclk 132, 133).
+ * TEST (31), PVTM (90), SYNTH (110), I2C1/2 (pclk 132, 133). Not IMDCT (126): see k_psteps.
  * Kept on, against stock's word, and why:
  *   HCLK_CAL_CORE (2), the HIGH RAMs, HIFI, DMA2 (CLKGATE3/4): core B, released at the first play
  *     (the release with HCLK_CAL_CORE gated is a VIOLATION in the model: stock opens it then);
@@ -640,7 +640,8 @@ static const periph_step_t k_psteps[] = {
     G(32, "gate 32 CLK_UART3"), G(33, "gate 33 CLK_UART4"), G(34, "gate 34 CLK_UART5"),
     G(90, "gate 90 PVTM"),
     G(109, "gate 109 HCLK_EBC"), G(110, "gate 110 HCLK_SYNTH"), G(111, "gate 111 HCLK_SFC"),
-    G(126, "gate 126 HCLK_IMDCT"),
+    /* (gate 126 HCLK_IMDCT: not gated. The 8 GB unit hung at that step, device 2026-11-27, from a
+       program (the fonts window lent); the block has no PLL clock, so it costs nothing at 224 MHz) */
     G(129, "gate 129 PCLK_I2S0"), G(132, "gate 132 PCLK_I2C1"), G(133, "gate 133 PCLK_I2C2"),
     G(134, "gate 134 PCLK_SPI0"), G(135, "gate 135 PCLK_SPI1"), G(138, "gate 138 PCLK_UART2"),
     G(139, "gate 139 PCLK_UART3"), G(140, "gate 140 PCLK_UART4"), G(141, "gate 141 PCLK_UART5"),
@@ -675,6 +676,16 @@ static unsigned periph_probe(void)
     return bad;
 }
 
+/* Where the gating and a program's switch got to: .noinit, so it outlives a reset (the watchdog's,
+ * after a hang); services/cpuclk.c logs it at the next boot when that boot died in flight
+ * (device 2026-11-27: the 8 GB unit reset inside the gating, before its log was written). */
+volatile uint32_t g_clk_trace __attribute__((section(".noinit")));
+
+const char *clock_periph_step_name(unsigned i)
+{
+    return i < PSTEPS ? k_psteps[i].name : "?";
+}
+
 static uint8_t s_pp_base = 0xFFu;          /* the probe before any step (0xFF: never ran) */
 /* per step: bits 0-1 the probe after it, bit 2 undone, bits 4-5 the probe after the undo */
 static uint8_t s_pp_bad[PSTEPS];
@@ -691,6 +702,7 @@ int clock_periph_init(void)
         const periph_step_t *s = &k_psteps[i];
         unsigned bad;
 
+        g_clk_trace = CLOCK_TRACE_PERIPH | i;
         s_pp_old[i] = (uint16_t)(CRU(s->off) & s->mask);
         CRU(s->off) = (uint32_t)s->mask << 16 | s->val;
         bad = periph_probe();
@@ -700,6 +712,7 @@ int clock_periph_init(void)
         }
         s_pp_bad[i] = (uint8_t)bad;
     }
+    g_clk_trace = CLOCK_TRACE_PERIPH | 0xFF00u;
     s_pp_end = (uint8_t)periph_probe();
     if (!s_pp_end)
         return clock_periph_undone() ? CLOCK_PERIPH_UNDONE : CLOCK_PERIPH_OK;

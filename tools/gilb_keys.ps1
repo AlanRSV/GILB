@@ -6,7 +6,8 @@ gilb_keys.ps1 -- a PC keyboard for GILB programs, over the player's USB serial p
 With a program running that opened the port (API version 4, serial_open; Doom does), the player is a
 COM port on the PC (USB VID 071B, PID 3209). This opens a small window: while it has the focus, each
 key press and release goes to the player as one byte, the Windows key code (below 128), bit 7 set for
-a release (docs/PROGRAMS.md). It finds the port by itself and reconnects when the program starts again.
+a release; 0x80 lets go of every key, and that and the keys held go again 4 times a second, so a byte
+lost while the program stalled does not leave a key held (docs/PROGRAMS.md). It finds the port by itself and reconnects when the program starts again.
 Close the window to stop.
 #>
 Add-Type -AssemblyName System.Windows.Forms
@@ -54,6 +55,20 @@ function Send-Byte([int]$b) {
     if (-not $script:port) { return }
     try {
         $script:port.Write([byte[]]@([byte]$b), 0, 1)
+    } catch [System.TimeoutException] {
+        # the program is busy: the next resend (Send-Held) puts the keys right
+    } catch {
+        Close-GilbPort
+    }
+}
+
+# 0x80 (every key up), then each key held, in one write.
+function Send-Held {
+    if (-not $script:port) { return }
+    $b = [byte[]](@(0x80) + @($script:held.Keys | ForEach-Object { [byte]$_ }))
+    try {
+        $script:port.Write($b, 0, $b.Length)
+    } catch [System.TimeoutException] {
     } catch {
         Close-GilbPort
     }
@@ -111,8 +126,12 @@ $timer.Add_Tick({
     Show-State
 })
 $timer.Start()
+$resend = New-Object System.Windows.Forms.Timer
+$resend.Interval = 250
+$resend.Add_Tick({ Send-Held })
+$resend.Start()
 
 [void](Open-GilbPort)
 Show-State
-$form.Add_FormClosed({ Release-All; Close-GilbPort; $timer.Stop() })
+$form.Add_FormClosed({ Release-All; Close-GilbPort; $timer.Stop(); $resend.Stop() })
 [void]$form.ShowDialog()

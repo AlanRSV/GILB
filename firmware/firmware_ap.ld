@@ -266,6 +266,8 @@ SECTIONS
             *programs.o(.text* .rodata*)
             *prg_cdc.o(.text* .rodata* .data* .bss*)   /* (its state in the overlay: no resident RAM) */
             *prg_sound.o(.text* .rodata* .data* .bss*) /* (the LLI chain the DMA reads, too) */
+            /* tagged OVL_TEXT(prg): services/cpuclk.c cpuclk_program (a program's clock) */
+            *(.text.ovl_prg .ovl_text_prg .rodata.ovl_prg .rodata.ovl_prg.*)
             . = ALIGN(4);
         }
     }

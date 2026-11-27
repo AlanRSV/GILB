@@ -45,15 +45,73 @@ static void add_slots(uint8_t *p, uint32_t n)
 }
 
 /* After Z_Init: AHI's rest, and GILB_WAD_ZONE bytes of the zone. */
+/* The cache's share of the zone, in CHUNKS blocks: given back one at a time, the last first, when the
+ * game runs out of zone (gilb_zone_squeeze, from Z_Malloc: E1M2 did, device 2026-11-27), taken again
+ * at a level's start while there is room. One at a time: all of it at once left the cache AHI's 3
+ * pages, fewer than a read-ahead, and E1M2 stalled for seconds a frame (device 2026-11-27). */
+#define ZONE_SHARE  (GILB_WAD_ZONE - READ_AHEAD * GILB_WAD_PAGE)
+#define CHUNKS      4
+#define CHUNK       (ZONE_SHARE / CHUNKS / GILB_WAD_PAGE * GILB_WAD_PAGE)
+#define ZONE_MARGIN (40u * 1024u)        /* zone left free for the game when a chunk is taken again */
+static uint8_t *s_chunk[CHUNKS];         /* (Z_Free sets each to NULL: it is its block's user) */
+static int s_nchunks;                    /* chunks held: s_chunk[0 .. s_nchunks) */
+static int s_ahi_pages;                  /* the slots in AHI (always there) */
+
+/* The slots again: AHI's, then each chunk's (a chunk's slots keep their pages while it is held). */
+static void slots(void)
+{
+    s_npages = s_ahi_pages;
+    for (int c = 0; c < s_nchunks; c++)
+        add_slots(s_chunk[c], CHUNK);
+    for (int i = s_npages; i < MAXPAGES; i++)
+        s_page_no[i] = ~0u;
+    if (s_last >= s_npages)
+        s_last = 0;
+}
+
+static void take_chunk(void)
+{
+    s_chunk[s_nchunks] = Z_Malloc(CHUNK, PU_STATIC, (void **)&s_chunk[s_nchunks]);
+    s_nchunks++;
+    slots();
+}
+
+/* Z_Malloc found no room: the last chunk goes back (its pages forgotten). 1 if there was one. */
+int gilb_zone_squeeze(void)
+{
+    if (!s_nchunks)
+        return 0;
+    s_nchunks--;
+    Z_Free(s_chunk[s_nchunks]);
+    s_chunk[s_nchunks] = NULL;
+    slots();
+    gilb_logf("doom: the zone ran short: the WAD cache gave %u B back (%u pages left)", (unsigned)CHUNK,
+              (unsigned)s_npages);
+    return 1;
+}
+
+/* A level's start (p_setup.c): chunks taken again while the zone has room for one and the game. */
+void gilb_zone_regrow(void)
+{
+    int n0 = s_nchunks;
+
+    while (s_nchunks < CHUNKS && Z_FreeMemory() > (int)(CHUNK + ZONE_MARGIN))
+        take_chunk();
+    if (s_nchunks != n0)
+        gilb_logf("doom: the WAD cache took %u B of the zone again (%u pages)",
+                  (unsigned)((s_nchunks - n0) * CHUNK), (unsigned)s_npages);
+}
+
 void extMemInit(void)
 {
     s_npages = 0;
     add_slots(gilb_wadcache_base, gilb_wadcache_size);
-    s_bounce = Z_Malloc(READ_AHEAD * GILB_WAD_PAGE, PU_STATIC, NULL);
-    add_slots(Z_Malloc(GILB_WAD_ZONE - READ_AHEAD * GILB_WAD_PAGE, PU_STATIC, NULL),
-              GILB_WAD_ZONE - READ_AHEAD * GILB_WAD_PAGE);
+    s_ahi_pages = s_npages;
     for (int i = 0; i < MAXPAGES; i++)
         s_page_no[i] = ~0u;
+    s_bounce = Z_Malloc(READ_AHEAD * GILB_WAD_PAGE, PU_STATIC, NULL);
+    while (s_nchunks < CHUNKS)
+        take_chunk();
     if ((s_wad = gilb->open(WAD_PATH, GF_READ)) == NULL)
         gilb_error("No GILB/APPS/DOOM.WAD (the converted WAD)");
     s_wad_len = (uint32_t)gilb->size(s_wad);
@@ -91,7 +149,7 @@ static int lru(void)
  * brings in up to READ_AHEAD pages that follow, in the same request. */
 static uint8_t *page(uint32_t pg)
 {
-    uint32_t k, at, n, t0;
+    uint32_t k, at, n, t0, ahead;
     int i;
 
     if (s_page_no[s_last] == pg) {
@@ -103,7 +161,8 @@ static uint8_t *page(uint32_t pg)
         s_last = i;
         return s_slot[i];
     }
-    for (k = 1; k < READ_AHEAD && (pg + k) * GILB_WAD_PAGE < s_wad_len && find(pg + k) < 0; k++)
+    ahead = s_npages / 2u < READ_AHEAD ? s_npages / 2u : READ_AHEAD;   /* (a small cache: less) */
+    for (k = 1; k < ahead && (pg + k) * GILB_WAD_PAGE < s_wad_len && find(pg + k) < 0; k++)
         ;
     at = pg * GILB_WAD_PAGE;
     n = k * GILB_WAD_PAGE;

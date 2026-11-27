@@ -144,8 +144,10 @@ copy, is the program's memory while one runs: hence the second copy. Cost: 24 B 
 (`usb_dwc2_init` made resident), 2.4 KB of the prg overlay (5024 of 12288 B).
 
 The key protocol (`tools/gilb_keys.ps1`): one byte per change, the Windows key code (VK_*, below
-128), bit 7 set for a release. Doom maps it (`ports/doom/gilb/gilb_keys.c`), and those keys can be
-held together.
+128), bit 7 set for a release; 0x80 alone lets go of every key. Four times a second the PC also sends
+0x80 and then every key held, so a byte lost while the program stalled (its write timed out) can't
+leave a key held, and Doom lets go of every key after a second with nothing from the PC. Doom maps
+it (`ports/doom/gilb/gilb_keys.c`), and those keys can be held together.
 
 Fixed in the shared driver on the way (the Developer console only ever sent a few bytes):
 
@@ -181,4 +183,29 @@ Found on the device:
   host). Doom starts its sound, then the serial port for the PC keyboard, and was silent with the
   cable in: `serial_open` now brings the DAC up again when sound is on (`prg_sound_restart`), as the
   USB DAC runs it, with USB on.
+
+## API version 6 (2026-11-27): a faster core A
+
+`fast(1)` puts core A at the FLAC clock point (PLL 1344 MHz, A 224, B 448, pclk 56) while the program
+runs; the program's end, or `fast(0)`, goes back to the UI point (96 MHz).
+
+| What | Where |
+|---|---|
+| The API call | `services/programs.c` `a_fast` (refused until `more_mem` has core B in reset) |
+| The switch and its test | `services/cpuclk.c` `cpuclk_program`, in the prg overlay (tagged `OVL_TEXT(prg)`) |
+
+It reuses the tracks' safety: the boot gating (`clock_periph_init`, if no track ran it this boot),
+the in-flight record on the eMMC (a boot that dies in the switch keeps the point off for that build),
+then the first switch of a boot runs core A's half of the self-test (its clock, the kernel, March
+C- over its LOW RAM window, its resident code's sum, the PLL's lock). Core B is in reset, so its half
+is skipped.
+
+Found on the device (the 8 GB unit, which had never run the gating):
+
+- Gating HCLK_IMDCT hung the player. A trace (`g_clk_trace` in `.noinit`, logged at the next boot as
+  "the last boot stopped in flight: trace c1c7nnnn (step '...')") named the step. That clock has no
+  PLL source, so it is now left on.
+- `clock_periph_check` refused the point: I2S1 was still on the SOC PLL. A track's first play has the
+  DAC driver move it to the ACODEC PLL before the switch; a program hasn't, so `cpuclk_program` does
+  the same write (CLKSEL3 [15]) first. `sound_open`'s `dac_init` sets the field again.
 

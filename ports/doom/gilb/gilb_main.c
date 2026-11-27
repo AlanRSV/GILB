@@ -178,6 +178,10 @@ APP_STAGE1 int app_main(const gilb_api_t *api)
         st_wait();
         return 1;
     }
+    /* Core A at 224 MHz rather than 96 (API 6), core B being in reset now (more_mem in st_load):
+       GILB tests it the first time a boot and refuses it if anything is wrong (its log says why). */
+    if (gilb->version >= 6 && gilb->api_size >= sizeof(gilb_api_t))
+        gilb->log(gilb->fast(1) == 0 ? "doom: core A at 224 MHz" : "doom: core A stays at 96 MHz");
     /* Step 3: the caches. AHI's rest holds the WAD's pages, all of BHI is the game's "flash". */
     gilb_sound_ring = (int32_t *)__ahi_free;   /* (8-aligned: doom.ld) the sound's ring, in core A's
                                                   RAM, which the audio DMA reads */

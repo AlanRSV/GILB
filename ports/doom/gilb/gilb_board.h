@@ -44,6 +44,12 @@ void gilb_sound_tick(void);
 void gilb_sound_log(void);
 
 void gilb_wad_close(void);
+/* d_main.c's loop: this frame's sound update and game logic (ms, and the tics it ran), and when its
+ * drawing began; gilb_video.c logs the worst frame's in its 10 s line. */
+typedef struct { uint32_t snd, logic, tics, draw0; } gilb_prof_t;
+extern gilb_prof_t gilb_prof;
+int gilb_zone_squeeze(void);              /* gilb_wad.c: the WAD cache gives the zone its share back */
+void gilb_zone_regrow(void);              /* ...and takes it again at a level's start, if there is room */
 extern int gilb_level_must_fit;           /* w_wad.c: a level lump that doesn't fit the cache stops */
 extern uint32_t currentImmutableFlashOffset, currentLevelFlashOffset;   /* w_wad.c */
 void gilb_quit(int rc) __attribute__((noreturn));   /* back to GILB (longjmp) */

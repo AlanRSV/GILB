@@ -16,7 +16,10 @@
  *   always           POWER held 2 s: back to GILB (api->poll)
  *
  * A PC keyboard too (API version 4, a USB cable in): tools/gilb_keys.ps1 sends one byte a key
- * change, the Windows key code (VK_*, below 128), bit 7 set for a release. Those keys can be held
+ * change, the Windows key code (VK_*, below 128), bit 7 set for a release; 0x80 (key 0 up) lets go of
+ * every key. It sends 0x80 and the keys held 4 times a second too, so a byte lost (its write timed
+ * out while the game stalled: device 2026-11-27, a key stuck) mends itself, and the keys held let go
+ * when the PC goes quiet for PC_QUIET ms. Those keys can be held
  * together, as on a PC:
  *   W / up arrow   forward             S / down arrow   backwards
  *   left / right   turn                A / D            strafe
@@ -43,6 +46,8 @@ static uint8_t s_was_level;
 static uint32_t s_pc[4];             /* PC keys held (VK codes 0..127), from the USB serial port */
 static int s_pc_state;               /* 0 not tried, 1 port open, -1 none (an older GILB, no cable) */
 static int s_pc_ready;
+static uint32_t s_pc_last;           /* gilb->ms() of the PC's last byte */
+#define PC_QUIET 1000u
 
 #define PC(vk) ((s_pc[(vk) >> 5] >> ((vk) & 31)) & 1u)
 
@@ -66,15 +71,21 @@ static void pc_keys(void)
         s_pc[0] = s_pc[1] = s_pc[2] = s_pc[3] = 0;
         gilb_logf("doom: PC keyboard %s", ready ? "connected" : "gone");
     }
-    while ((n = gilb->serial_read(b, sizeof b)) > 0)
+    while ((n = gilb->serial_read(b, sizeof b)) > 0) {
+        s_pc_last = gilb->ms();
         for (long i = 0; i < n; i++) {
             uint32_t vk = b[i] & 0x7Fu, bit = 1u << (vk & 31u);
 
-            if (b[i] & 0x80u)
+            if (b[i] == 0x80u)
+                s_pc[0] = s_pc[1] = s_pc[2] = s_pc[3] = 0;
+            else if (b[i] & 0x80u)
                 s_pc[vk >> 5] &= ~bit;
             else
                 s_pc[vk >> 5] |= bit;
         }
+    }
+    if ((s_pc[0] | s_pc[1] | s_pc[2] | s_pc[3]) && gilb->ms() - s_pc_last > PC_QUIET)
+        s_pc[0] = s_pc[1] = s_pc[2] = s_pc[3] = 0;
 }
 
 /* The PC's keys as Doom's (the same in the menus: up, down, Enter, Esc). */

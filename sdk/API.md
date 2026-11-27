@@ -4,7 +4,7 @@ Everything a program gets from GILB, function by function. The source of truth i
 [`include/gilb_app.h`](include/gilb_app.h); [`README.md`](README.md) has how to build a program, and
 [`../docs/PROGRAMS.md`](../docs/PROGRAMS.md) how the loader works inside the firmware.
 
-This page is for API **version 5** (GILB built with `PROGRAMS=1`, 2026-11-26).
+This page is for API **version 6** (GILB built with `PROGRAMS=1`, 2026-11-27).
 
 ## A program's shape
 
@@ -261,6 +261,25 @@ for (;;) {
 That example writes everything again each time, which is simplest. Doom's mixer
 ([`../ports/doom/gilb/gilb_sound.c`](../ports/doom/gilb/gilb_sound.c)) does the same and keeps
 its own count of the frames played, so it carries on correctly after a long frame.
+
+## A faster CPU (version 6)
+
+| Function | What it does | Returns |
+|---|---|---|
+| `int fast(int on)` | `fast(1)`: core A runs at 224 MHz instead of 96 while the program runs. `fast(0)`, or the program's end, goes back. | 0; < 0 not now (GILB's log says why). |
+
+- **Call it after `more_mem`** (core B must be off: −5 otherwise) **and before `sound_open`.**
+- **The first time a boot**, GILB tests the CPU at the new clock (about 20 ms). If anything fails, it
+  stays at 96 MHz, and so does every later call with that GILB build. A player that resets during
+  the switch keeps it off for that build too.
+- Storage, the screen and the sound keep their own clocks: only the program's code runs faster.
+  Doom went from 3 to 13 fps in E1M1 to 13 to 23.
+- It uses more battery while on.
+
+```c
+if (api->version >= 6 && api->api_size >= sizeof(gilb_api_t))
+    api->fast(1);                           /* after more_mem */
+```
 
 ## Not in the API yet
 

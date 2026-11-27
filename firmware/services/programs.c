@@ -36,6 +36,7 @@
 #include "services/log.h"
 #include "services/ovl.h"
 #include "services/power.h"
+#include "services/cpuclk.h"
 
 void ap_pump(void);                  /* startup/ap_ui.c: the music, storage queue, log, BT */
 /* services/prg_cdc.c: drivers/usb_cdc_rknanoc.c's copy in this overlay */
@@ -61,6 +62,7 @@ typedef struct {
     char title[MAX_APPS][32];
     int n;
     int lent_a;                      /* more_mem_a lent the fonts window: load the fonts again */
+    int lent_b;                      /* more_mem held core B in reset (fast needs it quiet) */
     int serial;                      /* serial_open started the USB serial port: stop it after */
 } apps_t;
 static apps_t *L;
@@ -170,6 +172,7 @@ static int a_more_mem(gilb_mem_t *out, int max)
     int n = 0;
 
     audio_b_free();
+    L->lent_b = 1;
     log_printf("programs: core B held, its RAM lent");
     for (; out && n < max && n < 2; n++)
         out[n] = k[n];
@@ -259,6 +262,15 @@ static void a_sound_close(void)
     prg_sound_close();
 }
 
+/* A faster core A (API version 6): the FLAC point, 224 MHz, while the program runs (services/cpuclk.c
+ * cpuclk_program: its own self-test and record). Core B must be in reset: more_mem first. */
+static int a_fast(int on)
+{
+    if (on && !L->lent_b)
+        return -5;
+    return cpuclk_program(on);
+}
+
 static const gilb_api_t k_api = {
     .version = GILB_API_VERSION, .api_size = sizeof(gilb_api_t),
     .board = BOARD == BOARD_512M, .screen_w = DISPLAY_W, .screen_h = DISPLAY_H,
@@ -270,6 +282,7 @@ static const gilb_api_t k_api = {
     .serial_open = a_serial_open, .serial_ready = a_serial_ready, .serial_read = a_serial_read,
     .serial_write = a_serial_write,
     .sound_open = a_sound_open, .sound_pos = a_sound_pos, .sound_close = a_sound_close,
+    .fast = a_fast,
 };
 
 /* ---- the screens -------------------------------------------------------------------------------- */
@@ -456,10 +469,12 @@ static void run(int i)
         drain();
         s_power_t0 = 0;
         L->lent_a = 0;
+        L->lent_b = 0;
         L->serial = 0;
         rc = entry(&k_api);
         panel_io_sync();
         log_printf("programs: %s ended (%d)", s_file[i], rc);
+        (void)cpuclk_program(0);     /* (fast: the UI point again, before anything else) */
         prg_sound_close();           /* (sound_open: before the fonts go back where its ring may be) */
         if (L->lent_a)
             text_fonts_load();       /* (more_mem_a) */

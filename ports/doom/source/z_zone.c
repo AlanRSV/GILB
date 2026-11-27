@@ -232,8 +232,18 @@ void* Z_Malloc2(uint32_t size, int tag, void **user, const char *sz)
         if (rover == start)
         {
             // scanned all the way around the list
+            // GILB: the WAD cache's share of the zone goes back first (gilb/gilb_wad.c), then again
+            if (gilb_zone_squeeze())
+            {
+                base = mainzone->rover;
+                if (getMemblockPrev(base)->tag == PU_FREE)
+                    base = getMemblockPrev(base);
+                rover = base;
+                start = getMemblockPrev(base);
+                continue;
+            }
             printf("Z_Malloc: failed on allocation of %i bytes", size);
-            GILB_BLOCKED();   /* GILB: was while (1); */
+            gilb_error("Out of memory (the game's zone, %d B wanted)", (int) size);
         }
         if (rover->tag != PU_FREE)
         {

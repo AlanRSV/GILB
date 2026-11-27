@@ -130,6 +130,10 @@ extern int trigOpsPerFrame;
 // Re-use data, is just PI/2 phase shift.
 static inline fixed_t finesine(unsigned int angle)
 {
+    // GILB: callers pass a signed angle >> ANGLETOFINESHIFT (r_fast_stuff.c R_ScaleFromGlobalAngle's
+    // int anglea), negative past half a turn: the table read far outside it (a fault in E1M1, device
+    // 2026-11-27). The mask gives the right index for those and costs nothing for the rest.
+    angle &= FINEANGLES - 1;
 #if PROFILE_TRIGOPS
     trigOpsPerFrame++;
 #endif
@@ -164,6 +168,7 @@ static inline fixed_t finesine(unsigned int angle)
 }
 static inline fixed_t finecosine( unsigned int angle)
 {
+    angle &= FINEANGLES - 1;     // GILB: as finesine
  #if FAST_CPU_SMALL_FLASH
      #if CORRECT_TABLE_ERROR
         if (angle >=  FINEANGLES * 3 / 4)

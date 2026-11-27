@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #define GILB_APP_MAGIC   0x50504147u    /* "GAPP" */
-#define GILB_API_VERSION 5u
+#define GILB_API_VERSION 6u
 #define GILB_APP_BASE    0x03030000u    /* where a program is loaded and runs */
 #define GILB_APP_END     0x0304C000u    /* 112 KiB: code, data, .bss, heap */
 #define GILB_APP_DIR     "/Internal/GILB/APPS"
@@ -146,6 +146,15 @@ typedef struct gilb_api {
     int (*sound_open)(uint32_t rate, int32_t *ring, uint32_t block_frames, uint32_t blocks);
     uint32_t (*sound_pos)(void);
     void (*sound_close)(void);
+
+    /* ---- version 6 ---- */
+    /* A faster CPU: fast(1) runs core A at 224 MHz instead of 96 while the program runs (the clock
+     * stock firmware decodes FLAC at), fast(0) or the program's end goes back. Call it after more_mem
+     * (core B must be off) and before sound_open. The first time a boot, GILB tests the CPU at the new
+     * clock (about 20 ms); if anything fails it stays at 96 MHz, and a player that resets in the switch
+     * keeps the fast clock off for that GILB build. Storage, the screen and the sound keep their own
+     * clocks. More battery while on. 0, or < 0: not now (the reason is in GILB's log). */
+    int (*fast)(int on);
 } gilb_api_t;
 
 #endif

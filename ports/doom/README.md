@@ -2,7 +2,8 @@
 
 Doom as a GILB program (`docs/PROGRAMS.md`), run from **Settings › System › Programs**, with its
 sound effects and music. It needs GILB with program API version 3 (`more_mem_a`); version 4 adds
-a PC keyboard and version 5 the sound. Programs are a beta: only GILB images built with `PROGRAMS=1`
+a PC keyboard, version 5 the sound and version 6 a faster CPU (224 MHz instead of 96: E1M1 at 13 to
+23 fps instead of 3 to 13). Programs are a beta: only GILB images built with `PROGRAMS=1`
 have them (`docs/PROGRAMS.md`).
 
 ## Sound
@@ -110,7 +111,8 @@ in front. These keys can be held together:
 | Shift | run | Q / E | previous / next weapon |
 | Tab | the map | Esc / Enter | the menu / select |
 
-The player's own keys keep working alongside. On an older GILB, Doom runs without the keyboard.
+The player's own keys keep working alongside. On an older GILB, Doom runs without the keyboard. If
+the game stalls, the window resends the keys held, so none stays stuck.
 
 ## Memory
 
@@ -128,7 +130,9 @@ The player's own keys keep working alongside. On an older GILB, Doom runs withou
   built with this `DOOM.APP` and its CRC, then starts the game.
 - **The game's 16-bit pointers** (`include/i_memory.h`) reach 256 KiB from `RAM_PTR_BASE`, so every
   variable and the zone live in core B's RAM from 0x01000000.
-- **The WAD** stays a file (`gilb/extMemory.h`, `gilb/gilb_wad.c`), read through 2 KiB pages kept in RAM.
+- **The WAD** stays a file (`gilb/extMemory.h`, `gilb/gilb_wad.c`), read through 1 KiB pages kept in RAM
+  (31 of them: 3 in AHI, 28 lent from the zone in 4 pieces). A level that runs out of zone (E1M2 does)
+  takes the pieces back one at a time, and a later level start lends them again if there is room.
 - **The level cache.** On the MG24 the level data and textures went to about 1 MB of internal
   flash. Here they go to BHI's 252 KiB. Textures that don't fit are read from the WAD each time.
   A level whose own data doesn't fit stops with "too big for the player's memory". Each level start

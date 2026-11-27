@@ -149,6 +149,14 @@ void cpuclk_boot(void)
             log_printf("cpuclk: the record could not be written");
     }
     s_failed = rec_failed(s_rec);
+    if (armed == REC_ARMED || armed == REC_PERIPH) {   /* (the trace: what that boot was doing) */
+        uint32_t t = g_clk_trace;
+
+        /* C1C7nnnn: the gating at step nnnn (FFxx: after its steps); C1C800pp: a program's switch */
+        log_printf("cpuclk: the last boot stopped in flight: trace %08x (step '%s')", (unsigned)t,
+                   clock_periph_step_name(t & 0xFFFFu));
+    }
+    g_clk_trace = 0;
     log_printf("cpuclk: cpu_b=%s, FLAC point (PLL 1344, A 224, B 448 MHz): %u boots tried, %u passed%s%s%s",
                g_cfg.cpu_b == CFG_CPU_B_AUTO ? "auto" : g_cfg.cpu_b == CFG_CPU_B_STOCK ? "stock" : "96",
                rec_tried(s_rec), rec_passed(s_rec), s_failed ? "; failed at " : "",
@@ -495,6 +503,167 @@ OVL_TEXT(viz) __attribute__((noinline)) int cpuclk_log_selftest(void)
                (unsigned)s_st.a_code, (unsigned)s_a_code_ref, (unsigned)s_st.b_code, (unsigned)s_b_code_ref);
     if (s_st.stage)
         log_printf("cpuclk: failed at %u: back at the UI point (96 MHz), off for this build", s_st.stage);
+    return 0;
+}
+
+/* ---- a program's clock (sdk API 6, services/programs.c a_fast) ----------------------------------
+ * Core A at the FLAC point (224 MHz) while a program runs, back at the UI point when it ends. Core B
+ * is in reset then (more_mem), so the boot's first switch runs core A's half of the self-test only:
+ * its clock, the kernel, March C- over its LOW RAM window (each piece saved and put back: it holds the
+ * program's code), its resident code against the sum taken at the UI point, and the PLL's lock. The
+ * same record as the tracks' (bootcrumb): "in flight" on the eMMC before the switch, so a boot that
+ * dies in it keeps the point off for this build (cpuclk_boot), and a failure does too. The boot
+ * gating (clock_periph_init) runs first when no track has had it this boot. Not cpu_b=: the program
+ * asks. In the prg overlay: no resident code. 0, or < 0 (the reason is logged). */
+static int s_prg_tested;                   /* this boot: the program path's own test passed */
+
+OVL_TEXT(prg) int cpuclk_program(int on)
+{
+    extern const uint32_t _data_load_start[];
+    static volatile uint32_t ten = 10u;
+    uint32_t buf[64], unlock = 0;
+    unsigned stage = ST_OK;
+    int r, test;
+
+    if (!on) {
+        if (clock_point() != CLOCK_POINT_UI) {
+            clock_set_point(CLOCK_POINT_UI, 0, &s_sw);
+            sw_record();
+            clock_timer_close();
+            backlight_retime();
+            watchdog_retime();
+            s_retime = 0;
+            log_switch();
+            s_sw_logged = s_sw_seq;
+        }
+        return 0;
+    }
+    if (clock_point() == CLOCK_POINT_FLAC)
+        return 0;
+    if (s_failed || !bootcrumb_ok() || !watchdog_running() || (DMA_CHEN & (1u << I2S_DMA_CH))) {
+        log_printf("cpuclk: program: no 224 MHz: %s", s_failed ? "an earlier failure (off for this build)"
+                   : !bootcrumb_ok() ? "no boot trail" : !watchdog_running() ? "the watchdog is not running"
+                   : "the audio DMA runs");
+        return -1;
+    }
+    if (!s_periph) {                         /* the boot gating (cpuclk_prepare, the tracks' path) */
+        s_periph = 1;
+        if (bootcrumb_hp_set(s_rec, REC_PERIPH) != 0) {
+            log_printf("cpuclk: program: the gating's record could not be written");
+            return -1;
+        }
+        panel_io_sync();
+        r = clock_periph_init();
+        g_clk_trace = CLOCK_TRACE_PERIPH | 0xFF01u;
+        log_flush(NULL);
+        g_clk_trace = CLOCK_TRACE_PERIPH | 0xFF02u;
+        clock_periph_log(periph_pr);
+        g_clk_trace = CLOCK_TRACE_PERIPH | 0xFF03u;
+        if (r < 0) {
+            s_failed = ST_PERIPH;
+            s_rec = rec_make(ST_PERIPH, rec_passed(s_rec), rec_tried(s_rec));
+        }
+        if (bootcrumb_hp_set(s_rec, 0) != 0)
+            log_printf("cpuclk: the record could not be written");
+        g_clk_trace = 0;
+        if (s_failed) {
+            log_printf("cpuclk: failed at %u (%s): off for this build", ST_PERIPH, k_stage[ST_PERIPH]);
+            return -2;
+        }
+    }
+    /* I2S1 on the ACODEC PLL, as dac_cs43131.c's bring-up puts it (CLKSEL3 [15]): a track's first
+       play has done that before its switch, a program has not (device 2026-11-27: "gate 16 would be
+       too fast"). Its DMA is off (above); sound_open's dac_init sets the whole field again. */
+    *(volatile uint32_t *)(0x40180000u + 0x20u) = 0x80008000u;
+    if ((r = clock_periph_check(1344000000u)) >= 0) {
+        log_printf("cpuclk: program: no 224 MHz: the clock of SDK gate %d would be too fast", r);
+        return -3;
+    }
+    test = !s_prg_tested && !s_admitted;
+    if (test) {                              /* in flight: a boot that ends in here keeps it off */
+        s_a_code_words = (uint32_t)(_data_load_start - (const uint32_t *)0x03050000u);
+        s_a_code_ref = st_sum((const volatile uint32_t *)0x03050000u, s_a_code_words);
+        s_rec = rec_make(0, rec_passed(s_rec), rec_tried(s_rec) + 1u);
+        if (bootcrumb_hp_set(s_rec, REC_ARMED) != 0) {
+            log_printf("cpuclk: program: the record could not be written");
+            return -1;
+        }
+        log_flush(NULL);
+    }
+    g_clk_trace = CLOCK_TRACE_SWITCH | 1u;
+    clock_hold_begin();
+    r = clock_set_point(CLOCK_POINT_FLAC, 0, &s_sw);
+    g_clk_trace = CLOCK_TRACE_SWITCH | 2u;
+    sw_record();
+    if (r != CLOCK_SW_OK) {
+        stage = ST_LOCK;
+    } else if (test) {
+        uint32_t t_start = clock_timer_now();
+
+        g_clk_trace = CLOCK_TRACE_SWITCH | 3u;
+
+        unlock += !lock_ok();
+        measure_a(&s_st.a_cyc, &s_st.a_ticks);
+        unlock += !lock_ok();
+        s_st.a_sig = st_kernel(ST_KERNEL_SEED, ST_KERNEL_ITERS, buf, &ten);
+        unlock += !lock_ok();
+        s_st.a_march = st_march2_keep((volatile uint32_t *)ST_LOW_A, ST_LOW_BYTES / 4u, buf);
+        unlock += !lock_ok();
+        s_st.a_code = st_sum((const volatile uint32_t *)0x03050000u, s_a_code_words);
+        unlock += !lock_ok();
+        s_st.us = clock_timer_ticks(t_start, clock_timer_now()) / 24u;
+        if (!freq_ok(s_st.a_cyc, s_st.a_ticks, clock_core_hz()))
+            stage = ST_A_FREQ;
+        else if (unlock || !lock_ok())
+            stage = ST_UNLOCK;
+        else if (s_st.a_sig != ST_KERNEL_SIG)
+            stage = ST_A_KERNEL;
+        else if (s_st.a_march)
+            stage = ST_A_MARCH;
+        else if (s_st.a_code != s_a_code_ref)
+            stage = ST_A_CODE;
+        if (stage != ST_OK) {
+            clock_set_point(CLOCK_POINT_UI, 0, &s_sw);
+            sw_record();
+        }
+    }
+    g_clk_trace = CLOCK_TRACE_SWITCH | 4u;
+    clock_hold_end();
+    clock_timer_close();
+    backlight_retime();
+    watchdog_retime();
+    s_retime = 0;
+    g_clk_trace = CLOCK_TRACE_SWITCH | 5u;
+    log_switch();
+    s_sw_logged = s_sw_seq;
+    if (test) {
+        uint32_t a_meas = s_st.a_ticks ? (uint32_t)((uint64_t)s_st.a_cyc * 24000u / s_st.a_ticks) : 0u;
+
+        if (stage == ST_OK) {
+            s_prg_tested = 1;
+            s_rec = rec_make(0, rec_passed(s_rec) + 1u, rec_tried(s_rec));
+        } else {
+            s_failed = stage;
+            s_rec = rec_make(stage, rec_passed(s_rec), rec_tried(s_rec));
+        }
+        if (bootcrumb_hp_set(s_rec, 0) != 0)
+            log_printf("cpuclk: the record could not be written");
+        log_printf("cpuclk: program self-test (core A) %s%s in %u us: A %u.%03u MHz, kernel %08x (want %08x), "
+                   "march %x, code %08x/%08x, lock lost %u", stage ? "FAILED at " : "passed",
+                   stage ? k_stage[stage < ST_N ? stage : 0] : "", (unsigned)s_st.us, (unsigned)(a_meas / 1000u),
+                   (unsigned)(a_meas % 1000u), (unsigned)s_st.a_sig, (unsigned)ST_KERNEL_SIG,
+                   (unsigned)s_st.a_march, (unsigned)s_st.a_code, (unsigned)s_a_code_ref, (unsigned)unlock);
+    } else if (stage != ST_OK) {
+        s_failed = stage;
+        s_rec = rec_make(stage, rec_passed(s_rec), rec_tried(s_rec));
+        if (bootcrumb_hp_set(s_rec, 0) != 0)
+            log_printf("cpuclk: the record could not be written");
+    }
+    g_clk_trace = 0;
+    if (stage != ST_OK) {
+        log_printf("cpuclk: failed at %u: back at the UI point (96 MHz), off for this build", stage);
+        return -4;
+    }
     return 0;
 }
 

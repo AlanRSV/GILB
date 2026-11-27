@@ -359,8 +359,10 @@ static void D_DoomLoop(void)
 
           __enable_irq();
 #endif
+             uint32_t gt0 = gilb->ms(), gtic0 = _g->gametic;   // GILB: where a frame's time goes
              if (!nosfxparm)
                  updateSound();
+             uint32_t gt1 = gilb->ms();
 
              if (_g->singletics)        // this is normally not executed
              {
@@ -372,6 +374,10 @@ static void D_DoomLoop(void)
              {
                //uint32_t n = I_GetTimeMicrosecs();
                TryRunTics();
+               gilb_prof.snd = gt1 - gt0;              // GILB
+               gilb_prof.logic = gilb->ms() - gt1;
+               gilb_prof.tics = _g->gametic - gtic0;
+               gilb_prof.draw0 = gilb->ms();
                //n = I_GetTimeMicrosecs() - n;
                //printf ("Try RunTics %d us\r\n", n);
              }

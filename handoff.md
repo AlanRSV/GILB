@@ -192,8 +192,11 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last change is **f63a626** (Doom music, 2026-11-27); the last
-firmware change is **e02b042** (Programs API 5); Echo Library's is **738be7b**.
+The last commit is **f63a626** (Doom music, 2026-11-27); the last committed firmware change is
+**e02b042** (Programs API 5); Echo Library's is **738be7b**. **Not committed yet** (tested on the
+player 2026-11-27, waiting for the user's "Commit and push"): Programs API 6 and the Doom fixes below.
+Build with it: core A 3356 B free (floor 3072), RAM 564 B free, the prg overlay 8224 of 12288 B;
+`DOOM.APP` 112664 B (113540 of 114688 B memory).
 
 Releases on GitHub (AlanRSV/GILB): **v2026.11.25** (Latest, 8 GB); pre-releases
 **v2026.11.26-512m-beta** (the 512 MB board, still in testing, from 27fa81a) and **v2026.11.26-early**
@@ -203,6 +206,17 @@ refuses `.APP` files; no WAD and no songs, which can't be shared; it predates Do
 the songs; still no WAD or songs attached). The site lists both early betas, newest first.
 
 Done and confirmed on the device (2026-11-26 and 27, newest first):
+
+- **Programs API 6, a faster core A** (uncommitted): `fast(1)` runs core A at 224 MHz while a program
+  runs (`services/cpuclk.c` `cpuclk_program`: the boot gating, the eMMC record, core A's self-test).
+  Doom calls it: E1M1 at 13 to 23 fps (was 3 to 13), the menus 26 to 33. Two device fixes: gating
+  HCLK_IMDCT hung the 8 GB unit (found with a reset-proof trace, `g_clk_trace`; now left on), and I2S1
+  had to move to the ACODEC PLL first (`docs/PROGRAMS.md`, "API version 6")
+- **Doom fixes** (uncommitted): E1M2 ran out of zone (the WAD cache lends back its 28 KB share in 4
+  pieces, one at a time); a fault in `R_ScaleFromGlobalAngle` (the port's signed angles read outside
+  the sine table: `finesine`/`finecosine` mask the angle); a key stuck after a stall (GILB Keys
+  resends the keys held 4 times a second, 0x80 = all up, Doom lets go after 1 s of silence); the 10 s
+  log line now names the longest frame and where its time went. E1M1 and E1M2 played through
 
 - **Doom music** (f63a626): each song rendered once on the PC with the port's own OPL2 synthesis
   (`ports/doom/tools/music`, `doom_music DOOM1.WAD OUTDIR`: 13 songs, 38 MB) and streamed from
@@ -273,9 +287,10 @@ Dropped or set aside:
 
 Still open:
 
-- **Doom:** faster core A while a program runs (the FLAC clock point, A at 224 MHz, behind
-  `services/cpuclk.c`'s self-test), fewer storage requests, E1M6 may not fit the level cache (Doom stops
-  with a message), save games untested. - **Programs:** the player's own menus from the PC keyboard (only programs get it); the 512 MB board with
+- **Doom:** E1M2 runs at 7 to 12 fps (most frame time is drawing; WAD reads take 2 to 4 s of every 10):
+  fewer storage requests or pre-built level packs (the user asked about "compiling levels like
+  shaders") would help; E1M6 may not fit the level cache (Doom stops with a message), save games
+  untested; a new early beta with API 6 is not published yet. - **Programs:** the player's own menus from the PC keyboard (only programs get it); the 512 MB board with
   Programs never built or tested.
 
 - **Layouts:** done but for the USB DAC screen, which stays hand-drawn (its overlay holds the window, and

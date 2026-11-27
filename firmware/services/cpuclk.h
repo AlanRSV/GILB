@@ -52,5 +52,9 @@ void cpuclk_boot(void);
 void cpuclk_b_loaded(uint32_t n);
 /* For the self-test's code check: 1 = the FLAC point has been admitted this boot. */
 int cpuclk_admitted(void);
+/* A program's clock (services/programs.c, sdk API 6): on = core A at the FLAC point (224 MHz) for the
+ * program, with core A's half of the self-test at the boot's first switch; off = back at the UI point.
+ * Core B must be quiet (in reset: more_mem). 0, or < 0 (refused or failed; logged). The prg overlay. */
+int cpuclk_program(int on);
 
 #endif

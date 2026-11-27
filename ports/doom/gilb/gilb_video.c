@@ -37,11 +37,23 @@ void gilb_video_setup(void)
 }
 
 /* Every 10 s: the frame rate and the WAD's page misses, in the log. */
+gilb_prof_t gilb_prof;
+
 static void rate(void)
 {
-    static uint32_t t0, frames, misses0, ms0;
+    static uint32_t t0, frames, misses0, ms0, prev, worst, w_snd, w_logic, w_tics, w_draw, w_wad, f_wad;
     uint32_t now = gilb->ms();
 
+    if (prev && now - prev > worst) {
+        worst = now - prev;
+        w_snd = gilb_prof.snd;
+        w_logic = gilb_prof.logic;
+        w_tics = gilb_prof.tics;
+        w_draw = now - gilb_prof.draw0;
+        w_wad = gilb_wad_ms - f_wad;
+    }
+    prev = now;
+    f_wad = gilb_wad_ms;
     frames++;
     if (!t0) {
         t0 = now;
@@ -51,6 +63,10 @@ static void rate(void)
         gilb_logf("doom: %lu.%lu fps, %lu WAD reads taking %lu ms", (unsigned long)(frames * 10000u / (now - t0) / 10u),
                   (unsigned long)(frames * 10000u / (now - t0) % 10u), (unsigned long)(gilb_wad_misses - misses0),
                   (unsigned long)(gilb_wad_ms - ms0));
+        gilb_logf("doom: longest frame %lu ms: sound %lu, logic %lu (%lu tics), drawing %lu, WAD %lu",
+                  (unsigned long)worst, (unsigned long)w_snd, (unsigned long)w_logic, (unsigned long)w_tics,
+                  (unsigned long)w_draw, (unsigned long)w_wad);
+        worst = 0;
         gilb_sound_log();
         t0 = now;
         frames = 0;

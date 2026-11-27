@@ -1104,6 +1104,7 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
         const wad_level_flash_data_t *l = p_wad_level_flash_data;
         extern uint32_t currentImmutableFlashOffset, currentLevelFlashOffset;
 
+        gilb_zone_regrow();              /* (the WAD cache's zone share, if it gave it back) */
         gilb_logf("doom: E%dM%d: cache %lu + %lu of %lu B, zone %d B free", episode, map,
                   (unsigned long) currentImmutableFlashOffset, (unsigned long) currentLevelFlashOffset,
                   (unsigned long) FLASH_CACHE_REGION_SIZE, Z_FreeMemory());

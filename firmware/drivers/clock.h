@@ -84,6 +84,13 @@ enum { CLOCK_PERIPH_OK = 0, CLOCK_PERIPH_UNDONE = 1 /* alive, some steps undone 
        CLOCK_PERIPH_DEAD_BEFORE = -2 /* dead before any step: none made */ };
 int clock_periph_undone(void);
 void clock_periph_log(void (*pr)(const char *fmt, ...));
+/* The trace (survives a reset): CLOCK_TRACE_PERIPH | the step clock_periph_init is at (0xFF00: after
+ * the last, 0xFF01.. the gating's end in services/cpuclk.c), CLOCK_TRACE_SWITCH | a program switch's
+ * phase; 0 = nothing in flight. */
+#define CLOCK_TRACE_PERIPH 0xC1C70000u
+#define CLOCK_TRACE_SWITCH 0xC1C80000u
+extern volatile uint32_t g_clk_trace;
+const char *clock_periph_step_name(unsigned i);
 /* The 24 MHz timer (TIMER0, SDK hw_timer.h, 0x400E0000): opened and started, read, closed. The tick
  * count between two readings does not depend on which way it counts. */
 void clock_timer_open(void);
