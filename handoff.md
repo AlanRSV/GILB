@@ -199,6 +199,8 @@ Releases on GitHub (AlanRSV/GILB): **v2026.11.25** (Latest, 8 GB); pre-releases
 **v2026.11.26-512m-beta** (the 512 MB board, still in testing, from 27fa81a) and **v2026.11.26-early**
 (early beta with Programs and Doom, 8 GB, from 3673af0: Doom zipped as `DOOM-GILB.zip`, since GitHub
 refuses `.APP` files; no WAD and no songs, which can't be shared; it predates Doom's music).
+**v2026.11.27-early** (2026-11-27, from 370d028): the same with Doom's music (the notes say how to render
+the songs; still no WAD or songs attached). The site lists both early betas, newest first.
 
 Done and confirmed on the device (2026-11-26 and 27, newest first):
 
@@ -273,8 +275,7 @@ Still open:
 
 - **Doom:** faster core A while a program runs (the FLAC clock point, A at 224 MHz, behind
   `services/cpuclk.c`'s self-test), fewer storage requests, E1M6 may not fit the level cache (Doom stops
-  with a message), save games untested. A new early beta would carry the music.
-- **Programs:** the player's own menus from the PC keyboard (only programs get it); the 512 MB board with
+  with a message), save games untested. - **Programs:** the player's own menus from the PC keyboard (only programs get it); the 512 MB board with
   Programs never built or tested.
 
 - **Layouts:** done but for the USB DAC screen, which stays hand-drawn (its overlay holds the window, and
