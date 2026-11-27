@@ -55,6 +55,7 @@ static struct {
     unsigned in_len, in_off, out_len, out_off;
     int      setup_pending, configured, exit;
     uint8_t  line[7];                 /* SET_LINE_CODING payload          */
+    int      line_done;               /* ...received: its status stage is owed */
 } s;
 
 /* On-screen enumeration diagnostics: what the host actually sent us. */
@@ -78,11 +79,12 @@ static int wait_clear(unsigned off, uint32_t mask)
 }
 
 /* ---- FIFO helpers ------------------------------------------------------ */
+/* cnt bytes into dst, out of a packet of total: all of it leaves the FIFO (what does not fit is
+ * dropped, not left there for the next packet to start with) */
 static void fifo_read(uint8_t *dst, unsigned cnt, unsigned total)
 {
     unsigned i;
-    (void)total;
-    for (i = 0; i < (cnt + 3u) / 4u; i++) {
+    for (i = 0; i < (total + 3u) / 4u; i++) {
         uint32_t v = EPFIFO(0);
         unsigned k;
         for (k = 0; k < 4u && i * 4u + k < cnt; k++)
@@ -106,6 +108,15 @@ static void arm_ep0_out(void)
 {
     DOEPTSIZ(0) = 0x60080040u;        /* 3 SETUP, 1 packet, 64 bytes       */
     DOEPCTL(0) |= EP_ENA_CNAK;
+}
+
+/* The bulk OUT endpoint armed for one packet, only when out_buf is empty (so a packet always fits
+ * whole; until then the host's next one waits, NAKed): usb_cdc_getc re-arms it once all is read. */
+static void arm_ep1_out(void)
+{
+    s.out_len = s.out_off = 0;
+    DOEPTSIZ(EP_DATA_OUT) = 64u | 1u << 19;
+    DOEPCTL(EP_DATA_OUT) |= EP_ENA_CNAK;
 }
 
 static void rx_drain(void);           /* forward decl (used by cdc_ep_in)  */
@@ -190,8 +201,10 @@ static void bus_reset(void)
 /* ---- descriptors ------------------------------------------------------- */
 static const uint8_t k_dev[18] = {
     0x12, 0x01, 0x00, 0x02, 0x02, 0x00, 0x00, 0x40,   /* class=2 (CDC)     */
-    0x1B, 0x07, 0x03, 0x32, 0x00, 0x02, 0x01, 0x02, 0x03, 0x01,
+    0x1B, 0x07, 0x09, 0x32, 0x00, 0x02, 0x01, 0x02, 0x03, 0x01,
 };
+/* 071b:3209, not the USB disk's 3203: Windows keeps a device's driver by VID, PID and serial number,
+ * so with the disk's ID the port came up with the disk's driver and no COM port (2026-11-26). */
 static const uint8_t k_qual[10] = { 10, 6, 0x00, 0x02, 0x02, 0x00, 0, 0x40, 1, 0 };
 static const uint8_t k_str0[4] = { 4, 3, 0x09, 0x04 };
 static const char *const k_str[4] = { 0, "GILB", "GILB", "000000000001" };
@@ -318,6 +331,7 @@ static void handle_setup(void)
             DOEPCTL(EP_DATA_OUT) = mps | 0x18088000u;
             DIEPCTL(EP_NOTIF)    = 8u | (dedicated << 22) | 0x18088000u;
             OTG(DCTL) |= 0x100u;                 /* clear global IN NAK       */
+            arm_ep1_out();                       /* (it was never armed: the host's data waited) */
             s.configured = 1;
         } else {
             s.configured = 0;
@@ -345,6 +359,9 @@ static void rx_drain(void)
         if (sts == 6u) {                        /* SETUP                     */
             fifo_read((uint8_t *)s.setup, cnt < 8u ? cnt : 8u, cnt);
             s.setup_pending = 1;
+        } else if (sts == 2u && cnt && (st & 15u) == 0u) {   /* EP0 data: SET_LINE_CODING's */
+            fifo_read(s.line, cnt < 7u ? cnt : 7u, cnt);
+            s.line_done = 1;
         } else if (sts == 2u && cnt) {          /* OUT data                  */
             unsigned take = cnt < sizeof s.out_buf - s.out_len ? cnt : sizeof s.out_buf - s.out_len;
             fifo_read(s.out_buf + s.out_len, take, cnt);
@@ -357,9 +374,14 @@ static void rx_drain(void)
         DOEPINT(0) = 9u;
         arm_ep0_out();                          /* re-arm EP0 for next SETUP */
     }
-    if (DOEPINT(EP_DATA_OUT) & 1u) {
+    if (s.line_done) {                          /* the status stage the host waits for (it */
+        s.line_done = 0;                        /* timed out, 5 s a try, without it)       */
+        ep0_send(0, 0);
+    }
+    if (DOEPINT(EP_DATA_OUT) & 1u) {          /* the packet is in out_buf   */
         DOEPINT(EP_DATA_OUT) = 1u;
-        arm_ep0_out();
+        if (s.out_off >= s.out_len)             /* (an empty one: at once)    */
+            arm_ep1_out();
     }
 }
 
@@ -376,9 +398,14 @@ int usb_cdc_puts(const char *str)
 
 int usb_cdc_getc(void)                          /* -1 if none               */
 {
+    int c;
+
     if (s.out_off >= s.out_len)
         return -1;
-    return s.out_buf[s.out_off++];
+    c = s.out_buf[s.out_off++];
+    if (s.out_off >= s.out_len && s.configured)
+        arm_ep1_out();                          /* all read: the next packet */
+    return c;
 }
 
 int usb_cdc_available(void)

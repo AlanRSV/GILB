@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #define GILB_APP_MAGIC   0x50504147u    /* "GAPP" */
-#define GILB_API_VERSION 3u
+#define GILB_API_VERSION 4u
 #define GILB_APP_BASE    0x03030000u    /* where a program is loaded and runs */
 #define GILB_APP_END     0x0304C000u    /* 112 KiB: code, data, .bss, heap */
 #define GILB_APP_DIR     "/Internal/GILB/APPS"
@@ -119,6 +119,18 @@ typedef struct gilb_api {
      * next play sets both up again); GILB draws only with its built-in 8x8 font (glyph) until the
      * program ends, and then loads its fonts again. Fills up to max ranges and returns how many. */
     int (*more_mem_a)(gilb_mem_t *out, int max);
+
+    /* ---- version 4 ---- */
+    /* A USB serial port (CDC-ACM: a COM port on the PC, Windows' own driver), while the program
+     * runs and a cable is in. serial_open: 0, or -1 with no cable, -2 when the port is the USB-C
+     * earphones'. serial_ready: 1 once the PC has set the port up. serial_read: the bytes the PC
+     * sent (up to n; 0: none yet), serial_write: sends n bytes; both -1 when the port is not open.
+     * The PC's requests are answered in poll(), so call it often (each frame). GILB closes the port
+     * when the program ends. tools/gilb_keys.ps1 sends a PC's keys this way (docs/PROGRAMS.md). */
+    int (*serial_open)(void);
+    int (*serial_ready)(void);
+    long (*serial_read)(void *buf, unsigned long n);
+    long (*serial_write)(const void *buf, unsigned long n);
 } gilb_api_t;
 
 #endif

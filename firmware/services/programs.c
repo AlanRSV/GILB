@@ -25,6 +25,8 @@
 #include "drivers/font.h"
 #include "drivers/panel_io.h"
 #include "drivers/text.h"
+#include "drivers/usb_msc.h"
+#include "drivers/usb_out.h"
 #include "audio/audio.h"
 #include "audio/audio_shared.h"
 #include "player/player.h"
@@ -36,6 +38,12 @@
 #include "services/power.h"
 
 void ap_pump(void);                  /* startup/ap_ui.c: the music, storage queue, log, BT */
+/* services/prg_cdc.c: drivers/usb_cdc_rknanoc.c's copy in this overlay */
+void prg_cdc_open(void);
+void prg_cdc_poll(void);
+int prg_cdc_getc(void);
+int prg_cdc_configured(void);
+long prg_cdc_write(const void *buf, unsigned long n);
 
 #define MAX_APPS 16
 #define ROW_H    14
@@ -48,6 +56,7 @@ typedef struct {
     char title[MAX_APPS][32];
     int n;
     int lent_a;                      /* more_mem_a lent the fonts window: load the fonts again */
+    int serial;                      /* serial_open started the USB serial port: stop it after */
 } apps_t;
 static apps_t *L;
 #define s_file  (L->file)
@@ -106,6 +115,8 @@ static int a_poll(void)
 
     input_scan(keys_adc(), keys_power());
     ap_pump();
+    if (L->serial)
+        prg_cdc_poll();              /* (the host's requests are answered here: call poll often) */
     if (!keys_power())
         s_power_t0 = 0;
     else if (!s_power_t0)
@@ -177,6 +188,48 @@ static int a_more_mem_a(gilb_mem_t *out, int max)
     return 1;
 }
 
+/* The USB serial port (API version 4): a COM port on the PC while the program runs. */
+static int a_serial_open(void)
+{
+    if (L->serial)
+        return 0;
+    if (usb_out_active())
+        return -2;                   /* (USB-C earphones: the port is the host's) */
+    if (!usb_cable())
+        return -1;
+    prg_cdc_open();
+    L->serial = 1;
+    log_printf("programs: USB serial port on");
+    return 0;
+}
+
+static long a_serial_read(void *buf, unsigned long n)
+{
+    uint8_t *p = buf;
+    unsigned long got = 0;
+    int c;
+
+    if (!L->serial || !buf)
+        return -1;
+    prg_cdc_poll();
+    while (got < n && (c = prg_cdc_getc()) >= 0)
+        p[got++] = (uint8_t)c;
+    return (long)got;
+}
+
+static long a_serial_write(const void *buf, unsigned long n)
+{
+    if (!L->serial || !buf)
+        return -1;
+    prg_cdc_poll();
+    return prg_cdc_write(buf, n);
+}
+
+static int a_serial_ready(void)
+{
+    return L->serial && prg_cdc_configured();
+}
+
 static const gilb_api_t k_api = {
     .version = GILB_API_VERSION, .api_size = sizeof(gilb_api_t),
     .board = BOARD == BOARD_512M, .screen_w = DISPLAY_W, .screen_h = DISPLAY_H,
@@ -185,6 +238,8 @@ static const gilb_api_t k_api = {
     .open = a_open, .read = a_read, .write = a_write, .seek = a_seek, .size = a_size, .close = a_close,
     .exists = a_exists, .log = a_log, .dir = GILB_APP_DIR, .more_mem = a_more_mem,
     .more_mem_a = a_more_mem_a,
+    .serial_open = a_serial_open, .serial_ready = a_serial_ready, .serial_read = a_serial_read,
+    .serial_write = a_serial_write,
 };
 
 /* ---- the screens -------------------------------------------------------------------------------- */
@@ -371,12 +426,20 @@ static void run(int i)
         drain();
         s_power_t0 = 0;
         L->lent_a = 0;
+        L->serial = 0;
         rc = entry(&k_api);
         panel_io_sync();
         log_printf("programs: %s ended (%d)", s_file[i], rc);
         if (L->lent_a)
             text_fonts_load();       /* (more_mem_a) */
         L->lent_a = 0;
+        if (L->serial) {             /* (serial_open): the PC sees the port go, the PHY as a charge
+                                        leaves it, ready for the next plug */
+            usb_dwc2_stop();
+            usb_dwc2_park();
+            log_printf("programs: USB serial port off");
+        }
+        L->serial = 0;
     }
     ovl_take(0);
     (void)ovl_get(OVL_LIB);          /* the library's code back (its callers only use ovl_if) */

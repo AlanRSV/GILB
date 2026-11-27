@@ -1904,7 +1904,9 @@ static const set_t g_system[] = {
     { ICON_UPDATE, S_DO, 0, 0, "Firmware update", 0, 0, ap_update },
     { ICON_GEAR, S_DO, 0, 0, "Restore defaults", 0, 0, restore_q },
     { ICON_CHECK, S_DO, 0, 0, "Self-test", 0, 0, ap_self_test },
+#if GILB_PROGRAMS                    /* (a beta build only: make PROGRAMS=1, docs/PROGRAMS.md) */
     { ICON_CHIP, S_DO, 0, 0, "Programs", 0, 0, ap_programs },
+#endif
     { ICON_INFO, S_OPEN, 0, 0, "About", 0, 0, 0, &pg_about },
     { ICON_BUG, S_OPEN, 0, 0, "Developer", 0, 0, 0, &pg_set, G_DEV },
 };

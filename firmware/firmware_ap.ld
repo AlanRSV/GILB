@@ -264,6 +264,7 @@ SECTIONS
             KEEP(*(.ovl_hdr.prg))
             *(.ovl.prg.*)
             *programs.o(.text* .rodata*)
+            *prg_cdc.o(.text* .rodata* .data* .bss*)   /* (its state in the overlay: no resident RAM) */
             . = ALIGN(4);
         }
     }

@@ -1,5 +1,9 @@
 # Programs: running code from a file (2026-11-26)
 
+**A beta.** Programs are only in beta builds: `make cfw-img ... PROGRAMS=1`. Normal and release
+builds (`release/build.sh`) leave out the Settings row, so nobody gets them by accident while the
+loader, its API and the USB keyboard are being tested.
+
 Settings › System › Programs lists the `.APP` files in `GILB/APPS` on the internal storage and
 runs the one picked. A program is our own format (`sdk/include/gilb_app.h`), built with the SDK
 (`sdk/README.md`). This was the first step towards games such as the Doom port, which RECHO already
@@ -120,4 +124,37 @@ Doom (`ports/doom/`) uses it.
 
 Also fixed then: `a_poll` kept POWER's press time as `now | 1`, so on an even millisecond the
 unsigned `now - t0` was huge and a tap counted as "held 2 s". It compares signed now.
+
+## API version 4 (2026-11-26): a USB serial port, and a PC keyboard
+
+`serial_open`, `serial_ready`, `serial_read` and `serial_write` give a running program a USB serial
+port: with the cable in (the cable question answered "charge only"), the player is a COM port on
+the PC, CDC-ACM with Windows' own driver, USB ID 071B:3209. `poll()` answers the PC's requests, so a
+program calls it often. When the program ends, GILB disconnects the port and parks the PHY as a
+charge leaves it (`usb_dwc2_stop`, `usb_dwc2_park`).
+
+| What | Where |
+|---|---|
+| The API calls | `services/programs.c` (`a_serial_*`; the port's flag in the list's stack struct) |
+| The driver | `services/prg_cdc.c`: `drivers/usb_cdc_rknanoc.c` again, renamed, in the prg overlay, its state too (no resident RAM) |
+| The PC's side | `tools/gilb_keys.ps1`: a window that sends each key press and release as a byte |
+
+The prg overlay may only call resident code, and the Developer overlay, home of the console's
+copy, is the program's memory while one runs: hence the second copy. Cost: 24 B of resident code
+(`usb_dwc2_init` made resident), 2.4 KB of the prg overlay (5024 of 12288 B).
+
+The key protocol (`tools/gilb_keys.ps1`): one byte per change, the Windows key code (VK_*, below
+128), bit 7 set for a release. Doom maps it (`ports/doom/gilb/gilb_keys.c`), and those keys can be
+held together.
+
+Fixed in the shared driver on the way (the Developer console only ever sent a few bytes):
+
+- The bulk OUT endpoint was never armed: the PC's data waited, NAKed. It's now armed for one
+  packet when the buffer is empty, and the buffer starts over once read (it filled up after
+  64 bytes in all).
+- SET_LINE_CODING's data stage went into the key buffer (one of its bytes reads as the left
+  arrow), and its status stage was never sent: opening the port took minutes of retries.
+- `fifo_read` left the rest of a packet it did not keep in the FIFO.
+- The port shared the USB disk's ID (071B:3203, same serial number), so Windows gave it the disk's
+  driver and no COM port.
 

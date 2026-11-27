@@ -4,6 +4,9 @@ A **program** is a `.APP` file that GILB runs from **Settings › System › Pro
 whole screen, the buttons, files and 112 KB of memory. When it ends, the player is back in GILB
 where it was, with no restart.
 
+**A beta:** programs need a GILB built with `PROGRAMS=1` (`docs/PROGRAMS.md`). Released GILB images
+don't show Settings › System › Programs yet.
+
 ## Build the example
 
 The tools are the firmware's own: `arm-none-eabi-gcc` and `python3`, in WSL, Linux or macOS.
@@ -52,6 +55,9 @@ leaves any program.
 - **More memory:** `more_mem` (API version 2) lends core B's RAM (380 KiB, slower), and
   `more_mem_a` (version 3) lends 161.75 KiB of core A's own. `ports/doom/` shows a program that
   uses both.
+- **A USB serial port** (version 4): `serial_open`, `serial_read`, `serial_write`. With the cable in,
+  the player is a COM port on the PC. `tools/gilb_keys.ps1` sends a PC's keys that way: one byte a
+  change, the Windows key code, bit 7 set for a release.
 - **Sound** isn't in the API yet. It's next, for the Doom port.
 - **Compatibility:** a program states the API version it needs (`APP_API_MIN`, default 1). GILB
   refuses a program that needs a newer one. Newer GILBs only add functions at the end of

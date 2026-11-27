@@ -749,7 +749,7 @@ static void core_init(void)
 
 /* Shared DWC2 bring-up (PHY + core + FIFOs + EP0), reused by the CDC-ACM
  * console driver so both devices use the exact init that enumerates. */
-OVL_TEXT(dev) void usb_dwc2_init(void)
+void usb_dwc2_init(void)                 /* (resident: the Developer console and programs, services/prg_cdc.c) */
 {
     s_want_hs = 0;
     hw_on();

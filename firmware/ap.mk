@@ -85,6 +85,7 @@ AP_SERVICE_SRCS := \
   firmware/services/sd_selftest.c \
   firmware/services/selftest.c \
   firmware/services/programs.c \
+  firmware/services/prg_cdc.c \
   firmware/services/gilb_move.c \
   firmware/ui/layout.c \
   firmware/ui/layout_text.c \
@@ -186,6 +187,10 @@ BOARD ?= 512m
 BOARD_ID := $(if $(filter 8g,$(BOARD)),1,2)
 # REVERSE_LISTS=1: VOL- moves up in lists, VOL+ down (ui/nav.h KEY_LIST_UP)
 REVERSE_LISTS ?= 0
+# PROGRAMS=1: a beta build, with Settings > System > Programs (docs/PROGRAMS.md). Off in normal and
+# release builds (release/build.sh): the program loader, its API and the USB keyboard are still being
+# tested, and nobody should get them by accident.
+PROGRAMS ?= 0
 
 AP_CFLAGS := $(AP_ARCH_FLAGS) -Os -Wall \
   -Wno-unused-parameter -Wno-unused-variable \
@@ -194,6 +199,7 @@ AP_CFLAGS := $(AP_ARCH_FLAGS) -Os -Wall \
   -Wno-return-mismatch -Wno-int-conversion -Wno-return-type \
   -ffunction-sections -fdata-sections -MMD -MP -fcommon \
   -DRECHORD_AP_BUILD -DBOARD=$(BOARD_ID) -DRECHORD_LISTS_REVERSED=$(REVERSE_LISTS) \
+  -DGILB_PROGRAMS=$(PROGRAMS) \
   $(addprefix -I,$(AP_INCLUDE_DIRS)) \
   -include firmware/compat/armcc_compat.h
 

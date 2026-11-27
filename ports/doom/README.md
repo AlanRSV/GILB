@@ -1,7 +1,8 @@
 # Doom for GILB
 
 Doom as a GILB program (`docs/PROGRAMS.md`), run from **Settings › System › Programs**. Silent
-for now. It needs GILB with program API version 3 (`more_mem_a`).
+for now. It needs GILB with program API version 3 (`more_mem_a`); version 4 adds a PC keyboard. Programs are
+a beta: only GILB images built with `PROGRAMS=1` have them (`docs/PROGRAMS.md`).
 
 ## Credits and license
 
@@ -63,6 +64,22 @@ while walking:
 | POWER held 2 s | back to GILB | back to GILB |
 
 On the title, intermission and finale screens, PLAY or MENU goes on and BACK opens the menu.
+
+### A PC keyboard
+
+With GILB's API version 4 and a cable in (answer the cable question with "charge only"), start Doom,
+then on the PC run `powershell -ExecutionPolicy Bypass -File tools\gilb_keys.ps1` and keep its window
+in front. These keys can be held together:
+
+| Key | | Key | |
+|---|---|---|---|
+| W / up arrow | forward | S / down arrow | backwards |
+| left / right arrow | turn | A / D | strafe |
+| Ctrl | fire | Space | use |
+| Shift | run | Q / E | previous / next weapon |
+| Tab | the map | Esc / Enter | the menu / select |
+
+The player's own keys keep working alongside. On an older GILB, Doom runs without the keyboard.
 
 ## Memory
 

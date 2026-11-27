@@ -162,9 +162,9 @@ COREB_MODULES := $(foreach f,$(COREB_FAMILIES),--module b$(f)=$(COREB_DIR)/$(f).
 cfw-ap: $(CFW_ELF)
 	@echo "CFW AP ELF: $(CFW_ELF)"
 
-# BOARD (and REVERSE_LISTS) are compile flags the dependency files don't see: a stamp per
-# combination makes switching either rebuild every object.
-CFW_BOARD_STAMP := $(CFW_BUILD_DIR)/.board-$(BOARD)$(if $(filter 1,$(REVERSE_LISTS)),-rl)
+# BOARD (and REVERSE_LISTS, PROGRAMS) are compile flags the dependency files don't see: a stamp
+# per combination makes switching any of them rebuild every object.
+CFW_BOARD_STAMP := $(CFW_BUILD_DIR)/.board-$(BOARD)$(if $(filter 1,$(REVERSE_LISTS)),-rl)$(if $(filter 1,$(PROGRAMS)),-prg)
 $(CFW_BOARD_STAMP):
 	@$(MKDIR_P) $(dir $@)
 	@rm -f $(CFW_BUILD_DIR)/.board-*
