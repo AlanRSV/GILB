@@ -111,6 +111,9 @@ const theme_t *theme_builtin(int i);
  * count change, built-ins first. Returns the number of themes. A current file
  * theme keeps its colours until loaded again (theme_load_index). */
 int           theme_rescan(void);
+/* Both lists read, if not yet (services/config.c names both themes, from the lay overlay, which
+ * shares the store's window: the store cannot load while it runs). Before GILB.CFG is read. */
+void          theme_list_both(void);
 
 /* Sanity-check a theme: 0 = usable, <0 = which field failed (see .c). */
 int           theme_validate(const theme_t *t);

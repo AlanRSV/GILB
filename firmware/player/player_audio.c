@@ -26,6 +26,7 @@ static uint32_t s_tags_seq, s_tags_clus;     /* (a seek restarts the same file: 
 static int s_open;
 static char s_src[150];                      /* where the queue came from (for resume) */
 static int s_tree;
+static uint8_t s_lib;                       /* the queue is the library's (player_open_list) */
 
 /* "f:<first cluster>:<folder>" / "t:...": the queue's source and the heard track. */
 void player_note_track(uint32_t clus)
@@ -47,6 +48,7 @@ OVL_TEXT(npx) void player_src_set(const char *src, int tree)
     snprintf(s_src, sizeof s_src, "%s", src);
     s_tree = tree;
     s_open = 1;
+    s_lib = 0;
 }
 
 /* Kept for browser_screen's error text (the core-A FLAC adapter is gone). */
@@ -82,6 +84,7 @@ int player_open(const char *path)
                 snprintf(s_src, sizeof s_src, "%s", dir);
                 s_tree = 0;
                 s_open = 1;
+                s_lib = 0;
                 return PLAYER_OK;
             }
     }
@@ -101,6 +104,7 @@ int player_open_tree(const char *path)
     snprintf(s_src, sizeof s_src, "%s", path);
     s_tree = 1;
     s_open = 1;
+    s_lib = 0;
     return PLAYER_OK;
 }
 
@@ -114,6 +118,7 @@ OVL_TEXT(lib) int player_open_list(int n, int start, int (*get)(int i, fs_ref_t 
     snprintf(s_src, sizeof s_src, "%s", src ? src : "");
     s_tree = 0;
     s_open = 1;
+    s_lib = 1;
     return PLAYER_OK;
 }
 
@@ -142,6 +147,7 @@ int player_play(void)
 
 int player_mode(void) { return queue_mode(); }
 const char *player_source(void) { return s_src; }
+int player_from_lib(void) { return s_lib; }
 
 /* Next play mode; the tracks already handed to core B still play first. */
 int player_cycle_mode(void)
@@ -232,6 +238,7 @@ int player_resume(const char *track)
     snprintf(s_src, sizeof s_src, "%s", p);
     s_tree = kind == 't';
     s_open = 1;
+    s_lib = 0;
     return 0;
 }
 int player_get_volume(void) { return audio_get_volume_db(); }

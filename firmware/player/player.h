@@ -107,6 +107,7 @@ int   player_open_tree(const char *path);   /* a folder and everything under it 
 int   player_mode(void);                    /* services/queue.h Q_* */
 int   player_cycle_mode(void);
 const char *player_source(void);           /* the folder the queue came from, "" = none */
+int   player_from_lib(void);              /* 1: the queue was played from the library (ui/lib_ui.c) */
 int   player_resume(const char *track);     /* config.h track= string */
 void  player_note_track(uint32_t clus);     /* the heard track -> g_cfg.track */
 int   player_pause(void);

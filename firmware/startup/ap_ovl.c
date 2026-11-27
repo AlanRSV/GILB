@@ -569,6 +569,7 @@ int ap_lay_screen(int id)
 /* GILB.CFG read (services/config.c: boot, and after a USB disk session). */
 int ap_config_load(void)
 {
+    theme_list_both();   /* (the theme names: the store's overlay cannot load while lay's runs) */
     return npx_ok() ? GATE(ovl_get, OVL_LAY, lay_api_t, -1, cfg()) : -1;
 }
 

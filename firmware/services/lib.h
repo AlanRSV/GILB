@@ -31,7 +31,7 @@ int ap_lib_home_value(char *out, int n);   /* the Home row's value */
 void ap_lib_np(int what);            /* Now Playing's Options: LIB_NP_* */
 void ap_lib_data_changed(void);      /* Settings > Library data: lists to the new place */
 int ap_lib_np_fav(void);             /* 1 when the playing track is a favourite */
-enum { LIB_NP_FAV, LIB_NP_ADDPL };
+enum { LIB_NP_FAV, LIB_NP_ADDPL, LIB_NP_ALBUM };   /* (ALBUM: MENU on Now Playing, ui/screens.c np_library) */
 
 /* The job's two phases, each an overlay of its own in the library's phase window (OVL_LWALK: the
  * walk, lib_scan.c and lib_dir.c; OVL_LBUILD: the build, lib_build.c and lib_sort.c). A job is in

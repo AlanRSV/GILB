@@ -45,6 +45,12 @@ static int listed_look(int r)
     return s_cnt[r] < 0 ? rescan_look(r) : s_cnt[r];
 }
 
+void theme_list_both(void)
+{
+    listed_look(0);
+    listed_look(1);
+}
+
 void theme_set_look(int retro) { s_look = retro ? 1 : 0; }
 int theme_look(void) { return s_look; }
 

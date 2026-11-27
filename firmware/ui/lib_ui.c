@@ -1510,8 +1510,42 @@ int lib_ui_np_fav(void)
     return s_fav;
 }
 
+/* Now Playing's track in Library > Albums: its album opened (its row under the cursor: view_enter),
+ * over a Library page. Its album is found by the folder of each album's first track, then the track in
+ * it. Nothing pushed when it is not in the index (np_library opens its folder). */
+static void np_album(void)
+{
+    audio_status_t st;
+    lib_row_t x, t;
+    int v;
+
+    audio_status(&st);
+    v = st.track.ref.vol;
+    if (!st.seq || v < 0 || v > 1 || !g_lib_view[v].ok)
+        return;
+    for (uint32_t i = 0, n = idx_rows(v, LS_ALBUMS); i < n; i++) {
+        if (rd(v, LS_ALBUMS, i, &x) || rd(v, LS_ALBTRK, x.a, &t) || t.ref.pclus != st.track.ref.pclus)
+            continue;
+        for (uint32_t k = 0; k < x.b && k < 400u; k++)
+            if (!rd(v, LS_ALBTRK, x.a + k, &t) && playing(&t.ref)) {
+                char nm[48];
+
+                snprintf(nm, sizeof nm, "%s", x.s1[0] ? x.s1 : "Unknown album");
+                nav_pop();               /* (Now Playing) */
+                lib_ui_open();
+                s_vol = v;
+                push(&pg_lview, V_ALBUM, v, LS_ALBTRK, x.a, x.b, nm);
+                return;
+            }
+    }
+}
+
 void lib_ui_np(int what)
 {
+    if (what == LIB_NP_ALBUM) {
+        np_album();
+        return;
+    }
     if (!g_lib.writable[lib_lists_vol()]) {
         nav_toast(ICON_WARN, TOAST_WARN, "Lists are read-only here");
         return;

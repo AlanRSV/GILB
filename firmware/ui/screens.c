@@ -49,6 +49,7 @@ const char *ap_keys_text(void);
 int ap_diag_count(void);
 void ap_diag_row(int i, row_t *r);
 const char *player_source(void);
+int player_from_lib(void);
 extern const page_t pg_bt;
 const char *bt_state_text(bt_state_t st);   /* ap_bt.c */
 
@@ -648,11 +649,17 @@ const page_t pg_br = {
     .verb = br_verb, .options = &pg_br_opts,
 };
 
-/* MENU on Now Playing with nothing under it: the playing track's folder. */
+/* MENU on Now Playing with nothing under it: the playing track's album in the Library when the queue
+ * came from there (issue 2: the folder instead was a surprise), else (or not found) its folder. */
 void np_library(void)
 {
     const char *src = player_source();
 
+    if (player_from_lib()) {
+        ap_lib_np(LIB_NP_ALBUM);
+        if (nav_top() != &pg_np)
+            return;
+    }
     if (!src || src[0] != '/')
         return;
     nav_pop();
