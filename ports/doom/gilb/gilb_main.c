@@ -7,8 +7,8 @@
  *      (api->more_mem_a, API version 3)
  *   2. reads DOOM.BIN, the other blocks (AHI, BLO, BHI), checks it was built with this DOOM.APP
  *      and its CRC, and zeroes each block's .bss
- *   3. hands out what is left of the blocks as the caches: the game's "internal flash" (level data,
- *      textures: gilb_cache_base) and the WAD's read cache (gilb_wad.c)
+ *   3. hands out what is left of the blocks: the sound's ring (gilb_sound.c), the game's "internal
+ *      flash" (level data, textures: gilb_cache_base) and the WAD's read cache (gilb_wad.c)
  *   4. starts the game (D_DoomMain, which never returns). The way back to GILB is a longjmp: from
  *      gilb_error, or when the user holds POWER for 2 s (api->poll).
  *
@@ -179,8 +179,10 @@ APP_STAGE1 int app_main(const gilb_api_t *api)
         return 1;
     }
     /* Step 3: the caches. AHI's rest holds the WAD's pages, all of BHI is the game's "flash". */
-    gilb_wadcache_base = (uint8_t *)__ahi_free;
-    gilb_wadcache_size = (uint32_t)(__ahi_end - __ahi_free) / GILB_WAD_PAGE * GILB_WAD_PAGE;
+    gilb_sound_ring = (int32_t *)__ahi_free;   /* (8-aligned: doom.ld) the sound's ring, in core A's
+                                                  RAM, which the audio DMA reads */
+    gilb_wadcache_base = (uint8_t *)__ahi_free + GILB_SOUND_RING_BYTES;
+    gilb_wadcache_size = (uint32_t)((uint8_t *)__ahi_end - gilb_wadcache_base) / GILB_WAD_PAGE * GILB_WAD_PAGE;
     gilb_cache_base = (uint8_t *)__bhi_start;
     gilb_cache_size = (uint32_t)(__bhi_end - __bhi_start) & ~(uint32_t)8191u;
     memset(gilb_cache_base, 0xFF, gilb_cache_size);    /* "erased flash" */

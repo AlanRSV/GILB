@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #define GILB_APP_MAGIC   0x50504147u    /* "GAPP" */
-#define GILB_API_VERSION 4u
+#define GILB_API_VERSION 5u
 #define GILB_APP_BASE    0x03030000u    /* where a program is loaded and runs */
 #define GILB_APP_END     0x0304C000u    /* 112 KiB: code, data, .bss, heap */
 #define GILB_APP_DIR     "/Internal/GILB/APPS"
@@ -131,6 +131,21 @@ typedef struct gilb_api {
     int (*serial_ready)(void);
     long (*serial_read)(void *buf, unsigned long n);
     long (*serial_write)(const void *buf, unsigned long n);
+
+    /* ---- version 5 ---- */
+    /* Sound out of the headphone jack. The program owns a ring of blocks x block_frames frames in its
+     * own memory (the 112 KiB, or what more_mem_a lent: core A's RAM, which the audio DMA reads), two
+     * int32 words a frame, L then R, the sample in the top bits (a 16-bit sample << 16). sound_open
+     * stops the music, brings the DAC up at rate (32000, 44100, 48000, 88200, 96000, 176400 or 192000
+     * Hz: the DAC, a CS43131, plays nothing below 32 kHz, so upsample: Doom mixes at 11025 Hz and
+     * writes each sample four times, interpolated, at 44100), clears the ring and plays it in a loop,
+     * block by block, at the player's volume: 0, -1 a bad ring (2..16 blocks of 16..4096 frames,
+     * 8-byte aligned) or rate, -2 the DAC failed.
+     * sound_pos: the frame the DMA reads now; write the frames after it, ahead of it, as it moves.
+     * sound_close stops it (GILB also does when the program ends). sdk/API.md has the details. */
+    int (*sound_open)(uint32_t rate, int32_t *ring, uint32_t block_frames, uint32_t blocks);
+    uint32_t (*sound_pos)(void);
+    void (*sound_close)(void);
 } gilb_api_t;
 
 #endif

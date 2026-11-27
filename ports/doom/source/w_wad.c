@@ -102,6 +102,8 @@
  *
  */
 #define getNumberOfLumps() (_g->numlumps)
+int gilb_level_must_fit;               /* GILB: P_SetupLevel, while it loads a level's own lumps */
+extern uint8_t *lumpNames;             /* (below) */
 uint32_t currentImmutableFlashOffset = 0;
 uint32_t currentLevelFlashOffset = 0;
 wad_immutable_flash_data_t *p_wad_immutable_flash_data;
@@ -340,6 +342,11 @@ void* writeLumpToFlashRegion(int lumpnum, uint8_t flashRegion, boolean updateSiz
     // will it fit in flash?
     if (fl.size > getUserFlashRegionRemainingSpace() && flashRegion != FLASH_IMMUTABLE_REGION)
     {
+        // GILB: a level's own lumps are read in place (blockmap, lines...): left in the WAD, the game
+        // would fault on them (device 2026-11-26), so say which and stop. Flats and textures may stay.
+        if (gilb_level_must_fit)
+            gilb_error("Level data too big: %.8s %d B, %u B free", lumpNames + 8 * lumpnum, fl.size,
+                       (unsigned) getUserFlashRegionRemainingSpace());
         address = (uint32_t*) (WAD_ADDRESS + fl.filepos);
         updateLumpAddresses(lumpnum, address);
         return address;

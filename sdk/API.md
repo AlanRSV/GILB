@@ -4,7 +4,7 @@ Everything a program gets from GILB, function by function. The source of truth i
 [`include/gilb_app.h`](include/gilb_app.h); [`README.md`](README.md) has how to build a program, and
 [`../docs/PROGRAMS.md`](../docs/PROGRAMS.md) how the loader works inside the firmware.
 
-This page is for API **version 4** (GILB built with `PROGRAMS=1`, 2026-11-26).
+This page is for API **version 5** (GILB built with `PROGRAMS=1`, 2026-11-26).
 
 ## A program's shape
 
@@ -212,9 +212,59 @@ driver. It's for a PC keyboard, debugging, or anything else a program wants to e
 - [`../tools/gilb_keys.ps1`](../tools/gilb_keys.ps1) sends a PC's keys: one byte for each change,
   the Windows key code, with bit 7 set for a release. Doom reads it that way.
 
+## Sound (version 5)
+
+Sound out of the headphone jack. The program owns a **ring** of sound frames in its own memory and
+keeps writing into it ahead of where the player is; GILB's audio DMA plays it round and round.
+
+| Function | What it does | Returns |
+|---|---|---|
+| `int sound_open(uint32_t rate, int32_t *ring, uint32_t block_frames, uint32_t blocks)` | Stops the music, turns the DAC on at `rate`, clears the ring and starts playing it in a loop. | 0; −1 a bad ring or rate; −2 the DAC didn't come up. |
+| `uint32_t sound_pos(void)` | The frame being played now, 0 .. `blocks` × `block_frames` − 1. | The frame. |
+| `void sound_close(void)` | Stops the sound. GILB also does this when the program ends. | |
+
+- **Rates:** 32000, 44100, 48000, 88200, 96000, 176400 or 192000 Hz. The DAC (a CS43131) plays
+  nothing below 32 kHz, so a program with older 11025 Hz sounds, like Doom, plays them at 44100 Hz,
+  four frames a sample.
+- **A frame** is two `int32_t` words, left then right, with the sample in the top bits: a 16-bit
+  sample `s` is `(int32_t)s << 16`.
+- **The ring** is `blocks` × `block_frames` frames: 2 to 16 blocks of 16 to 4096 frames, 8-byte
+  aligned, in the program's own memory (its 112 KiB, or what `more_mem_a` lent). The DMA reads core
+  A's RAM only, so not `more_mem`'s.
+- **Keeping it fed:** write the frames from a little after `sound_pos()` up to just before it comes
+  round again, and do that often (each `poll()`, during long jobs too). The DMA never waits: what it
+  finds is what plays, so a ring left alone repeats its old sound.
+- **Volume:** the player's own volume.
+- **USB:** `serial_open` switches the DAC off as USB starts, and GILB turns it on again: a short
+  click, and the ring starts silent.
+
+```c
+#define RATE 44100u
+#define BLOCK 256u
+#define BLOCKS 8u                           /* 2048 frames: 46 ms */
+static int32_t ring[BLOCKS * BLOCK * 2] __attribute__((aligned(8)));
+
+api->sound_open(RATE, ring, BLOCK, BLOCKS);
+for (;;) {
+    uint32_t pos = api->sound_pos(), n = BLOCKS * BLOCK;
+    /* write the frames (pos + 256) .. (pos - 16), modulo n: */
+    for (uint32_t k = 256; k < n - 16; k++) {
+        uint32_t i = (pos + k) % n;
+        int16_t s = next_sample();          /* (the program's own) */
+        ring[2 * i] = ring[2 * i + 1] = (int32_t)s << 16;
+    }
+    if (api->poll())
+        break;
+}
+```
+
+That example writes everything again each time, which is simplest. Doom's mixer
+([`../ports/doom/gilb/gilb_sound.c`](../ports/doom/gilb/gilb_sound.c)) does the same and keeps
+its own count of the frames played, so it carries on correctly after a long frame.
+
 ## Not in the API yet
 
-- **Sound.** It's next, for the Doom port.
+- **Sound input**, and sound out of a USB-C DAC or Bluetooth (programs use the headphone jack).
 - **A C library.** `crt0.c` has `memset`, `memcpy`, `memmove` and `memcmp` only. There's no
   `malloc` or `printf`: use static arrays, and bring a small freestanding library if you need more.
 - **Floating point in hardware.** The CPU is a Cortex-M3, so `float` works but is slow. Use

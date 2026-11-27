@@ -36,10 +36,16 @@ extern uint32_t gilb_cache_size;
 extern uint8_t *gilb_wadcache_base;       /* gilb_wad.c's pages */
 extern uint32_t gilb_wadcache_size;
 #define GILB_WAD_PAGE        1024u   /* a column read wastes less of a page */
-#define GILB_WAD_ZONE        (24u * 1024u)   /* the WAD cache's share of the zone */
+#define GILB_WAD_ZONE        (32u * 1024u)   /* the WAD cache's share of the zone (8 KiB more since the sound ring took AHI's) */
 extern uint32_t gilb_wad_misses, gilb_wad_ms;
+extern int32_t *gilb_sound_ring;          /* gilb_sound.c's ring, 16 KiB in AHI (gilb_main.c) */
+#define GILB_SOUND_RING_BYTES (2048u * 8u)   /* 2048 frames at 44100 Hz: 46 ms */
+void gilb_sound_tick(void);
+void gilb_sound_log(void);
 
 void gilb_wad_close(void);
+extern int gilb_level_must_fit;           /* w_wad.c: a level lump that doesn't fit the cache stops */
+extern uint32_t currentImmutableFlashOffset, currentLevelFlashOffset;   /* w_wad.c */
 void gilb_quit(int rc) __attribute__((noreturn));   /* back to GILB (longjmp) */
 void gilb_quit_power(void) __attribute__((noreturn));
 void gilb_fatal(const char *why);         /* a message, then back to GILB */

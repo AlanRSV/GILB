@@ -44,6 +44,11 @@ void prg_cdc_poll(void);
 int prg_cdc_getc(void);
 int prg_cdc_configured(void);
 long prg_cdc_write(const void *buf, unsigned long n);
+/* services/prg_sound.c */
+int prg_sound_open(uint32_t rate, int32_t *ring, uint32_t block_frames, uint32_t blocks);
+uint32_t prg_sound_pos(void);
+void prg_sound_close(void);
+void prg_sound_restart(void);
 
 #define MAX_APPS 16
 #define ROW_H    14
@@ -199,6 +204,7 @@ static int a_serial_open(void)
         return -1;
     prg_cdc_open();
     L->serial = 1;
+    prg_sound_restart();             /* (the USB bring-up cut the DAC: prg_sound.c) */
     log_printf("programs: USB serial port on");
     return 0;
 }
@@ -230,6 +236,29 @@ static int a_serial_ready(void)
     return L->serial && prg_cdc_configured();
 }
 
+/* Sound (API version 5): the DAC at the program's rate, the audio DMA looping over its ring. */
+static int a_sound_open(uint32_t rate, int32_t *ring, uint32_t block_frames, uint32_t blocks)
+{
+    uint32_t a = (uint32_t)ring, n = block_frames * blocks * 8u;
+    int ok = a >= GILB_APP_BASE && a + n <= GILB_APP_END;
+
+    if (L->lent_a && a >= (uint32_t)__fonts_ram_start && a + n <= AS_PCM_RING + 0x10000u)
+        ok = 1;                      /* (the memory more_mem_a lent) */
+    if (!ring || !ok || block_frames > 4096u || blocks > 16u)
+        return -1;
+    return prg_sound_open(rate, ring, block_frames, blocks);
+}
+
+static uint32_t a_sound_pos(void)
+{
+    return prg_sound_pos();
+}
+
+static void a_sound_close(void)
+{
+    prg_sound_close();
+}
+
 static const gilb_api_t k_api = {
     .version = GILB_API_VERSION, .api_size = sizeof(gilb_api_t),
     .board = BOARD == BOARD_512M, .screen_w = DISPLAY_W, .screen_h = DISPLAY_H,
@@ -240,6 +269,7 @@ static const gilb_api_t k_api = {
     .more_mem_a = a_more_mem_a,
     .serial_open = a_serial_open, .serial_ready = a_serial_ready, .serial_read = a_serial_read,
     .serial_write = a_serial_write,
+    .sound_open = a_sound_open, .sound_pos = a_sound_pos, .sound_close = a_sound_close,
 };
 
 /* ---- the screens -------------------------------------------------------------------------------- */
@@ -430,6 +460,7 @@ static void run(int i)
         rc = entry(&k_api);
         panel_io_sync();
         log_printf("programs: %s ended (%d)", s_file[i], rc);
+        prg_sound_close();           /* (sound_open: before the fonts go back where its ring may be) */
         if (L->lent_a)
             text_fonts_load();       /* (more_mem_a) */
         L->lent_a = 0;

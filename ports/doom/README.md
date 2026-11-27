@@ -1,8 +1,19 @@
 # Doom for GILB
 
-Doom as a GILB program (`docs/PROGRAMS.md`), run from **Settings › System › Programs**. Silent
-for now. It needs GILB with program API version 3 (`more_mem_a`); version 4 adds a PC keyboard. Programs are
-a beta: only GILB images built with `PROGRAMS=1` have them (`docs/PROGRAMS.md`).
+Doom as a GILB program (`docs/PROGRAMS.md`), run from **Settings › System › Programs**, with its
+sound effects (no music yet). It needs GILB with program API version 3 (`more_mem_a`); version 4 adds
+a PC keyboard and version 5 the sound. Programs are a beta: only GILB images built with `PROGRAMS=1`
+have them (`docs/PROGRAMS.md`).
+
+## Sound
+
+`gilb/gilb_sound.c`: the MG24 port's mixer, 8 channels in stereo, the effects read from the WAD. It
+mixes at the effects' 11025 Hz and writes each sample four times, interpolated, at 44100 Hz: the
+player's DAC plays nothing below 32 kHz. Its ring is 2048 frames (46 ms, 16 KiB of AHI), topped up
+every 10 ms at most from the key reads, the renderer's NetUpdate calls, the end of each storage
+read and the panel's bands. It keeps an absolute frame count, so effects carry on in step after a
+long frame, and it saves the WAD reader's position, since it runs inside other reads (it once sent
+the level set-up's reads astray). Music (the port's OPL2 synthesis, `source/opl2.c`) is not built yet.
 
 ## Credits and license
 

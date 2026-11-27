@@ -125,4 +125,4 @@ __bhi_start = ORIGIN(BHI);
 __bhi_end = ORIGIN(BHI) + LENGTH(BHI);
 ASSERT(gilb_hdr == ORIGIN(APP), "the header must be the first thing in the program")
 ASSERT(__blo_end - __blo_free >= 62 * 1024, "the zone needs 62 KiB (the MG24's) at least")
-ASSERT(__ahi_end - __ahi_free >= 16 * 1024, "the WAD's read cache needs 16 KiB at least")
+ASSERT(__ahi_end - __ahi_free >= 16 * 1024, "the sound ring (8 KiB) and the WAD's pages need 16 KiB at least")

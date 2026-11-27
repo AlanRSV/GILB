@@ -201,6 +201,7 @@ void I_StartTic(void)
 
     if (gilb->poll())
         gilb_quit_power();
+    gilb_sound_tick();
     s_pulse = s_pulse_next;
     s_pulse_next = 0;
     while (gilb->key(&e))

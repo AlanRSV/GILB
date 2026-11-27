@@ -927,6 +927,11 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
     }
 
     lumpnum = W_GetNumForName(lumpname);
+    // GILB: a missing map (W_GetNumForName only notes it) would have the lumps after -1 read as one
+    if (lumpnum < 0)
+        gilb_error("No %s in this WAD", lumpname);
+    gilb_logf("doom: loading %s (cache %lu B used before it)", lumpname, (unsigned long) currentImmutableFlashOffset);
+    gilb_level_must_fit = 1;
 
     _g->leveltime = 0;
     _g->totallive = 0;
@@ -968,6 +973,7 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
     // P_GroupLines modified to return a number the underflow padding needs
     // P_grouplines in falash
     P_LoadReject(lumpnum);  // 0k
+    gilb_level_must_fit = 0;             // GILB: (the flats and textures after it may stay in the WAD)
 
 
     // Note: you don't need to clear player queue slots --

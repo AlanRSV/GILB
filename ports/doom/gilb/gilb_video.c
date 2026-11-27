@@ -51,6 +51,7 @@ static void rate(void)
         gilb_logf("doom: %lu.%lu fps, %lu WAD reads taking %lu ms", (unsigned long)(frames * 10000u / (now - t0) / 10u),
                   (unsigned long)(frames * 10000u / (now - t0) % 10u), (unsigned long)(gilb_wad_misses - misses0),
                   (unsigned long)(gilb_wad_ms - ms0));
+        gilb_sound_log();
         t0 = now;
         frames = 0;
         misses0 = gilb_wad_misses;
@@ -81,6 +82,7 @@ void startDisplayRefresh(uint8_t bufferNumber, int rowsToUpdate)
             *d++ = pal[(p >> 16) & 0xFF] | (uint32_t)pal[p >> 24] << 16;
         }
         gilb->blit(0, y0, SCREEN_WIDTH, rows, s_band[s_which], SCREEN_WIDTH);
+        gilb_sound_tick();
     }
 }
 

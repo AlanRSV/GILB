@@ -103,7 +103,7 @@ static void D_UpdateFPS(void);
 // CPhipps - removed wadfiles[] stuff
 
 //jff 1/22/98 parms for disabling music and sound
-const boolean nosfxparm = true;     /* GILB: silent for now */
+const boolean nosfxparm = false;    /* GILB: the effects through API 5 (gilb/gilb_sound.c) */
 const boolean nomusicparm = true;   /* GILB: no OPL2 music yet */
 
 const skill_t startskill = sk_medium;

@@ -111,7 +111,9 @@ at B's clock even while B is held.
    - the WAD: `GILB/APPS/DOOM.WAD` (converted with `MCUDoomWadUtil`), read in 1 KiB pages, 4 per request
    - the MG24's internal-flash cache (level data, flats, textures): core B's upper 252 KiB
    - no BLE, no sound
-4. **Then:** sound, through a new API call that feeds GILB's PCM output.
+4. **Sound (done, device 2026-11-26: the effects play):** API version 5 (`sound_open`, a ring the
+   program fills, the audio DMA looping over it; docs/PROGRAMS.md) and Doom's mixer at 44100 Hz
+   (ports/doom/README.md, "Sound"). Music next.
 
 ## What was built (2026-11-26)
 
@@ -153,5 +155,6 @@ Bugs found on the way:
   `services/cpuclk.c` gates behind its own self-test), and fewer storage requests.
 - **Memory:** E1M6's level data (about 220 KiB) won't fit next to the fixed data. It stops with
   "too big for the player's memory". Not checked on the device yet; E1M2 to E1M9 are untested.
-- **Sound and music.**
+- **Music:** the port's OPL2 synthesis (`opl2.c`, 57 KB of code) at 11025 Hz into the same mixer, if
+  memory and core A's time allow.
 - **Save games:** write `DOOM.SAV` / `DOOM.CFG` in `GILB/APPS`; untested.

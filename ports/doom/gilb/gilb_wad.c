@@ -144,6 +144,7 @@ static void save_read(const char *path, uint32_t off, uint8_t *d, uint32_t n)
 
 void gilb_ext_read(uint32_t off, void *dest, uint32_t n)
 {
+    uint32_t misses0 = gilb_wad_misses;
     uint8_t *d = dest;
 
     if (off >= CFG_AT) {             /* the save game and the settings */
@@ -174,6 +175,10 @@ void gilb_ext_read(uint32_t off, void *dest, uint32_t n)
         off += k;
         n -= k;
     }
+    /* A storage read takes a while: keep the sound fed. Here, once the read is done (a mix reads the
+     * WAD too: inside page() it took the bounce buffer and slots from under this read). */
+    if (gilb_wad_misses != misses0)
+        gilb_sound_tick();
 }
 
 /* g_game.c writes each record whole, at its start. */

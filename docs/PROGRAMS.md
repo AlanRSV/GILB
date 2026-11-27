@@ -158,3 +158,27 @@ Fixed in the shared driver on the way (the Developer console only ever sent a fe
 - The port shared the USB disk's ID (071B:3203, same serial number), so Windows gave it the disk's
   driver and no COM port.
 
+## API version 5 (2026-11-26): sound
+
+`sound_open`, `sound_pos` and `sound_close` play a ring of PCM frames the program owns, out of the
+headphone jack (sdk/API.md, "Sound").
+
+| What | Where |
+|---|---|
+| The API calls | `services/programs.c` (`a_sound_*`: the ring must be in the program's own memory) |
+| The DAC, the DMA, the LLI chain | `services/prg_sound.c`, in the prg overlay (the chain too): no resident code or RAM |
+
+How: `audio_pcm_free` (the music stopped, core B held, the DMA free), `dac_init` at the program's
+rate, the player's volume, then the audio DMA on its usual channel looping over the ring through an
+LLI chain, as `audio.c`'s `dma_start` does with the PCM ring. When the program ends, the DMA and the
+I2S stop and `usb_dac_rail_cut()` has the next play bring the DAC up afresh.
+
+Found on the device:
+
+- The CS43131 plays nothing below 32 kHz, though `dac_cs43131.c`'s table (the stock firmware's) has
+  8 to 24 kHz: `sound_open` refuses those. Doom upsamples its 11025 Hz to 44100 Hz.
+- `usb_dwc2_init`'s `hw_on` cuts the DAC's supply, mutes it and switches the amp off (as for a USB
+  host). Doom starts its sound, then the serial port for the PC keyboard, and was silent with the
+  cable in: `serial_open` now brings the DAC up again when sound is on (`prg_sound_restart`), as the
+  USB DAC runs it, with USB on.
+

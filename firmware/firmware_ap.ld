@@ -265,6 +265,7 @@ SECTIONS
             *(.ovl.prg.*)
             *programs.o(.text* .rodata*)
             *prg_cdc.o(.text* .rodata* .data* .bss*)   /* (its state in the overlay: no resident RAM) */
+            *prg_sound.o(.text* .rodata* .data* .bss*) /* (the LLI chain the DMA reads, too) */
             . = ALIGN(4);
         }
     }

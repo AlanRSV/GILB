@@ -14,7 +14,7 @@ SDK     := ../../sdk
 ARCH    := -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
 CFLAGS  := $(ARCH) -Os -std=gnu99 -Wall -Wno-unused -Wno-missing-braces -Wno-pointer-sign \
            -ffunction-sections -fdata-sections -fomit-frame-pointer \
-           -Igilb -Iinclude -I$(SDK)/include -DAPP_NAME='"Doom"' -DAPP_API_MIN=3
+           -Igilb -Iinclude -I$(SDK)/include -DAPP_NAME='"Doom"' -DAPP_API_MIN=3   # (4: the PC keyboard, 5: sound, when there)
 LDFLAGS := $(ARCH) -nostartfiles -T doom.ld -Wl,--gc-sections --specs=nano.specs
 OUT     := build
 

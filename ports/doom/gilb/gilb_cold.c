@@ -1,6 +1,7 @@
 /*
  * gilb_cold.c -- what the MG24 board layer did that GILB does without (cold code, core B's RAM):
- * the sound and music drivers (silent for now) and the Bluetooth game's tic exchange.
+ * the music driver (no OPL2 yet; the sound effects are gilb_sound.c's) and the Bluetooth game's tic
+ * exchange.
  *
  *  This program is free software; you can redistribute it and/or modify it under the terms of the
  *  GNU General Public License as published by the Free Software Foundation; either version 2 of
@@ -13,11 +14,6 @@
 #include "global_data.h"
 #include "mus.h"
 
-soundChannel_t soundChannels[MAX_CHANNELS];
-
-void initAudio(void) { }
-void updateSound(void) { }
-void muteSound(void) { }
 void initMusic(void) { }
 void OPL_InitRegisters(void) { }
 void setMusic(uint8_t id_num) { (void)id_num; }
@@ -28,6 +24,7 @@ void I_OPL_SetMusicVolume(int volume) { (void)volume; }
  * GILB's poll going during a long frame. */
 void NetUpdate(void)
 {
+    gilb_sound_tick();
     if (!_g->gameStarted)
         return;
     D_BuildNewTiccmds();

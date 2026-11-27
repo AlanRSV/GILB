@@ -86,6 +86,7 @@ AP_SERVICE_SRCS := \
   firmware/services/selftest.c \
   firmware/services/programs.c \
   firmware/services/prg_cdc.c \
+  firmware/services/prg_sound.c \
   firmware/services/gilb_move.c \
   firmware/ui/layout.c \
   firmware/ui/layout_text.c \
