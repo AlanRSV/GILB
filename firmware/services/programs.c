@@ -24,6 +24,7 @@
 #include "drivers/display.h"
 #include "drivers/font.h"
 #include "drivers/panel_io.h"
+#include "drivers/text.h"
 #include "audio/audio.h"
 #include "audio/audio_shared.h"
 #include "player/player.h"
@@ -46,6 +47,7 @@ typedef struct {
     char file[MAX_APPS][13];         /* 8.3 names */
     char title[MAX_APPS][32];
     int n;
+    int lent_a;                      /* more_mem_a lent the fonts window: load the fonts again */
 } apps_t;
 static apps_t *L;
 #define s_file  (L->file)
@@ -108,7 +110,9 @@ static int a_poll(void)
         s_power_t0 = 0;
     else if (!s_power_t0)
         s_power_t0 = now | 1u;
-    return s_power_t0 && now - s_power_t0 >= 2000u;
+    /* (signed: t0 is now | 1, a millisecond ahead when now is even, and an unsigned
+       now - t0 then read as "held for ever": a tap left the program) */
+    return s_power_t0 && (int32_t)(now - s_power_t0) >= 2000;
 }
 
 static uint32_t a_ms(void)
@@ -156,6 +160,23 @@ static int a_more_mem(gilb_mem_t *out, int max)
     return n;
 }
 
+/* Core A's fonts window, the audio DMA list and the PCM ring, which run on together
+ * (firmware_ap.ld __fonts_ram_start..; audio/audio_shared.h AS_LLI, AS_PCM_RING): GILB draws with
+ * its 8x8 font alone until the program ends, then loads the fonts again (run()). */
+extern uint8_t __fonts_ram_start[];
+
+static int a_more_mem_a(gilb_mem_t *out, int max)
+{
+    if (!out || max < 1)
+        return 0;
+    audio_pcm_free();
+    L->lent_a = 1;
+    out[0].base = (uint32_t)__fonts_ram_start;
+    out[0].size = AS_PCM_RING + 0x10000u - (uint32_t)__fonts_ram_start;
+    log_printf("programs: fonts window and PCM ring lent (%lu B)", (unsigned long)out[0].size);
+    return 1;
+}
+
 static const gilb_api_t k_api = {
     .version = GILB_API_VERSION, .api_size = sizeof(gilb_api_t),
     .board = BOARD == BOARD_512M, .screen_w = DISPLAY_W, .screen_h = DISPLAY_H,
@@ -163,6 +184,7 @@ static const gilb_api_t k_api = {
     .key = a_key, .poll = a_poll, .ms = a_ms, .sleep_ms = a_sleep,
     .open = a_open, .read = a_read, .write = a_write, .seek = a_seek, .size = a_size, .close = a_close,
     .exists = a_exists, .log = a_log, .dir = GILB_APP_DIR, .more_mem = a_more_mem,
+    .more_mem_a = a_more_mem_a,
 };
 
 /* ---- the screens -------------------------------------------------------------------------------- */
@@ -348,9 +370,13 @@ static void run(int i)
                    (unsigned long)(h.mem_end - GILB_APP_BASE));
         drain();
         s_power_t0 = 0;
+        L->lent_a = 0;
         rc = entry(&k_api);
         panel_io_sync();
         log_printf("programs: %s ended (%d)", s_file[i], rc);
+        if (L->lent_a)
+            text_fonts_load();       /* (more_mem_a) */
+        L->lent_a = 0;
     }
     ovl_take(0);
     (void)ovl_get(OVL_LIB);          /* the library's code back (its callers only use ovl_if) */

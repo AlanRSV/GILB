@@ -49,6 +49,9 @@ leaves any program.
 - **What's missing:** there's no C library. `crt0.c` has `memset`, `memcpy`, `memmove` and `memcmp`.
   Write the rest yourself or bring a small freestanding one.
 - **No floating-point hardware** (Cortex-M3). Use integers or fixed point.
+- **More memory:** `more_mem` (API version 2) lends core B's RAM (380 KiB, slower), and
+  `more_mem_a` (version 3) lends 161.75 KiB of core A's own. `ports/doom/` shows a program that
+  uses both.
 - **Sound** isn't in the API yet. It's next, for the Doom port.
 - **Compatibility:** a program states the API version it needs (`APP_API_MIN`, default 1). GILB
   refuses a program that needs a newer one. Newer GILBs only add functions at the end of

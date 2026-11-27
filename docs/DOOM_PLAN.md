@@ -103,10 +103,55 @@ at B's clock even while B is held.
    - holds core B and stops the audio DMA
    - gives the program those ranges
    - when the program ends, reloads the fonts and restarts core B
-3. **Port the game:**
-   - replace `src/` with GILB's API: the screen as 320×170 (the port renders 320×200 or 320×240)
-   - map the 7 keys
-   - read the WAD from a file
-   - keep the texture cache in RAM
+3. **Port the game (done, device 2026-11-26: E1M1 plays):** `ports/doom/`, its README has the
+   details. In short:
+   - the screen: rendered natively at 320×170 (3D view 320×138, the full status bar), no crop or
+     scale; the 320×200 pictures (menus, title) come out at 85 % height
+   - the keys: walking is a toggle (PLAY), since the ladder reads one key at a time
+   - the WAD: `GILB/APPS/DOOM.WAD` (converted with `MCUDoomWadUtil`), read in 1 KiB pages, 4 per request
+   - the MG24's internal-flash cache (level data, flats, textures): core B's upper 252 KiB
    - no BLE, no sound
 4. **Then:** sound, through a new API call that feeds GILB's PCM output.
+
+## What was built (2026-11-26)
+
+- **API version 3:** `more_mem_a` lends core A's fonts window, the audio DMA list and the PCM ring
+  (0x03077900..0x030A0000, 161.75 KiB). It stops the audio DMA (`audio_pcm_free`); GILB loads its
+  fonts again when the program ends. Resident cost: a few bytes of code, no RAM.
+- **Two files.** GILB loads only `DOOM.APP` (112 KiB at most), so a first stage in it reads
+  `DOOM.BIN` (the other blocks) after asking for the memory.
+- **Where it went** (`ports/doom/doom.ld`):
+
+  | Block | Used for |
+  |---|---|
+  | program region, 112 KiB | the hot code: 107 KiB |
+  | fonts window + PCM ring, 161.75 KiB | the smaller math tables (30.6 KiB, `FAST_CPU_SMALL_FLASH`), the cold code (50 KiB), the 8-bit frame, the RGB565 bands, 20 KiB of WAD pages |
+  | core B 0x01000000, 128 KiB | `.data`, `.bss`, `info.c` (the game's 16-bit pointers reach only this window), the zone |
+  | core B 0x01021000, 252 KiB | the level cache |
+
+  No code runs from core B's RAM.
+- **E1M1 on the device:** 58.6 KiB of fixed data plus 188 KiB of level data and textures, out of
+  254 KiB; 44 KiB of the zone free. It loads in 6 s.
+- **Speed:** 24 to 34 fps in plain rooms, 8 to 15 in busy ones. Each storage request costs about
+  1.1 ms (4 KiB), and in busy rooms the textures that didn't fit the cache and the sprites take
+  25 to 45 % of the time. The rest is core A at 96 MHz.
+
+Bugs found on the way:
+
+- The MG24 port's `I_Error` only printed, and the game goes on after it (`HELP` is missing in the
+  shareware WAD, so it tries `HELP1`).
+- `fastOpeningsCopy` copied 2-aligned shorts as words; GCC made that `ldrd`, which faults on a
+  Cortex-M3.
+- A flat that didn't fit the cache stopped the renderer; it's now read from the WAD.
+- GILB's own: `a_poll` stored POWER's press time as `now | 1`, so an unsigned `now - t0` read
+  as "held 2 s" right away on even milliseconds, and a tap left any program (fixed in
+  `services/programs.c`).
+
+## Still to do
+
+- **Speed:** core A at a faster clock while a program runs (the FLAC point, A at 224 MHz, which
+  `services/cpuclk.c` gates behind its own self-test), and fewer storage requests.
+- **Memory:** E1M6's level data (about 220 KiB) won't fit next to the fixed data. It stops with
+  "too big for the player's memory". Not checked on the device yet; E1M2 to E1M9 are untested.
+- **Sound and music.**
+- **Save games:** write `DOOM.SAV` / `DOOM.CFG` in `GILB/APPS`; untested.

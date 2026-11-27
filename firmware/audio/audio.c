@@ -1403,6 +1403,17 @@ void audio_b_free(void)
     s_b_image = NULL;
 }
 
+void audio_pcm_free(void)
+{
+    audio_b_free();
+    if (s_dma_on)
+        out_stop();
+    if (s_ext) {
+        dma_stop();
+        s_ext = 0;
+    }
+}
+
 OVL_TEXT(usbdac) int audio_ext_start(uint32_t rate)
 {
     if (s_playing || s_b_up)

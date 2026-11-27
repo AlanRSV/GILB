@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #define GILB_APP_MAGIC   0x50504147u    /* "GAPP" */
-#define GILB_API_VERSION 2u
+#define GILB_API_VERSION 3u
 #define GILB_APP_BASE    0x03030000u    /* where a program is loaded and runs */
 #define GILB_APP_END     0x0304C000u    /* 112 KiB: code, data, .bss, heap */
 #define GILB_APP_DIR     "/Internal/GILB/APPS"
@@ -112,6 +112,13 @@ typedef struct gilb_api {
      * 0x01020000 (never write there). Memory only: its contents are undefined and code copied there
      * is not yet known to run (sdk/examples/memtest finds out). */
     int (*more_mem)(gilb_mem_t *out, int max);
+
+    /* ---- version 3 ---- */
+    /* More of core A's own RAM: the fonts window, the audio DMA's list and the PCM ring, one range
+     * today, 0x03077900..0x030A0000 (161.75 KiB). The music stops and the audio DMA with it (the
+     * next play sets both up again); GILB draws only with its built-in 8x8 font (glyph) until the
+     * program ends, and then loads its fonts again. Fills up to max ranges and returns how many. */
+    int (*more_mem_a)(gilb_mem_t *out, int max);
 } gilb_api_t;
 
 #endif

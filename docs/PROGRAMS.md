@@ -108,3 +108,16 @@ The next play loads core B again (device-checked). `sdk/examples/memtest` measur
 1.6x slower to read there and code runs 4.8x slower there (docs/DOOM_PLAN.md). That makes it
 right for big data and for code that runs rarely. `sdk/app.ld` gathers `.movable` sections between
 `__movable_start` and `__movable_end`, for a program that copies code there itself.
+
+## API version 3 (2026-11-26): core A's fonts window and PCM ring
+
+`more_mem_a` lends one more range, 0x03077900..0x030A0000 (161.75 KiB): the fonts window, the
+audio DMA's list (`AS_LLI`) and the PCM ring, which lie next to each other. It stops the music
+and the audio DMA (`audio_pcm_free`: `audio_b_free`, then the DMA and the USB DAC's source off).
+While the program runs GILB has only its 8x8 font (`glyph`); when the entry returns, `run()`
+loads the fonts module again (`text_fonts_load`). The next play sets up the DMA list and the ring.
+Doom (`ports/doom/`) uses it.
+
+Also fixed then: `a_poll` kept POWER's press time as `now | 1`, so on an even millisecond the
+unsigned `now - t0` was huge and a tap counted as "held 2 s". It compares signed now.
+

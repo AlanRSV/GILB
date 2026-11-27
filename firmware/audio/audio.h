@@ -33,6 +33,9 @@ void audio_stop(void);
 int audio_b_fresh(unsigned div);
 /* A program borrows core B's RAM: the music stopped, B held in reset; the next play reloads it. */
 void audio_b_free(void);
+/* ...and the PCM ring and its DMA list (API version 3): that, and the audio DMA stopped, the USB
+ * DAC's included. The next play sets the list and the ring up again. */
+void audio_pcm_free(void);
 /* Call once per tick (10 ms): file -> input ring, output start/stop, B clock. */
 void audio_poll(void);
 int audio_status(audio_status_t *st);
