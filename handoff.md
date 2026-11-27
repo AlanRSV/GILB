@@ -201,7 +201,12 @@ Releases on GitHub (AlanRSV/GILB): **v2026.11.25** (Latest, 8 GB); pre-releases
 (early beta with Programs and Doom, 8 GB, from 3673af0: Doom zipped as `DOOM-GILB.zip`, since GitHub
 refuses `.APP` files; no WAD and no songs, which can't be shared; it predates Doom's music).
 **v2026.11.27-early** (2026-11-27, from 370d028): the same with Doom's music (the notes say how to render
-the songs; still no WAD or songs attached). The site lists both early betas, newest first.
+the songs; still no WAD or songs attached). **v2026.11.27-early-2** (2026-11-27, from a039128): Programs
+API 6, Doom at 224 MHz and its fixes (`HIFIEC90.IMG` SHA-256
+2AC936DEB0EFB67005E562C61192A5D2DB70F31C46B3C89DF5D81F3ED6D00BBD). Early betas are built by hand:
+`release/build.sh`'s steps with `PROGRAMS=1` into `build/release-early/`, Doom zipped with PowerShell's
+`Compress-Archive` (WSL has no `zip`), the notes edited from the previous early beta's. The site lists
+the early betas newest first.
 
 Done and confirmed on the device (2026-11-26 and 27, newest first):
 
@@ -288,7 +293,8 @@ Still open:
 - **Doom:** E1M2 runs at 7 to 12 fps (most frame time is drawing; WAD reads take 2 to 4 s of every 10):
   fewer storage requests or pre-built level packs (the user asked about "compiling levels like
   shaders") would help; E1M6 may not fit the level cache (Doom stops with a message), save games
-  untested; a new early beta with API 6 is not published yet. - **Programs:** the player's own menus from the PC keyboard (only programs get it); the 512 MB board with
+  untested.
+- **Programs:** the player's own menus from the PC keyboard (only programs get it); the 512 MB board with
   Programs never built or tested.
 
 - **Layouts:** done but for the USB DAC screen, which stays hand-drawn (its overlay holds the window, and
