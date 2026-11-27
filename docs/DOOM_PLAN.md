@@ -155,6 +155,7 @@ Bugs found on the way:
   `services/cpuclk.c` gates behind its own self-test), and fewer storage requests.
 - **Memory:** E1M6's level data (about 220 KiB) won't fit next to the fixed data. It stops with
   "too big for the player's memory". Not checked on the device yet; E1M2 to E1M9 are untested.
-- **Music:** the port's OPL2 synthesis (`opl2.c`, 57 KB of code) at 11025 Hz into the same mixer, if
-  memory and core A's time allow.
+- **Music: done 2026-11-27 (device):** not live (`opl2.c` is 57 KB and much of core A's time): each
+  song is rendered once on the PC with the port's own synthesis (`ports/doom/tools/music`) and
+  streamed from `GILB/APPS/DOOMMUS` (ports/doom/README.md, "Music").
 - **Save games:** write `DOOM.SAV` / `DOOM.CFG` in `GILB/APPS`; untested.

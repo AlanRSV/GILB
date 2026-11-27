@@ -1,7 +1,7 @@
 # Doom for GILB
 
 Doom as a GILB program (`docs/PROGRAMS.md`), run from **Settings › System › Programs**, with its
-sound effects (no music yet). It needs GILB with program API version 3 (`more_mem_a`); version 4 adds
+sound effects and music. It needs GILB with program API version 3 (`more_mem_a`); version 4 adds
 a PC keyboard and version 5 the sound. Programs are a beta: only GILB images built with `PROGRAMS=1`
 have them (`docs/PROGRAMS.md`).
 
@@ -13,7 +13,27 @@ player's DAC plays nothing below 32 kHz. Its ring is 2048 frames (46 ms, 16 KiB 
 every 10 ms at most from the key reads, the renderer's NetUpdate calls, the end of each storage
 read and the panel's bands. It keeps an absolute frame count, so effects carry on in step after a
 long frame, and it saves the WAD reader's position, since it runs inside other reads (it once sent
-the level set-up's reads astray). Music (the port's OPL2 synthesis, `source/opl2.c`) is not built yet.
+the level set-up's reads astray).
+
+## Music
+
+The port synthesised its music live (OPL2, `source/opl2.c`: 57 KB of code and tables, and a good
+share of the CPU). The player has neither to spare, so each song is rendered once on the PC with
+that same synthesis and MUS player, and Doom streams the result:
+
+```sh
+make -C ports/doom/tools/music
+mkdir -p mus && ports/doom/tools/music/doom_music DOOM1.WAD mus
+```
+
+That writes one `D_xxxx.PCM` per song (16-bit mono at 11025 Hz, one pass of the score; 38 MB for
+the shareware WAD's 13). Copy them to `GILB/APPS/DOOMMUS` on the player. `gilb/gilb_sound.c` mixes
+the current song in as it does an effect, at the music volume, reading 4 KiB at a time; level music
+loops, the title tune doesn't. Without the files the music is silent. Like the WAD, the songs are
+made from your own `DOOM1.WAD` and not shared.
+
+On the way: the synthesis read past its attack table when an envelope level drifted above 511
+(`D_INTER`); `opl2.c` now holds it in range.
 
 ## Credits and license
 

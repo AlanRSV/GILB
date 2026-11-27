@@ -104,7 +104,7 @@ static void D_UpdateFPS(void);
 
 //jff 1/22/98 parms for disabling music and sound
 const boolean nosfxparm = false;    /* GILB: the effects through API 5 (gilb/gilb_sound.c) */
-const boolean nomusicparm = true;   /* GILB: no OPL2 music yet */
+const boolean nomusicparm = false;  /* GILB: the songs streamed from files (gilb/gilb_sound.c) */
 
 const skill_t startskill = sk_medium;
 const int startepisode = 1;

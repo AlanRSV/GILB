@@ -1,5 +1,5 @@
 /* audio.h -- GILB: the sound effects' mixer (gilb_sound.c; the MG24 port's src/audio.h mixed 8
-   channels to PWM). Stereo; no music yet. */
+   channels to PWM), and the music streamed from the song files tools/music renders. Stereo. */
 #ifndef SRC_PWM_AUDIO_H_
 #define SRC_PWM_AUDIO_H_
 #include "main.h"
@@ -20,4 +20,8 @@ void updateSound(void);
 void muteSound(void);
 extern soundChannel_t soundChannels[MAX_CHANNELS];
 void gilb_sound_tick(void);          /* a mix if it is due: call it from anywhere, often */
+/* The music: the song files from tools/music, streamed (gilb_sound.c). */
+void gilb_music_play(int musicnum, int looping);
+void gilb_music_pause(int on);
+void gilb_music_stop(void);
 #endif

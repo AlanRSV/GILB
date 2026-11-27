@@ -48,3 +48,5 @@ tools/HIFIEC37_unpacked/
 tools/rkflashtool/
 .work/
 stubs.d
+# the Doom music renderer (ports/doom/tools/music), built in WSL
+ports/doom/tools/music/doom_music

@@ -17,6 +17,11 @@
  * panel's bands), at most every TICK_MS. A mix saves and restores the WAD reader's position: it runs
  * inside other reads.
  *
+ * The music: each song rendered once on the PC (tools/music: the port's own OPL2 synthesis and MUS
+ * player) to GILB/APPS/DOOMMUS/D_xxxx.PCM, 16-bit mono at 11025 Hz. It is mixed in as an effect is,
+ * four frames a sample, at the music volume, read MBUF samples at a time (a storage read about every
+ * 186 ms). No OPL2 on the player: no memory or time for it. Without the files Doom plays silent music.
+ *
  *  This program is free software; you can redistribute it and/or modify it under the terms of the
  *  GNU General Public License as published by the Free Software Foundation; either version 2 of
  *  the License, or (at your option) any later version.
@@ -28,6 +33,7 @@
 #include "doomdef.h"
 #include "w_wad.h"
 #include "global_data.h"
+#include "sounds.h"
 
 #define UP         4u                     /* output frames a sample: 11025 Hz -> 44100 Hz */
 #define RATE       (11025u * UP)
@@ -56,6 +62,18 @@ static uint32_t s_tick;
    effects started, the DMA positions seen. */
 static uint32_t s_mixes, s_mixed, s_peak, s_starts, s_pos_first, s_pos_moves;
 
+/* The music */
+#define MUS_DIR    "/Internal/GILB/APPS/DOOMMUS/"
+#define MBUF       2048u                  /* samples read at a time (4 KiB) */
+static void *s_mus;                       /* the song's file, or NULL */
+static uint32_t s_mus_len;                /* its samples */
+static int s_mus_loop, s_mus_paused;
+static uint32_t s_mus_start;              /* the absolute frame of its sample 0 (~0: the next mix) */
+static uint32_t s_mus_at_pause;           /* frames played when paused */
+static int16_t s_mbuf[MBUF];
+static uint32_t s_mbuf_at = ~0u, s_mbuf_n;  /* the samples in s_mbuf: from, how many */
+static inline int32_t sat_add(int32_t a, int32_t b);
+
 void initAudio(void)
 {
     s_on = 0;
@@ -69,6 +87,97 @@ void initAudio(void)
     s_abs = s_pos;
     s_ms = gilb->ms();
     s_on = 1;
+}
+
+void gilb_music_stop(void)
+{
+    if (s_mus)
+        gilb->close(s_mus);
+    s_mus = NULL;
+    s_mus_paused = 0;
+}
+
+void gilb_music_play(int musicnum, int looping)
+{
+    char path[48] = MUS_DIR;
+    const char *name;
+    int n = (int)sizeof MUS_DIR - 1;
+
+    gilb_music_stop();
+    if (musicnum <= 0 || musicnum >= NUMMUSIC || !(name = S_music[musicnum]) || !*name)
+        return;
+    while (*name && n < (int)sizeof path - 5)
+        path[n++] = *name++;
+    path[n++] = '.'; path[n++] = 'P'; path[n++] = 'C'; path[n++] = 'M'; path[n] = 0;
+    if (!(s_mus = gilb->open(path, GF_READ)))
+        return;                      /* (no song files: silent music) */
+    s_mus_len = (uint32_t)gilb->size(s_mus) / 2u;
+    s_mus_loop = looping;
+    s_mus_start = ~0u;
+    s_mbuf_at = ~0u;
+}
+
+void gilb_music_pause(int on)
+{
+    if (!s_mus || on == s_mus_paused)
+        return;
+    if (on && s_mus_start != ~0u)
+        s_mus_at_pause = s_abs + DELAY - s_mus_start;
+    else if (!on)
+        s_mus_start = ~1u;           /* (resume at the next mix, from s_mus_at_pause) */
+    s_mus_paused = on;
+}
+
+/* The song's sample i, read through s_mbuf. */
+static int32_t mus_sample(uint32_t i)
+{
+    if (i - s_mbuf_at >= s_mbuf_n) {
+        long got;
+
+        s_mbuf_at = i;
+        s_mbuf_n = 0;
+        if (gilb->seek(s_mus, (long)i * 2) == (long)i * 2 && (got = gilb->read(s_mus, s_mbuf, sizeof s_mbuf)) > 0)
+            s_mbuf_n = (uint32_t)got / 2u;
+        if (!s_mbuf_n)
+            return 0;
+    }
+    return s_mbuf[i - s_mbuf_at];
+}
+
+/* The music into frames first.. of the ring, from `at` on. */
+static void mix_music(int32_t *ring, uint32_t first, uint32_t at)
+{
+    int32_t mv = _g->snd_MusicVolume;
+    uint32_t played, f, si;
+
+    if (!s_mus || s_mus_paused || !s_mus_len || !mv)
+        return;
+    if (s_mus_start == ~0u)
+        s_mus_start = first;         /* (it starts with this mix) */
+    else if (s_mus_start == ~1u)
+        s_mus_start = first - s_mus_at_pause;
+    played = first - s_mus_start;
+    si = played / UP;
+    f = played % UP;
+    if (!s_mus_loop && si >= s_mus_len) {
+        gilb_music_stop();
+        return;
+    }
+    for (uint32_t k = 0, i = at; k < SPAN; k++, i = (i + 1u) & (RING - 1u)) {
+        uint32_t a = si % s_mus_len, b = (si + 1u) % s_mus_len;
+        int32_t m4;
+
+        if (!s_mus_loop && si >= s_mus_len)
+            break;
+        m4 = mus_sample(a) * (int32_t)(UP - f) + (b ? mus_sample(b) : 0) * (int32_t)f;
+        m4 = m4 * mv / 15;           /* (the music volume, 0..15) */
+        ring[2u * i] = sat_add(ring[2u * i], m4 << (VOL_SHIFT - 2));
+        ring[2u * i + 1u] = sat_add(ring[2u * i + 1u], m4 << (VOL_SHIFT - 2));
+        if (++f == UP) {
+            f = 0;
+            si++;
+        }
+    }
 }
 
 void muteSound(void)
@@ -178,6 +287,7 @@ void updateSound(void)
             s_mixed++;
         }
     }
+    mix_music(ring, first, at);
     currentSpiAddress = caller_at;
     s_busy = 0;
 }

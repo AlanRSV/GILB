@@ -153,34 +153,32 @@ void I_InitMusic(void)
 {
 }
 
+/* GILB: the songs are rendered on the PC (tools/music) and streamed from files by gilb_sound.c,
+   which reads the music volume (snd_MusicVolume) as it mixes: no OPL2 on the player. */
 void I_PlaySong(int handle, int looping)
 {
-    (void) looping;
-    setMusic(handle);
-    OPL_InitRegisters();
-    initMusic();
-    if (handle == mus_None)
-        return;
-
+    gilb_music_play(handle, looping);
 }
 
 void I_PauseSong(int handle)
 {
   (void) handle;
+  gilb_music_pause(1);
 }
 
 void I_ResumeSong(int handle)
 {
   (void) handle;
+  gilb_music_pause(0);
 }
 
 void I_StopSong(int handle)
 {
   (void) handle;
+  gilb_music_stop();
 }
 
 void I_SetMusicVolume(int volume)
 {
-  I_OPL_SetMusicVolume(volume * 8);
   (void) volume;
 }

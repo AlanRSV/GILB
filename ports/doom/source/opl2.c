@@ -1268,7 +1268,10 @@ __attribute__((always_inline)) static inline uint32_t OPL2_GenerateWaveworm(opl2
         {
             if (rate_hi)
             {
-                numSamples = 1 + (attackDurationTable[rate & 3][(int)eg_rout_f] >> (rate_hi - 1));
+                // GILB: the envelope level is 0..511, but drifted past that in D_INTER (the table
+                // has 512 entries: the MG24 read beyond it, the PC renderer faulted)
+                int eg_index = (int)eg_rout_f < 0 ? 0 : (int)eg_rout_f > 511 ? 511 : (int)eg_rout_f;
+                numSamples = 1 + (attackDurationTable[rate & 3][eg_index] >> (rate_hi - 1));
             }
             else
             {   // rate hi = 0: last forever
