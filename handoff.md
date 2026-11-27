@@ -192,10 +192,8 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 
 ## State of the to-do list
 
-The last commit is **f63a626** (Doom music, 2026-11-27); the last committed firmware change is
-**e02b042** (Programs API 5); Echo Library's is **738be7b**. **Not committed yet** (tested on the
-player 2026-11-27, waiting for the user's "Commit and push"): Programs API 6 and the Doom fixes below.
-Build with it: core A 3356 B free (floor 3072), RAM 564 B free, the prg overlay 8224 of 12288 B;
+Everything is committed and pushed. The last change is **0c8b748** (Programs API 6 and the Doom
+fixes, 2026-11-27), also the last firmware change; Echo Library's is **738be7b**. That build: core A 3356 B free (floor 3072), RAM 564 B free, the prg overlay 8224 of 12288 B;
 `DOOM.APP` 112664 B (113540 of 114688 B memory).
 
 Releases on GitHub (AlanRSV/GILB): **v2026.11.25** (Latest, 8 GB); pre-releases
@@ -207,12 +205,12 @@ the songs; still no WAD or songs attached). The site lists both early betas, new
 
 Done and confirmed on the device (2026-11-26 and 27, newest first):
 
-- **Programs API 6, a faster core A** (uncommitted): `fast(1)` runs core A at 224 MHz while a program
+- **Programs API 6, a faster core A** (0c8b748): `fast(1)` runs core A at 224 MHz while a program
   runs (`services/cpuclk.c` `cpuclk_program`: the boot gating, the eMMC record, core A's self-test).
   Doom calls it: E1M1 at 13 to 23 fps (was 3 to 13), the menus 26 to 33. Two device fixes: gating
   HCLK_IMDCT hung the 8 GB unit (found with a reset-proof trace, `g_clk_trace`; now left on), and I2S1
   had to move to the ACODEC PLL first (`docs/PROGRAMS.md`, "API version 6")
-- **Doom fixes** (uncommitted): E1M2 ran out of zone (the WAD cache lends back its 28 KB share in 4
+- **Doom fixes** (0c8b748): E1M2 ran out of zone (the WAD cache lends back its 28 KB share in 4
   pieces, one at a time); a fault in `R_ScaleFromGlobalAngle` (the port's signed angles read outside
   the sine table: `finesine`/`finecosine` mask the angle); a key stuck after a stall (GILB Keys
   resends the keys held 4 times a second, 0x80 = all up, Doom lets go after 1 s of silence); the 10 s
