@@ -10,7 +10,8 @@ updates the site with no redeploy.
   (60 requests an hour without a token).
 - `public/`: the page (`index.html`, `style.css`, `app.js`) and four screenshots from `docs/images/`.
 
-The page offers the files by name: `HIFIEC90.IMG` (8 GB board) and `MINIV900.IMG` (512 MB board). Any
+The page offers the files by name: `HIFIEC90.IMG` (8 GB board) and `MINIV900.IMG` (512 MB board, still
+being tested: published only as a beta, and the page says so). Any
 other file attached to a release is listed under them.
 
 ## Publishing a firmware release
@@ -34,8 +35,13 @@ Betas with Settings › System › Programs are built with `PROGRAMS=1` (`docs/P
 2. In the service's **Settings**: **Root Directory** `site`. Railway sees `package.json` and runs
    `npm start` (no install step needed: there are no dependencies).
 3. **Settings › Networking › Generate Domain** (or add your own). Railway sets `PORT`; the server uses it.
-4. Optional **Variables**: `GITHUB_TOKEN` (a fine-grained token with no permissions: public repos only
-   need it for a higher API limit), `REPO` (default `AlanRSV/GILB`), `CACHE_MINUTES` (default 10), `BETAS` (how many betas to list, default 3).
+4. **Variables**: `GITHUB_TOKEN`, recommended: without it GitHub's API allows 60 requests an hour per
+   IP address, and Railway shares its outgoing IP with other apps, so it answered 403 before the site
+   asked once (2026-11-26). The page then still offers the 8 GB image through GitHub's direct link,
+   without its size, checksum or notes. A fine-grained token with no permissions is enough (a public
+   repo only needs it for the higher limit: 5000 an hour). Optional: `REPO` (default `AlanRSV/GILB`),
+   `CACHE_MINUTES` (default 10), `RETRY_MINUTES` (after a refusal, default 2), `BETAS` (how many
+   betas to list, default 3).
    Health check path: `/healthz`.
 
 ## Running it locally

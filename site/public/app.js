@@ -12,7 +12,7 @@
     return `<div class="file">
       <span class="board">${esc(f.board)} board</span>
       <span class="name">${esc(f.name)}</span>
-      <span class="meta">${mb(f.size)}${f.downloads ? ` · ${f.downloads.toLocaleString()} downloads` : ''}</span>
+      ${f.size ? `<span class="meta">${mb(f.size)}${f.downloads ? ` · ${f.downloads.toLocaleString()} downloads` : ''}</span>` : ''}
       <a class="btn${beta ? '' : ' primary'}" href="${esc(f.url)}" download>Download ${beta ? 'beta ' : ''}for ${esc(f.board)}</a>
       ${f.sha256 ? `<span class="sha">SHA-256 ${esc(f.sha256)}<button type="button" data-copy="${esc(f.sha256)}">copy</button></span>` : ''}
     </div>`;
@@ -20,9 +20,13 @@
 
   function show(d) {
     const repoUrl = `https://github.com/${d.repo}`;
-    if (d.error) {
-      box.innerHTML = `<p>The release list could not be read just now. The files are on
-        <a href="${repoUrl}/releases/latest" rel="noopener">GitHub's releases page</a>.</p>`;
+    if (d.error) {                               // (GitHub's API refused the server: its direct links still work)
+      box.innerHTML = `<div class="files">${fileCard({
+          board: '8 GB', name: 'HIFIEC90.IMG', url: `${repoUrl}/releases/latest/download/HIFIEC90.IMG` })}</div>
+        <p class="others">The newest release, straight from GitHub (its size, checksum and notes could not be loaded
+          just now). The other files: <a href="${repoUrl}/releases/latest" rel="noopener">the release on GitHub</a> ·
+          <a href="${repoUrl}/releases" rel="noopener">all releases</a>. The 512 MB board is still being tested:
+          see <a href="#beta">Beta builds</a>.</p>`;
       return;
     }
     if (!d.release) {
@@ -55,8 +59,7 @@
   fetch('/api/latest').then((r) => r.json()).then(show)
     .catch(() => show({ repo: 'AlanRSV/GILB', error: 'offline' }));
 
-  // Beta builds: the newest pre-releases (/api/betas). The section stays hidden when there are none.
-  const betaSec = document.getElementById('beta');
+  // Beta builds: the newest pre-releases (/api/betas); a line instead when there are none.
   const betaBox = document.getElementById('betas');
 
   function betaCard(r) {
@@ -79,9 +82,18 @@
     navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = 'copied'; setTimeout(() => { b.textContent = 'copy'; }, 1500); });
   });
 
+  const betaList = (repo) => `https://github.com/${repo}/releases`;
   fetch('/api/betas').then((r) => r.json()).then((d) => {
-    if (!d.betas || !d.betas.length) return;     // (none, or GitHub unreachable: no section)
-    betaBox.innerHTML = d.betas.map(betaCard).join('');   // (notes: GitHub's own sanitized rendering)
-    betaSec.hidden = false;
-  }).catch(() => {});
+    if (d.error) {
+      betaBox.innerHTML = `<p class="muted">The beta list could not be loaded just now. Betas are the releases marked
+        "Pre-release" on <a href="${betaList(d.repo)}" rel="noopener">GitHub's releases page</a>.</p>`;
+    } else if (!d.betas || !d.betas.length) {
+      betaBox.innerHTML = '<p class="muted">No beta right now: everything being tested is in the release above.</p>';
+    } else {
+      betaBox.innerHTML = d.betas.map(betaCard).join('');   // (notes: GitHub's own sanitized rendering)
+    }
+  }).catch(() => {
+    betaBox.innerHTML = `<p class="muted">The beta list could not be loaded. See
+      <a href="${betaList('AlanRSV/GILB')}" rel="noopener">GitHub's releases page</a>.</p>`;
+  });
 })();
