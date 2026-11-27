@@ -2,8 +2,9 @@
   "repo": "AlanRSV/GILB",
   "betas": [
     {
-      "tag": "v2026.11.27-beta",
-      "name": "GILB 2026.11.27 beta: Programs",
+      "kind": "early",
+      "tag": "v2026.11.27-early",
+      "name": "GILB 2026.11.27 early beta: Programs",
       "date": "2026-11-27T12:00:00Z",
       "url": "https://github.com/AlanRSV/GILB/releases",
       "notes": "<p>Settings › System › Programs: run .APP files, Doom included. A made-up beta for testing the page.</p>",
@@ -13,6 +14,7 @@
       ]
     },
     {
+      "kind": "board",
       "tag": "v2026.11.25-512m-beta",
       "name": "GILB 2026.11.25 for the 512 MB board (beta)",
       "date": "2026-11-25T20:00:00Z",

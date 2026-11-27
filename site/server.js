@@ -88,7 +88,7 @@ async function releases() {
   return gh;
 }
 
-// { status, body } for /api/latest and /api/betas.
+// { status, body } for /api/latest and /api/betas (each beta with kind "early" or "board").
 async function answer(which) {
   const mock = which === 'latest' ? process.env.MOCK_RELEASE : process.env.MOCK_BETAS;
   if (mock) return { status: 200, body: fs.readFileSync(mock, 'utf8') };
@@ -99,8 +99,12 @@ async function answer(which) {
     const rel = g.list.find((j) => !j.prerelease);
     return { status: 200, body: JSON.stringify({ repo: REPO, release: rel ? shape(rel) : null }) };
   }
-  const betas = g.list.filter((j) => j.prerelease).slice(0, BETAS).map(shape);
-  return { status: 200, body: JSON.stringify({ repo: REPO, betas }) };
+  // Two kinds of pre-release: an early beta of new features (its tag has "early" in it, e.g.
+  // v2026.11.27-early) and the rest, a board's build still being tested (the 512 MB board's).
+  const pre = g.list.filter((j) => j.prerelease);
+  const early = pre.filter((j) => /early/i.test(j.tag_name)).slice(0, BETAS).map((j) => ({ ...shape(j), kind: 'early' }));
+  const board = pre.filter((j) => !/early/i.test(j.tag_name)).slice(0, BETAS).map((j) => ({ ...shape(j), kind: 'board' }));
+  return { status: 200, body: JSON.stringify({ repo: REPO, betas: early.concat(board) }) };
 }
 
 function send(res, status, type, body, extra = {}) {

@@ -59,14 +59,16 @@
   fetch('/api/latest').then((r) => r.json()).then(show)
     .catch(() => show({ repo: 'AlanRSV/GILB', error: 'offline' }));
 
-  // Beta builds: the newest pre-releases (/api/betas); a line instead when there are none.
+  // The betas (/api/betas): early betas of new features, and the 512 MB board's; a line instead when a
+  // kind has none.
   const betaBox = document.getElementById('betas');
+  const earlyBox = document.getElementById('early-list');
 
   function betaCard(r) {
     const boards = r.files.filter((f) => f.board);
     const rest = r.files.filter((f) => !f.board);
     return `<div class="card beta">
-      <div class="rel-head"><span class="badge">Beta</span><h3>${esc(r.name)}</h3><span class="tag">${esc(r.tag)}</span>
+      <div class="rel-head"><span class="badge">${r.kind === 'early' ? 'Early beta' : 'Beta'}</span><h3>${esc(r.name)}</h3><span class="tag">${esc(r.tag)}</span>
         <span class="muted">${day(r.date)}</span></div>
       ${boards.length ? `<div class="files">${boards.map((f) => fileCard(f, true)).join('')}</div>`
         : `<p>No board images attached. <a href="${esc(r.url)}" rel="noopener">See it on GitHub</a>.</p>`}
@@ -76,24 +78,29 @@
     </div>`;
   }
 
-  betaBox.addEventListener('click', (e) => {
+  [betaBox, earlyBox].forEach((box) => box.addEventListener('click', (e) => {
     const b = e.target.closest('[data-copy]');
     if (!b) return;
     navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = 'copied'; setTimeout(() => { b.textContent = 'copy'; }, 1500); });
-  });
+  }));
 
   const betaList = (repo) => `https://github.com/${repo}/releases`;
+  const failed = (repo) => `<p class="muted">The list could not be loaded just now. Betas are the releases marked
+    "Pre-release" on <a href="${betaList(repo)}" rel="noopener">GitHub's releases page</a>.</p>`;
   fetch('/api/betas').then((r) => r.json()).then((d) => {
     if (d.error) {
-      betaBox.innerHTML = `<p class="muted">The beta list could not be loaded just now. Betas are the releases marked
-        "Pre-release" on <a href="${betaList(d.repo)}" rel="noopener">GitHub's releases page</a>.</p>`;
-    } else if (!d.betas || !d.betas.length) {
-      betaBox.innerHTML = '<p class="muted">No beta right now: everything being tested is in the release above.</p>';
-    } else {
-      betaBox.innerHTML = d.betas.map(betaCard).join('');   // (notes: GitHub's own sanitized rendering)
+      betaBox.innerHTML = earlyBox.innerHTML = failed(d.repo);
+      return;
     }
+    const all = d.betas || [];
+    const early = all.filter((r) => r.kind === 'early');
+    const board = all.filter((r) => r.kind !== 'early');
+    // (notes: GitHub's own sanitized rendering)
+    earlyBox.innerHTML = early.length ? early.map(betaCard).join('')
+      : '<p class="muted">No early beta right now: the newest features are in the release above.</p>';
+    betaBox.innerHTML = board.length ? board.map(betaCard).join('')
+      : '<p class="muted">No 512 MB build to test right now.</p>';
   }).catch(() => {
-    betaBox.innerHTML = `<p class="muted">The beta list could not be loaded. See
-      <a href="${betaList('AlanRSV/GILB')}" rel="noopener">GitHub's releases page</a>.</p>`;
+    betaBox.innerHTML = earlyBox.innerHTML = failed('AlanRSV/GILB');
   });
 })();

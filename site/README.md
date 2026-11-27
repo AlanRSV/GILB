@@ -25,9 +25,16 @@ other file attached to a release is listed under them.
 ## Publishing a beta
 
 A beta is a GitHub **pre-release**: draft the release as above, tick **Set as a pre-release**, publish.
-It shows under **Beta builds**, with a warning that it is for testing, and never as the main download
-(GitHub's "latest" release is never a pre-release). The section stays hidden while there is none.
-Betas with Settings › System › Programs are built with `PROGRAMS=1` (`docs/PROGRAMS.md`).
+It never becomes the main download (GitHub's "latest" release is never a pre-release). The tag decides
+where the page shows it:
+
+- **Early Beta**: a tag with `early` in it, e.g. `v2026.11.27-early`. New features still being tried
+  out, such as Settings › System › Programs: build those images with `PROGRAMS=1`
+  (`docs/PROGRAMS.md`).
+- **512 MB board (beta)**: any other pre-release, e.g. `v2026.11.26-512m-beta`: the 512 MB board's
+  build while it is being tested.
+
+Each section shows the newest 3 (`BETAS`), or a line saying there is none.
 
 ## Hosting on Railway
 
