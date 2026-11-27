@@ -1,6 +1,6 @@
-# GILB handoff (2026-11-25)
+# GILB handoff (2026-11-27)
 
-Start here in a new session. This file covers where the project stands, how the user works, and how to build,
+Start here in a new session, and read this file again after every context compaction (CLAUDE.md). This file covers where the project stands, how the user works, and how to build,
 install and check changes. (`docs/HANDOVER.md` is an older history from October 2026. Don't use it for the current state.)
 
 ## The project
@@ -31,6 +31,9 @@ install and check changes. (`docs/HANDOVER.md` is an older history from October 
 - **Commit straight to `main`, and only when the user says "Commit and push."** End every commit message with
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Always build with **`REVERSE_LISTS=1`**, because the user wants VOL- to move up in lists.
+- **Programs are a beta** (the user's ask, 2026-11-26): only images built with **`PROGRAMS=1`** have
+  Settings › System › Programs. Build the user's own test images with it; normal and release builds leave it out.
+- Publish nothing (GitHub releases, pre-releases) without the user's yes in the chat.
 - Never send the user's name, email or project details to outside services.
 - Don't run downloaded installer scripts; for example, get-pip.py was refused. Write the tool yourself instead.
 - List `F:\` before saying which files are on the player. Windows won't let Claude delete files on `F:`, so ask the user to do it.
@@ -63,6 +66,22 @@ No `FONT_IMG` (since 2026-11-25): it copied Snowsky's stock bitmap fonts (about 
 nothing in the firmware reads them; an image without them was tested on the device (all text as before).
 Images for others (the download site, `site/`) must leave them out. Japanese, Chinese and Korean glyphs
 are `GILB/CJK.BIN` (Fusion Pixel, SIL OFL 1.1): attach it to a release as an optional file.
+
+A beta image with Programs (the user's test images, and early betas):
+
+```
+make cfw-img BOARD=8g REVERSE_LISTS=1 PROGRAMS=1 STOCK_IMG='stock/4.0.0/ECHO MINI V4.0.0/HIFIEC40.IMG'
+```
+
+Switching `PROGRAMS` (like `BOARD` or `REVERSE_LISTS`) rebuilds every object (a stamp file in `build/cfw`).
+
+Programs and Doom (in WSL):
+
+```
+make -C sdk APP=hello NAME=Hello        # sdk/build/HELLO.APP
+make -C ports/doom                      # ports/doom/build/DOOM.APP and DOOM.BIN
+make -C ports/doom/tools/music          # the Doom song renderer (a PC program)
+```
 
 Build the desktop simulator (`build/sim/rechord_sim_8g`), which runs the firmware's own UI code:
 
@@ -99,6 +118,11 @@ expects an older font count) and, in the Windows checkout only, two PPM goldens 
 - Bash heredocs halve backslashes. For code with backslashes, use the Edit tool or a Python script in the scratchpad,
   run with `MSYS_NO_PATHCONV=1 wsl -e python3 -I /mnt/c/...`.
 - `/tmp` in Git Bash is not the same as `/tmp` in WSL.
+- Git Bash rewrites `/mnt/...` arguments into Windows paths: run WSL tools as
+  `wsl -e bash -lc '...'` (or with `MSYS_NO_PATHCONV=1`).
+- WSL doesn't see the player's drive (`F:`): copy to it from Git Bash (`/f/...`).
+- No Node.js on this PC or in WSL (Echo Library's tests use `~/.local/node`): to try `site/` locally, a
+  small Python stand-in that serves `site/public` and the test JSON works (`site/README.md`, mocks).
 
 **Install:**
 
@@ -112,8 +136,9 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 ## Memory: the main constraint
 
 - Core A's resident code must leave at least **3072 B free** (`AP_MIN_FREE`, lowered from 4096 on 2026-11-25,
-  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB build has **3992 B free** now,
-  920 B above the floor (RAM: 592 B free) (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` no longer
+  the user's choice, for layouts phase 2); otherwise the link fails. The 8 GB `PROGRAMS=1` build has
+  **3428 B free** (2026-11-27), 356 B above the floor (RAM: 576 B free); without Programs 72 B more
+  (`build/cfw/ap_size.txt` shows the numbers). `LTO=0` no longer
   fits at all (964 B over even with `AP_MIN_FREE=0`).
 - New features go into **overlays**: swap-in code windows, opened through gates in `firmware/startup/ap_ovl.c`
   (`GATE`, `npx_ok()`). Files wholly in an overlay are placed by object name in `firmware/firmware_ap.ld`;
@@ -121,7 +146,8 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
   still use LTO. `NOCROSSREFS` stops resident code calling into an overlay. Room left:
   - modes window (14 KB): viz about 3.1 KB free, npx about 2.1 KB, lay (layouts, and `config_load`) about 3.7 KB, usbdac 6.7 KB,
     usbout 4.9 KB, dev 1 KB.
-  - library phase window (12 KB): lwalk and lbuild by turns, and layb (the built-in layouts' text, 7.2 KB).
+  - library phase window (12 KB): lwalk and lbuild by turns, layb (the built-in layouts' text, 7.2 KB),
+    and prg (the program loader with its API: 6.3 KB, its USB serial and sound state in the overlay).
   - fonts window: about 3.6 KB, used as the CJK glyph cache.
   - lib window: about 630 B.
 - LTO: the link compiles each function apart (`-flto-partition=max`) so a string shared by resident and
@@ -158,12 +184,42 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 | Old code, tools and build targets (not built) | `archive/` (`archive/README.md`, `archive/Makefile.legacy`) |
 | Feature list and device-test status | `docs/ROADMAP.md` |
 | Hardware decoding results | `docs/HIFI_PLAN.md` §4.5 |
+| Programs (beta): Settings › System › Programs runs `GILB/APPS/*.APP` | `firmware/services/programs.c` (the prg overlay: loader and API table), `prg_cdc.c` (USB serial), `prg_sound.c` (sound); `sdk/` (`include/gilb_app.h`, the API's source of truth; `API.md`, the reference; `README.md`; `examples/hello`, `memtest`); `docs/PROGRAMS.md` (how it works, version by version) |
+| Doom (a program) | `ports/doom/`: the MG24 port's game in `source/`, `include/` (GILB changes marked `GILB:`), the board layer in `gilb/`, `doom.ld` (four memory blocks), `tools/pack.py` (DOOM.APP and DOOM.BIN), `tools/music/` (the song renderer); `ports/doom/README.md` (keys, memory, sound, music); `docs/DOOM_PLAN.md` (history and measurements) |
+| PC keyboard for programs | `tools/gilb_keys.ps1` (Windows): one byte a key change over the player's USB serial port |
+| Download site | `site/` on Railway (https://gilb-production.up.railway.app): the newest release, Early Beta (pre-releases tagged with "early"), 512 MB board (beta) (other pre-releases); `GITHUB_TOKEN` is set in Railway; `site/README.md` |
+| Printed case | `case/` (OpenSCAD, 74a5917); the design lives in a private repo |
 
 ## State of the to-do list
 
-Everything is committed and pushed. The last change is **941a0a0** (the update image's own header), the last firmware change **f121933**; Echo Library's is **738be7b**.
+Everything is committed and pushed. The last change is **f63a626** (Doom music, 2026-11-27); the last
+firmware change is **e02b042** (Programs API 5); Echo Library's is **738be7b**.
 
-Done and confirmed on the device:
+Releases on GitHub (AlanRSV/GILB): **v2026.11.25** (Latest, 8 GB); pre-releases
+**v2026.11.26-512m-beta** (the 512 MB board, still in testing, from 27fa81a) and **v2026.11.26-early**
+(early beta with Programs and Doom, 8 GB, from 3673af0: Doom zipped as `DOOM-GILB.zip`, since GitHub
+refuses `.APP` files; no WAD and no songs, which can't be shared; it predates Doom's music).
+
+Done and confirmed on the device (2026-11-26 and 27, newest first):
+
+- **Doom music** (f63a626): each song rendered once on the PC with the port's own OPL2 synthesis
+  (`ports/doom/tools/music`, `doom_music DOOM1.WAD OUTDIR`: 13 songs, 38 MB) and streamed from
+  `GILB/APPS/DOOMMUS/D_*.PCM` (live OPL2 has no room on the player)
+- **Programs API 5, Doom's sound effects** (e02b042): `sound_open` plays a ring the program fills
+  through the audio DMA. The CS43131 plays nothing below 32 kHz (Doom upsamples 11025 Hz to 44100), and
+  `usb_dwc2_init`'s `hw_on` cuts the DAC's supply (so `serial_open` brings the DAC back up)
+- **Programs API 4, USB control channel** (b0dea78): a USB serial port for programs (CDC, ID 071B:3209)
+  and `tools/gilb_keys.ps1`: Doom plays from a PC keyboard. Four fixes in the shared CDC driver (it never
+  armed bulk OUT, among others). Programs became beta-only (`PROGRAMS=1`)
+- **Doom** (25ef915, the MG24 port of Nicola Wrachien): E1M1 plays at 8 to 34 fps; core A at 96 MHz and
+  1.1 ms storage requests are the limits. API 3 (`more_mem_a`) lends the fonts window and PCM ring. Also
+  fixed then: a POWER tap left any program (`a_poll`'s `now | 1`)
+- **Programs** (05ef36a, d16aa07): the loader, API 1 and 2 (`more_mem`: core B's RAM, where code runs
+  4.8x slower); `sdk/API.md` (fe28546) is the reference
+- Download site: Beta and Early Beta sections (eca5792, e871faa, 3673af0), working while GitHub refuses
+  the server; the user set `GITHUB_TOKEN` in Railway (logs say "with a token")
+- Theme kept after a restart; MENU on Now Playing opens the album (27fa81a, issue 2)
+- Printed case (74a5917)
 
 - Years view, hold-to-boot, self-test, themes (Pink plus theme files), the GILB rename
 - full LTO (a24b054): 8 GB build went from 4908 to 6548 B free before the later features
@@ -209,11 +265,17 @@ The README has new Modern (Pink) and Retro screenshots and the corrected credits
 
 Dropped or set aside:
 
-- **Skipped or no change needed:** the Bluetooth reconnect edge case (never seen), Composers view, USB control
-  channel, faster copying, crash-safe settings (already safe), key timing step 2, screen tearing.
+- **Skipped or no change needed:** the Bluetooth reconnect edge case (never seen), Composers view, faster
+  copying, crash-safe settings (already safe), key timing step 2, screen tearing.
 - **Hardware decoding:** closed. The FFT output can't be read back. The FLAC block stays on.
 
 Still open:
+
+- **Doom:** faster core A while a program runs (the FLAC clock point, A at 224 MHz, behind
+  `services/cpuclk.c`'s self-test), fewer storage requests, E1M6 may not fit the level cache (Doom stops
+  with a message), save games untested. A new early beta would carry the music.
+- **Programs:** the player's own menus from the PC keyboard (only programs get it); the 512 MB board with
+  Programs never built or tested.
 
 - **Layouts:** done but for the USB DAC screen, which stays hand-drawn (its overlay holds the window, and
   it needs covers and badges the resident drawer lacks). Resident code has 920 B above the floor:
@@ -254,4 +316,4 @@ Still open:
 - **docs/:** sorted 2026-11-25: 32 files kept (those the README, this file or the code cite); 435 moved to
   `archive/docs/` (the stock decompile, RE plans, SDK-era status), listed in `archive/README.md`.
 
-The list is now driven by the user's own ideas. Ask what they want next.
+The list is now driven by the user's own ideas (their to-do memory has the history). Ask what they want next.
