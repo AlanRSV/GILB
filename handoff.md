@@ -193,7 +193,8 @@ If GILB won't start, the player shows "USB recovery (boot ROM)". Ask the user to
 ## State of the to-do list
 
 Everything is committed and pushed. The last change is **0c8b748** (Programs API 6 and the Doom
-fixes, 2026-11-27), also the last firmware change; Echo Library's is **738be7b**. That build: core A 3356 B free (floor 3072), RAM 564 B free, the prg overlay 8224 of 12288 B;
+fixes, 2026-11-27), also the last firmware change; Echo Library's is **d4f98ee** (playlist CSVs with a "Song" column and
+m:ss lengths, in its importer and the Nicotine+ plugin; the plugin copy in `%APPDATA%\nicotine\plugins` is updated). That build: core A 3356 B free (floor 3072), RAM 564 B free, the prg overlay 8224 of 12288 B;
 `DOOM.APP` 112664 B (113540 of 114688 B memory).
 
 Releases on GitHub (AlanRSV/GILB): **v2026.11.25** (Latest, 8 GB); pre-releases
